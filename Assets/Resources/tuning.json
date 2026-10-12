@@ -228,8 +228,7 @@
   "runes": {
     "startSockets": 2,
     "socketsPerBoss": 1,
-    "evolveAt": 4,
-    "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A full spell with at least evolveAt runes can evolve.",
+    "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A spell with every socket filled can evolve.",
     "maxSpells": 5,
     "tomeEveryLevels": 2,
     "resonanceCount": 3,

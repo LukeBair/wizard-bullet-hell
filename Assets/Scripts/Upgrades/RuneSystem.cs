@@ -6,7 +6,7 @@ using UnityEngine;
 // with 2 sockets and gains one more each time a boss dies. Three matching runes in one spell
 // Resonate for a free extra copy.
 // Split and Echo are rare. Spell tomes appear every other level. A spell whose sockets are full
-// (with at least runes.evolveAt runes) can Evolve once that evolution is unlocked in the Grimoire
+// can Evolve once that evolution is unlocked in the Grimoire
 // (every such spell gets its own Evolve card): its sockets empty for a stronger base form (up to
 // tier III), keeping part of the runes' power.
 public class RuneSystem : UpgradeSystem
@@ -15,7 +15,6 @@ public class RuneSystem : UpgradeSystem
 
     static int Sockets => Mathf.Max(1, Tune.I("runes.startSockets", 2)
         + Tune.I("runes.socketsPerBoss", 1) * GameManager.Instance.Director.BossesDefeated);
-    static int EvolveAt => Tune.I("runes.evolveAt", 4);
 
     // Rarity: runes.<Rune>.weight. Rare runes default to a quarter of the common weight.
     static float Weight(Rune r) => Tune.F($"runes.{r}.weight", Spell.IsRare(r) ? 2.5f : 10f);
@@ -67,7 +66,7 @@ public class RuneSystem : UpgradeSystem
         if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
             tome = unlearned[Random.Range(0, unlearned.Count)];
 
-        var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Mathf.Max(Sockets, EvolveAt));
+        var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Sockets);
         evolves.Clear();
         evolves.AddRange(ready);
     }
