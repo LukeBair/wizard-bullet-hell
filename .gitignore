@@ -28,3 +28,6 @@ Builds/
 # Baked at build time by Assets/Editor/TuningHost.cs
 Assets/Resources/tuning_host.txt
 Assets/Resources/tuning_host.txt.meta
+
+# The phone's progress mirrored by the tuner (tools/tuner/server.js)
+tools/tuner/save.json

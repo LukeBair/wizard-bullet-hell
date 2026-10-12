@@ -33,6 +33,16 @@ public class XpGem : MonoBehaviour
         foreach (var g in All) g.magnet = true;
     }
 
+    // Zone change: every gem still on the ground goes straight to the wizard.
+    public static void CollectAll(Player player)
+    {
+        foreach (var g in All.ToArray())
+        {
+            player.AddXp(g.value);
+            Destroy(g.gameObject);
+        }
+    }
+
     void Update()
     {
         var gm = GameManager.Instance;

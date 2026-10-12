@@ -8,6 +8,9 @@ using UnityEngine;
 // Enemy health steps up +25% per swarm and +100% per boss killed.
 // While a boss is alive nothing else spawns (apart from whatever the boss summons itself), and all
 // the timers pause until it's dead.
+// A run has run.bosses bosses (0 = endless). Killing one moves the run to the next zone; killing the
+// last one wins the run. A new zone starts empty and spawning ramps back up from zero over
+// run.zoneRampSeconds, a little faster in each later zone (x run.zoneRampFactor per zone).
 public class Director : MonoBehaviour
 {
     // All spawn numbers live in the tuner under spawning.*
@@ -15,6 +18,7 @@ public class Director : MonoBehaviour
     static float BossEvery => Tune.F("spawning.bossEvery", 150f);
     static float SwarmEvery => Tune.F("spawning.swarmEvery", 45f);
     static float T(string key, float fallback) => Tune.F("spawning." + key, fallback);
+    public static int RunBosses => Tune.I("run.bosses", 4);
 
     public float Elapsed { get; private set; }
     public float HealthScale { get; private set; } = 1f;
@@ -22,14 +26,21 @@ public class Director : MonoBehaviour
     public int BossesDefeated { get; private set; }
     public int Stage => Threat == 0 ? 0 : 1 + BossesDefeated;
     public Enemy Boss { get; private set; }
+    public bool IsFinalBoss => RunBosses > 0 && BossesDefeated == RunBosses - 1;
+    public bool Holding;   // between zones: nothing spawns and the timers wait
 
+    Biome zone;
     EnemyRoster roster;
     float chaffBudget, mediumTimer, swarmTimer, bossTimer;
     int bossIndex;
+    int zoneNumber;          // 0 for the first zone of the run
+    int zoneThreat;          // swarms survived in this zone
+    float zoneTime;          // seconds since entering this zone
 
-    public void ResetRun(EnemyRoster r)
+    public void ResetRun(Biome b)
     {
-        roster = r;
+        zoneNumber = -1;
+        EnterZone(b);
         Elapsed = 0f;
         HealthScale = 1f;
         Threat = 0;
@@ -38,9 +49,32 @@ public class Director : MonoBehaviour
         mediumTimer = T("firstMediumAt", 40f);
         swarmTimer = SwarmEvery;
         bossTimer = BossEvery;
-        bossIndex = 0;
         Boss = null;
+        Holding = false;
     }
+
+    // A new zone brings its own medium mix, and its own boss comes next.
+    public void EnterZone(Biome b)
+    {
+        zone = b;
+        roster = b.Roster;
+        bossIndex = 0;
+        zoneNumber++;
+        zoneTime = 0f;
+        zoneThreat = 0;
+        chaffBudget = 0f;
+        if (zoneNumber > 0)
+        {
+            mediumTimer = Tune.F("run.zoneFirstMedium", 8f) * RampSpeed;
+            swarmTimer = Mathf.Max(swarmTimer, Tune.F("run.zoneRampSeconds", 40f) * RampSpeed);   // no swarm before the ramp is done
+        }
+    }
+
+    // How fast this zone's spawning ramps up: 1 in the second zone, quicker after that.
+    float RampSpeed => Mathf.Pow(Tune.F("run.zoneRampFactor", 0.75f), Mathf.Max(0, zoneNumber - 1));
+
+    // 0 -> 1 over the zone's ramp time; the first zone of a run has no ramp.
+    float ZoneRamp => zoneNumber == 0 ? 1f : Mathf.Clamp01(zoneTime / Mathf.Max(0.01f, Tune.F("run.zoneRampSeconds", 40f) * RampSpeed));
 
     void OnEnable() => Enemy.Died += OnEnemyDied;
     void OnDisable() => Enemy.Died -= OnEnemyDied;
@@ -56,7 +90,7 @@ public class Director : MonoBehaviour
         Haptics.Notification(Haptics.Notify.Success);
         GameManager.Instance.Player.Heal(T("bossKillHeal", 30f));
         GameManager.Instance.Toast($"{e.Def.Name} defeated!");
-        GameManager.Instance.Toast("The forest grows stronger...");
+        GameManager.Instance.BossDefeated(RunBosses > 0 && BossesDefeated >= RunBosses);
     }
 
     void Update()
@@ -65,13 +99,15 @@ public class Director : MonoBehaviour
         if (gm.State != GameState.Playing || roster == null) return;
         float dt = Time.deltaTime;
         Elapsed += dt;
-        if (Boss != null) return;   // boss fight: no other spawns
+        if (Boss != null || Holding) return;   // boss fight or zone change: no other spawns
+        zoneTime += dt;
 
-        // Slow climb until the first boss; each boss kill then steps the pressure up sharply.
-        float chaffRate = (T("chaffBase", 0.4f) + Elapsed * T("chaffPerSecond", 1f / 240f))
-                          * (1f + T("chaffPerThreat", 0.1f) * Threat)
-                          * (1f + T("chaffPerBossKill", 1.2f) * BossesDefeated);
-        chaffRate = Mathf.Min(chaffRate, T("chaffMax", 10f));
+        // Every zone climbs on the same curve (time and swarms counted from the zone's start), raised
+        // by run.zoneRateStep chaff per second for each zone already cleared.
+        float chaffRate = (T("chaffBase", 0.4f) + zoneTime * T("chaffPerSecond", 1f / 240f))
+                          * (1f + T("chaffPerThreat", 0.1f) * zoneThreat)
+                          + Tune.F("run.zoneRateStep", 2f) * zoneNumber;
+        chaffRate = Mathf.Min(chaffRate, T("chaffMax", 10f)) * ZoneRamp;
         chaffBudget += chaffRate * dt;
         while (chaffBudget >= 1f)
         {
@@ -114,6 +150,7 @@ public class Director : MonoBehaviour
             Sfx.Play(Sound.Warning, 0.5f, 0f);
             Haptics.Tap(Haptics.Impact.Medium);
             Threat++;
+            zoneThreat++;
             HealthScale += T("healthPerSwarm", 0.25f);
         }
 
@@ -123,7 +160,7 @@ public class Director : MonoBehaviour
             bossTimer = BossEvery;
             var def = roster.Bosses[bossIndex++ % roster.Bosses.Length];
             Boss = SpawnAtEdge(def);
-            gm.Toast($"{def.Name} approaches!");
+            gm.Toast(IsFinalBoss ? $"Final boss: {def.Name}!" : $"{def.Name} approaches!");
             Sfx.Play(Sound.Warning, 0.7f, 0f);
             Haptics.Tap(Haptics.Impact.Heavy);
         }
@@ -170,7 +207,9 @@ public class Director : MonoBehaviour
         return pool[pool.Count - 1];
     }
 
-    float Weight(EnemyDef d) => IsCaster(d) && BossesDefeated == 0 ? T("casterWeightPreBoss", 0.25f) : 1f;
+    float Weight(EnemyDef d) =>
+        (IsCaster(d) && BossesDefeated == 0 ? T("casterWeightPreBoss", 0.25f) : 1f)
+        * (System.Array.IndexOf(zone.Favored, d.Name) >= 0 ? Tune.F("run.favoredWeight", 3f) : 1f);
 
     Vector2 EdgePoint(float radius)
     {

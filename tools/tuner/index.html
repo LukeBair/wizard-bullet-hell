@@ -66,6 +66,11 @@
   .itemlist a.active { color: var(--text); background: var(--panel2); border-left: 3px solid var(--accent); padding-left: 11px; }
   .itemlist a .count { float: right; color: var(--changed); font-size: 11px; }
   .split > div > .card + .card { margin-top: 12px; }
+  .savetable td, .savetable th { padding: 6px 8px; }
+  .savetable td.c, .savetable th.c { text-align: center; }
+  .savetable input[type=number] { width: 70px; }
+  .savetable .muted { color: var(--muted); font-size: 12px; }
+  nav a.special { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
   @media (max-width: 700px) {
     .split { grid-template-columns: 1fr; }
     .itemlist { position: static; max-height: none; display: flex; overflow-x: auto; padding: 0; }
@@ -93,6 +98,8 @@
 let data = {}, defaults = {}, dirty = false, section = null, info = null;
 const picked = {};               // selected item per section, for the column view
 const GENERAL = "\u0000general"; // the section's own loose values
+const SAVE = "\u0000save";       // the phone's progress page (not part of tuning.json)
+let phoneSave = {};
 
 const $ = (s) => document.querySelector(s);
 const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
@@ -117,6 +124,7 @@ async function load() {
   const [t, d] = await Promise.all([fetch("/tuning.json").then((r) => r.json()), fetch("/defaults.json").then((r) => r.json()).catch(() => ({}))]);
   data = t; defaults = d;
   info = await fetch("/info").then((r) => r.json()).catch(() => null);
+  phoneSave = await fetch("/save.json").then((r) => r.json()).catch(() => ({}));
   if (!section) section = Object.keys(data).find((k) => !isNote(k));
   setDirty(false);
   render();
@@ -155,6 +163,94 @@ function renderNav() {
     a.onclick = () => { section = k; $("#search").value = ""; render(); };
     nav.appendChild(a);
   }
+  const a = document.createElement("a");
+  a.textContent = "📱 Phone save";
+  a.className = "special" + (section === SAVE && !$("#search").value ? " active" : "");
+  a.onclick = () => { section = SAVE; $("#search").value = ""; render(); };
+  nav.appendChild(a);
+}
+
+// The phone's gold, tomes, feats and evolutions. The phone reports them each time it loads tuning
+// (title screen, after a run); "Send to phone" queues an edit it applies at its next check-in.
+async function refreshSave() {
+  phoneSave = await fetch("/save.json").then((r) => r.json()).catch(() => ({}));
+  render();
+}
+
+function renderSave(main) {
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  const spells = phoneSave.spells || {};
+  if (!Object.keys(spells).length) {
+    tip.innerHTML = "<b>No save yet.</b> Open the game (phone on the same Wi‑Fi, tuner running): it reports its save at the title screen and after every run. Then press Refresh.";
+    main.appendChild(tip);
+    const b = document.createElement("button"); b.textContent = "Refresh"; b.onclick = refreshSave; main.appendChild(b);
+    return;
+  }
+  tip.innerHTML = phoneSave.pending
+    ? "<b>Edit waiting for the phone.</b> It applies at the phone's next check-in: go to the title screen, or finish a run."
+    : `<b>Phone's save</b>, last reported ${phoneSave.receivedAt ? new Date(phoneSave.receivedAt).toLocaleString() : "—"}. Change anything, then <b>Send to phone</b>; it applies at the next title screen or after a run.`;
+  main.appendChild(tip);
+
+  const c = document.createElement("div");
+  c.className = "card";
+  c.style.maxWidth = "820px";
+  const gold = document.createElement("div");
+  gold.className = "row";
+  gold.style.gridTemplateColumns = "120px 140px";
+  gold.innerHTML = `<label>Gold</label>`;
+  const goldIn = document.createElement("input");
+  goldIn.type = "number"; goldIn.min = 0; goldIn.value = phoneSave.gold ?? 0;
+  goldIn.oninput = () => { phoneSave.gold = Math.max(0, Math.floor(+goldIn.value || 0)); };
+  gold.appendChild(goldIn);
+  c.appendChild(gold);
+
+  const t = document.createElement("table");
+  t.className = "savetable";
+  t.innerHTML = `<tr><th>Spell</th><th class="c">Tome</th><th class="c">Feat II<br><span class="muted">bosses beaten</span></th><th class="c">Evolution II</th><th class="c">Feat III<br><span class="muted">won at tier II+</span></th><th class="c">Evolution III</th></tr>`;
+  const box = (e, k, disabled) => {
+    const i = document.createElement("input"); i.type = "checkbox"; i.checked = !!e[k]; i.disabled = !!disabled;
+    i.onchange = () => { e[k] = i.checked; };
+    return i;
+  };
+  for (const [id, e] of Object.entries(spells)) {
+    const tr = document.createElement("tr");
+    const cells = [document.createTextNode(e.name || id), box(e, "tome", e.free)];
+    if (e.canEvolve) {
+      const n = document.createElement("input");
+      n.type = "number"; n.min = 0; n.value = e.feat2 ?? 0;
+      n.oninput = () => { e.feat2 = Math.max(0, Math.floor(+n.value || 0)); };
+      const wrap = document.createElement("span");
+      wrap.append(n, document.createTextNode(` / ${e.feat2Goal ?? 2}`));
+      cells.push(wrap, box(e, "evo2"), box(e, "feat3"), box(e, "evo3"));
+    } else {
+      const na = document.createElement("span"); na.className = "muted"; na.textContent = "doesn't evolve";
+      cells.push(na);
+    }
+    cells.forEach((el, i) => { const td = document.createElement("td"); if (i) td.className = "c"; if (!e.canEvolve && i === 2) td.colSpan = 4; td.appendChild(el); tr.appendChild(td); });
+    t.appendChild(tr);
+  }
+  c.appendChild(t);
+  const note = document.createElement("div");
+  note.className = "note"; note.style.marginTop = "8px";
+  note.textContent = "Arcane Missile, Fireball and Frost Nova tomes are always free. An evolution only shows up in a run once it's ticked here (or bought in the Grimoire).";
+  c.appendChild(note);
+
+  const bar = document.createElement("div");
+  bar.style.cssText = "display:flex;gap:8px;margin-top:10px";
+  const send = document.createElement("button");
+  send.className = "primary"; send.textContent = "Send to phone";
+  send.onclick = async () => {
+    const body = { ...phoneSave, revision: Date.now() };
+    const r = await fetch("/save.json", { method: "PUT", body: JSON.stringify(body) }).then((x) => x.json()).catch((e) => ({ ok: false, error: e.message }));
+    if (!r.ok) { alert("Send failed: " + r.error); return; }
+    refreshSave();
+  };
+  const refresh = document.createElement("button");
+  refresh.textContent = "Refresh"; refresh.onclick = refreshSave;
+  bar.append(send, refresh);
+  c.appendChild(bar);
+  main.appendChild(c);
 }
 
 function render() {
@@ -163,6 +259,7 @@ function render() {
   main.innerHTML = "";
   const q = $("#search").value.trim().toLowerCase();
   if (q) return renderSearch(main, q);
+  if (section === SAVE) return renderSave(main);
 
   if (section === Object.keys(data).find((k) => !isNote(k)) && info) {
     const tip = document.createElement("div");
@@ -356,10 +453,12 @@ function xpToNext(L) {
   return Math.max(1, Math.round(Math.floor(raw) * Math.pow(n("xp.stepMultiplier", 1.25), steps)));
 }
 
-function chaffRate(t, kills) {
+// Each zone runs the same curve from its own start, raised by run.zoneRateStep per zone cleared.
+// (Ignores the short ramp from zero at the start of each new zone.)
+function chaffRate(t, zone) {
   const threat = Math.floor(t / n("spawning.swarmEvery", 45));
   const r = (n("spawning.chaffBase", 0.4) + t * n("spawning.chaffPerSecond", 1 / 240))
-          * (1 + n("spawning.chaffPerThreat", 0.1) * threat) * (1 + n("spawning.chaffPerBossKill", 1.2) * kills);
+          * (1 + n("spawning.chaffPerThreat", 0.1) * threat) + n("run.zoneRateStep", 2) * zone;
   return Math.min(n("spawning.chaffMax", 10), r);
 }
 
@@ -387,7 +486,7 @@ const CHARTS = {
     const markerLegend = [{ name: "Swarm", color: "#5cc8ff" }, { name: "Boss", color: "#ff6b7d" }];
     return [
       { title: "Chaff spawned per second", sub: "Over a run (ignores time paused during boss fights)", x: t, xLabel: fmtTime, markers, markerLegend, series: [
-        { name: "Each boss killed when it arrives", y: t.map((s) => chaffRate(s, Math.floor(s / be))) },
+        { name: "Each boss killed when it arrives", y: t.map((s) => chaffRate(s % be, Math.floor(s / be))) },
         { name: "No bosses killed", y: t.map((s) => chaffRate(s, 0)) },
       ] },
       { title: "Enemy health multiplier", sub: "+ per swarm and per boss kill", x: t, xLabel: fmtTime, markers, markerLegend, series: [

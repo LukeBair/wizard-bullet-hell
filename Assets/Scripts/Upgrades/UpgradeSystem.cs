@@ -11,12 +11,44 @@ public abstract class UpgradeSystem
 
     protected Player Player { get; private set; }
 
+    // Spells that can open a run: the ones that deal damage on their own.
+    static readonly SpellId[] Starters =
+        { SpellId.ArcaneMissile, SpellId.Fireball, SpellId.FrostNova, SpellId.ChainLightning, SpellId.Wisps, SpellId.TidalLance, SpellId.Cyclone };
+
+    readonly List<SpellId> startOffer = new List<SpellId>();
+
+    // Starts a run with no spells; the player picks a starting tome first (DrawStart).
     public virtual void Begin(Player player)
     {
         Player = player;
         Interactions.Reset();
-        player.Learn(SpellId.ArcaneMissile);
+        startOffer.Clear();
+        foreach (var id in Starters) if (Grimoire.HasTome(id)) startOffer.Add(id);
+        Shuffle(startOffer);
+        int n = Mathf.Clamp(Tune.I("run.startTomeChoices", 3), 1, startOffer.Count);
+        startOffer.RemoveRange(n, startOffer.Count - n);
     }
+
+    // The starting tome screen. Returns true once a tome is picked.
+    public bool DrawStart()
+    {
+        Header("Choose your tome", "Your first spell. More come as you level up.");
+        var col = UI.Column(0.24f, 0.72f);
+        float h = 140f * UI.S, gap = 18f * UI.S, y = col.y;
+        foreach (var id in startOffer)
+        {
+            var preview = Spell.Preview(id);
+            if (UI.Card(new Rect(col.x, y, col.width, h), $"Tome: {preview.Name}", preview.Blurb, preview.Color, "START"))
+            {
+                Player.Learn(id);
+                return true;
+            }
+            y += h + gap;
+        }
+        return false;
+    }
+
+    public void AutoPickStart() => Player.Learn(startOffer[Random.Range(0, startOffer.Count)]);
 
     // Called each time a level-up screen opens.
     public abstract void Open();
@@ -33,7 +65,7 @@ public abstract class UpgradeSystem
     protected List<SpellId> UnlearnedSpells()
     {
         var list = new List<SpellId>();
-        foreach (var id in Spell.AllIds) if (Player.GetSpell(id) == null) list.Add(id);
+        foreach (var id in Spell.AllIds) if (Player.GetSpell(id) == null && Grimoire.HasTome(id)) list.Add(id);
         return list;
     }
 
