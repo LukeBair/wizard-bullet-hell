@@ -81,7 +81,11 @@ public class RuneSystem : UpgradeSystem
         {
             var rect = new Rect(col.x, y, col.width, h);
             if (UI.Card(rect, $"{Spell.RuneName(r)} Rune", RuneSummary(r), Spell.RuneColor(r), "RUNE", anyRoom))
+            {
                 held = r;
+                Sfx.Play(Sound.Select, 0.6f);
+                Haptics.Selection();
+            }
             y += h + gap;
         }
 

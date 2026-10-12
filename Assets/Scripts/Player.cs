@@ -64,7 +64,7 @@ public class Player : MonoBehaviour
         if (input.sqrMagnitude > 0.01f)
         {
             Facing = input.normalized;
-            Vector2 pos = Position + input * MoveSpeed * dt;
+            Vector2 pos = Position + input * MoveSpeed * Tuning.Pace * dt;
             transform.position = gm.Arena.PushOut(pos, BodyRadius);
             if (Mathf.Abs(input.x) > 0.1f) visual.localScale = new Vector3(Mathf.Sign(input.x), 1f, 1f);
         }
@@ -120,11 +120,14 @@ public class Player : MonoBehaviour
         Health -= amount;
         invulnTimer = InvulnTime;
         GameManager.Instance.Shake(0.2f);
+        Sfx.Play(Sound.PlayerHurt, 0.8f);
+        Haptics.Tap(Haptics.Impact.Heavy);
 
         if (!IsAlive)
         {
             foreach (var r in renderers) r.enabled = false;
             Fx.Burst(Position, new Color(0.6f, 0.4f, 1f), 3f);
+            Haptics.Notification(Haptics.Notify.Error);
             GameManager.Instance.GameOver();
         }
     }

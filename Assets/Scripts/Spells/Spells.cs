@@ -13,6 +13,7 @@ public class ArcaneMissile : Spell
     protected override void Cast()
     {
         Vector2 from = Owner.Position;
+        Sfx.Play(Sound.Missile, 0.35f);
         var used = new List<Enemy>();
         for (int i = 0; i < Count; i++)
         {
@@ -48,6 +49,7 @@ public class Fireball : Spell
         Vector2 from = Owner.Position;
         var target = Enemy.Nearest(from, 10f);
         if (target == null) return;
+        Sfx.Play(Sound.FireballCast, 0.5f);
         for (int i = 0; i < Count; i++)
         {
             Vector2 dir = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 18f) * (target.Position - from);
@@ -60,6 +62,7 @@ public class Fireball : Spell
     void Explode(Vector2 at)
     {
         Fx.Burst(at, Color, Radius * 2.2f);
+        Sfx.Play(Sound.Explosion, 0.5f);
         Fx.Ring(at, Color, Radius);
         foreach (var e in EnemiesWithin(at, Radius))
         {
@@ -107,6 +110,7 @@ public class FrostNova : Spell
     void Pulse()
     {
         Vector2 at = Owner.Position;
+        Sfx.Play(Sound.Nova, 0.45f);
         Fx.Ring(at, Color, Radius, 0.4f);
         Fx.Burst(at, new Color(Color.r, Color.g, Color.b, 0.4f), Radius * 2f);
         float push = 4f + 3f * RuneCount(Rune.Pierce);
@@ -144,6 +148,7 @@ public class ChainLightning : Spell
     protected override void Cast()
     {
         var struck = new List<Enemy>();
+        Sfx.Play(Sound.Lightning, 0.45f);
         for (int b = 0; b < Count; b++)
         {
             Vector2 from = Owner.Position;
@@ -220,7 +225,7 @@ public class Wisps : Spell
 
     protected override void OnTick(float dt)
     {
-        angle += 200f / Cooldown * dt;
+        angle += 200f / Cooldown * dt * Tuning.Pace;
         float hitEvery = 0.5f / (1f + 0.3f * RuneCount(Rune.Pierce));
         for (int i = 0; i < orbs.Count; i++)
         {
@@ -233,6 +238,7 @@ public class Wisps : Spell
                 if (lastHit.TryGetValue(e, out float t) && Time.time - t < hitEvery) continue;
                 lastHit[e] = Time.time;
                 Fx.Burst(e.Position, Color, 1f);
+                Sfx.Play(Sound.WispHit, 0.35f, 0.2f);
                 Fx.Ring(world, Color, OrbRadius * 1.5f, 0.2f);
                 Hit(e, Damage, local.normalized * 3f);
             }

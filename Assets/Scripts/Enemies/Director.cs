@@ -48,6 +48,8 @@ public class Director : MonoBehaviour
         BossesDefeated++;
         HealthScale += 1f;
         XpGem.MagnetAll();
+        Sfx.Play(Sound.BossDie, 1f, 0f);
+        Haptics.Notification(Haptics.Notify.Success);
         GameManager.Instance.Player.Heal(30f);
         GameManager.Instance.Toast($"{e.Def.Name} defeated!");
         GameManager.Instance.Toast("The forest grows stronger...");
@@ -101,6 +103,8 @@ public class Director : MonoBehaviour
         {
             swarmTimer = SwarmEvery;
             SpawnSwarm(gm);
+            Sfx.Play(Sound.Warning, 0.5f, 0f);
+            Haptics.Tap(Haptics.Impact.Medium);
             Threat++;
             HealthScale += 0.25f;
         }
@@ -112,6 +116,8 @@ public class Director : MonoBehaviour
             var def = roster.Bosses[bossIndex++ % roster.Bosses.Length];
             Boss = SpawnAtEdge(def);
             gm.Toast($"{def.Name} approaches!");
+            Sfx.Play(Sound.Warning, 0.7f, 0f);
+            Haptics.Tap(Haptics.Impact.Heavy);
         }
     }
 

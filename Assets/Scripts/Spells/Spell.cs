@@ -34,7 +34,7 @@ public abstract class Spell
     public int Level => 1 + TotalRunes;
 
     public float Damage => BaseDamage * (1f + 0.35f * RuneCount(Rune.Power));
-    public float Cooldown => BaseCooldown * Mathf.Pow(0.85f, RuneCount(Rune.Haste));
+    public float Cooldown => BaseCooldown * Tuning.CastRate * Mathf.Pow(0.85f, RuneCount(Rune.Haste));
     public int Count => BaseCount + RuneCount(Rune.Split);
     public int PierceCount => BasePierce + RuneCount(Rune.Pierce);
     public float Area => 1f + 0.3f * RuneCount(Rune.Area);

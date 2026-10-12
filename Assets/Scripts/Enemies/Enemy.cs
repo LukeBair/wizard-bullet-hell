@@ -45,7 +45,7 @@ public class Enemy : MonoBehaviour
         e.Def = def;
         e.MaxHealth = e.Health = def.Health * healthScale;
         e.phase = Random.value * 10f;
-        e.fireTimer = def.FireInterval * Random.Range(0.5f, 1f);
+        e.fireTimer = def.FireInterval * Tuning.CastRate * Random.Range(0.5f, 1f);
         e.stateTimer = Random.Range(2f, 4f);
         e.BuildVisual();
         return e;
@@ -178,7 +178,7 @@ public class Enemy : MonoBehaviour
             }
         }
 
-        pos += (move + knockback) * dt;
+        pos += (move + knockback) * dt * Tuning.Pace;
         knockback = Vector2.MoveTowards(knockback, Vector2.zero, 30f * dt);
         if (Def.Look != EnemyLook.Bat) pos = gm.Arena.PushOut(pos, Radius * 0.8f);
         transform.position = pos;
@@ -215,7 +215,7 @@ public class Enemy : MonoBehaviour
                         {
                             state = 1; stateTimer = 0.7f; lockedDir = dir;
                             // Warning lane showing exactly where the charge will go.
-                            Fx.Telegraph(Position, lockedDir, speed * 5f * 0.35f + Radius, Radius * 1.6f, new Color(1f, 0.25f, 0.2f, 0.45f), 0.7f);
+                            Fx.Telegraph(Position, lockedDir, speed * 5f * 0.35f * Tuning.Pace + Radius, Radius * 1.6f, new Color(1f, 0.25f, 0.2f, 0.45f), 0.7f);
                         }
                         return dir * speed;
                     case 1:
@@ -260,7 +260,7 @@ public class Enemy : MonoBehaviour
                 // Lead the target a little so standing still isn't the only answer.
                 TickFire(dt, dist, () =>
                 {
-                    Vector2 target = player.Position + Joystick.Direction * player.MoveSpeed * 0.6f + Random.insideUnitCircle * 0.5f;
+                    Vector2 target = player.Position + Joystick.Direction * player.MoveSpeed * Tuning.Pace * 0.6f + Random.insideUnitCircle * 0.5f;
                     Hazard.Spawn(target, 1.3f, 1.2f, Def.BulletDamage, Def.Accent, Position);
                 });
                 return KeepRange(dir, dist, speed);
@@ -295,7 +295,7 @@ public class Enemy : MonoBehaviour
                 switch (state)
                 {
                     case 0:
-                        if (stateTimer <= 0f && dist < 9f) { state = 1; stateTimer = 2.2f; SetHidden(true); Fx.Burst(Position, Def.Color, 1.5f); }
+                        if (stateTimer <= 0f && dist < 9f) { state = 1; stateTimer = 2.2f; SetHidden(true); Fx.Burst(Position, Def.Color, 1.5f); Sfx.Play(Sound.Burrow, 0.5f); }
                         return dir * speed * 0.4f;
                     case 1:
                         if (Random.value < 0.3f) Fx.Burst(Position, Def.Color * 0.9f, 0.8f);   // dirt churning above it
@@ -324,7 +324,7 @@ public class Enemy : MonoBehaviour
                 fireTimer -= dt;
                 if (fireTimer <= 0f)
                 {
-                    fireTimer = Def.FireInterval * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
+                    fireTimer = Def.FireInterval * Tuning.CastRate * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
                     switch (attackIndex++ % 4)
                     {
                         case 3:
@@ -357,13 +357,13 @@ public class Enemy : MonoBehaviour
                 {
                     if (state == 0)
                     {
-                        fireTimer = Def.FireInterval;
+                        fireTimer = Def.FireInterval * Tuning.CastRate;
                         Ring(Position, Def.Bullets, Def.BulletSpeed, spinAngle);
                         spinAngle += 13f;
                     }
                     else if (state == 1)
                     {
-                        fireTimer = 0.7f;
+                        fireTimer = 0.7f * Tuning.CastRate;
                         if (attackIndex++ % 2 == 0) Fan(Position, AngleTo(player.Position), 7, 10f, 5f);
                         else
                             for (int i = 0; i < 4; i++)
@@ -393,7 +393,7 @@ public class Enemy : MonoBehaviour
     {
         fireTimer -= dt;
         if (fireTimer > 0f) return;
-        fireTimer = Def.FireInterval;
+        fireTimer = Def.FireInterval * Tuning.CastRate;
         if (dist < 11f) fire();
     }
 
@@ -416,6 +416,7 @@ public class Enemy : MonoBehaviour
         p = arena.PushOut(p, Radius);
         Fx.Burst(Position, Def.Accent, Radius * 3f);
         Fx.Ring(Position, Def.Accent, Radius * 1.5f);
+        Sfx.Play(Sound.Teleport, 0.35f);
         transform.position = p;
         Fx.Burst(p, Def.Accent, Radius * 3f);
     }
@@ -462,6 +463,7 @@ public class Enemy : MonoBehaviour
         var p = Projectile.Spawn(from, new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * speed, Team.Enemy, Def.Accent, 0.14f);
         p.Damage = Def.BulletDamage;
         p.Lifetime = 6f;
+        Sfx.Play(Sound.EnemyShoot, 0.2f, 0.15f);
         return p;
     }
 
@@ -488,6 +490,7 @@ public class Enemy : MonoBehaviour
         Health -= amount;
         flash = 1f;
         DamageText.Spawn(Position + Vector2.up * Radius, amount, numberColor ?? Color.white);
+        Sfx.Play(Sound.EnemyHit, 0.25f, 0.15f);
         if (!IsBoss) knockback += push;
         if (Health <= 0f) Die();
     }
@@ -509,6 +512,7 @@ public class Enemy : MonoBehaviour
         gm.AddScore(Def.Xp * 10);
         XpGem.Spawn(Position, Def.Xp);
         Fx.Burst(Position, Def.Color, Radius * 2.5f);
+        if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         Died?.Invoke(this);
         if (Def.Behavior == EnemyBehavior.Splitter)
         {

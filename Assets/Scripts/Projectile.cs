@@ -77,11 +77,11 @@ public class Projectile : MonoBehaviour
             }
         }
 
-        pos += Velocity * dt;
+        pos += Velocity * dt * Tuning.Pace;
         if (WaveAmplitude > 0f)
         {
             Vector2 side = new Vector2(-Velocity.y, Velocity.x).normalized;
-            pos += side * WaveAmplitude * WaveFrequency * Mathf.Cos(age * WaveFrequency) * dt;
+            pos += side * WaveAmplitude * WaveFrequency * Mathf.Cos(age * WaveFrequency) * dt * Tuning.Pace;
         }
         transform.position = pos;
 

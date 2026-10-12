@@ -54,6 +54,7 @@ public class Hazard : MonoBehaviour
 
         Vector2 pos = transform.position;
         Fx.Burst(pos, color, radius * 2.4f);
+        Sfx.Play(Sound.Explosion, 0.45f);
         Fx.Ring(pos, color, radius);
         var player = gm.Player;
         if (player != null && player.IsAlive)

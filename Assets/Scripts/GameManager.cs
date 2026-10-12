@@ -39,6 +39,8 @@ public class GameManager : MonoBehaviour
         SetupCamera();
         Director = gameObject.AddComponent<Director>();
         gameObject.AddComponent<Joystick>();
+        gameObject.AddComponent<Sfx>();
+        if (FindAnyObjectByType<AudioListener>() == null) cam.gameObject.AddComponent<AudioListener>();
         BuildWorld();
         State = GameState.Title;
     }
@@ -126,6 +128,8 @@ public class GameManager : MonoBehaviour
             Time.timeScale = 0f;
             Joystick.Blocked = true;
             Upgrades.Open();
+            Sfx.Play(Sound.LevelUp, 0.8f, 0f);
+            Haptics.Notification(Haptics.Notify.Success);
         }
 
         // Autoplay soak test: random upgrade picks, the wizard kites on its own.
@@ -168,6 +172,8 @@ public class GameManager : MonoBehaviour
                 DrawHud();
                 if (Upgrades.Draw())
                 {
+                    Sfx.Play(Sound.Select, 0.8f);
+                    Haptics.Selection();
                     pendingLevelUps--;
                     if (pendingLevelUps > 0) Upgrades.Open();
                     else { State = GameState.Playing; Time.timeScale = 1f; }
@@ -194,7 +200,11 @@ public class GameManager : MonoBehaviour
             string tag = best > 0f ? $"BEST {FormatTime(best)}" : (m == mode ? "LAST PLAYED" : null);
             var accent = m == UpgradeMode.Draft ? new Color(0.5f, 0.85f, 1f) : m == UpgradeMode.Runes ? new Color(1f, 0.75f, 0.35f) : new Color(0.6f, 1f, 0.5f);
             if (UI.Card(new Rect(col.x, y, col.width, h), sys.Name, sys.Pitch, accent, tag))
+            {
+                Sfx.Play(Sound.Select, 0.8f);
+                Haptics.Selection();
                 StartRun(m);
+            }
             y += h + 24f * s;
         }
         UI.Text(new Rect(col.x, y + 10f * s, col.width, 80f * s), "Drag anywhere to move. Spells cast on their own.", 24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
