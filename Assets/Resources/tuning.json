@@ -242,9 +242,8 @@
       "damage_t3": 0.05,
       "cooldown_t2": 3,
       "cooldown_t3": 3,
-      "hitHeal_t3": 0.003,
-      "hitHealEvery_t3": 0.1,
-      "_hitHeal_t3": "Tier III: fraction of max health healed per spell hit (at most once per hitHealEvery_t3 seconds)."
+      "reviveChargeTime_t3": 90,
+      "_reviveChargeTime_t3": "Tier III: seconds to charge the revive (Haste runes shorten it)."
     },
     "Overgrowth": {
       "damage": 6,

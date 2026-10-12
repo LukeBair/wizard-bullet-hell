@@ -267,7 +267,6 @@ public abstract class Spell
         if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
 
         e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
-        if (Owner != null) Owner.GetSpell<Rejuvenate>()?.OnOwnerHit();
 
         float curse = RuneCount(Rune.Curse);
         if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(Tune.F("runes.Curse.maxBonus", 5f), Tune.F("runes.Curse.bonusPerRune", 0.5f) * curse));

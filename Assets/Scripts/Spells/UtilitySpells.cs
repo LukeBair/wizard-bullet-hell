@@ -1,6 +1,7 @@
 using UnityEngine;
 
-// Periodic heal. II: much more often, a little less each time. III: also heals whenever your spells hit.
+// Periodic heal. II: much more often, a little less each time. III: also builds a revive charge over a
+// long time; dying with it full brings you back at full health.
 public class Rejuvenate : Spell
 {
     public override string Name => "Rejuvenate";
@@ -10,9 +11,10 @@ public class Rejuvenate : Spell
     protected override float BaseDamage => Tier == 1 ? 0.06f : 0.05f;   // fraction of max health per pulse
     protected override float BaseCooldown => Tier == 1 ? 9f : 3f;
 
-    public override string TierName(int tier) => tier == 2 ? "Swift Mending" : tier == 3 ? "Vampiric Grace" : Name;
+    public override string TierName(int tier) => tier == 2 ? "Swift Mending" : tier == 3 ? "Phoenix Rite" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? "Heals far more often (every ~3s), slightly less per pulse." : "Also heals you a little every time one of your spells hits a foe.";
+        tier == 2 ? "Heals far more often (every ~3s), slightly less per pulse."
+                  : "Swift Mending, plus a revive that charges over 90s: if you die with it full, you come back at full health.";
 
     public override string RuneEffect(Rune r)
     {
@@ -26,7 +28,10 @@ public class Rejuvenate : Spell
         }
     }
 
-    float hitHealTimer;
+    float reviveCharge;
+    float ReviveTime => T("reviveChargeTime_t3", 90f) * Mathf.Pow(Tune.F("runes.Haste.cooldownMultiplier", 0.85f), RuneCount(Rune.Haste));
+    public bool ReviveReady => Tier == 3 && reviveCharge >= ReviveTime;
+    public override float CooldownProgress => Tier == 3 ? Mathf.Clamp01(reviveCharge / ReviveTime) : base.CooldownProgress;
 
     protected override bool Ready() => true;
 
@@ -38,14 +43,32 @@ public class Rejuvenate : Spell
         Owner.MaxHealth = Player.BaseMaxHealth + bonus;
     }
 
-    protected override void OnTick(float dt) => hitHealTimer -= dt;
-
-    // Tier III: called by every spell hit.
-    public void OnOwnerHit()
+    protected override void OnTick(float dt)
     {
-        if (Tier < 3 || hitHealTimer > 0f || Owner.Health >= Owner.MaxHealth) return;
-        hitHealTimer = T("hitHealEvery_t3", 0.1f);
-        Owner.Heal(Owner.MaxHealth * T("hitHeal_t3", 0.003f) * Potency);
+        if (Tier < 3 || ReviveReady) return;
+        reviveCharge += dt;
+        if (ReviveReady)
+        {
+            GameManager.Instance.Toast("Phoenix Rite is ready");
+            Fx.Ring(Owner.Position, Color, 1.5f, 0.5f);
+        }
+    }
+
+    // Called by the Player when a hit would kill it.
+    public bool TryRevive()
+    {
+        if (!ReviveReady) return false;
+        reviveCharge = 0f;
+        Owner.Revive();
+        GameManager.Instance.Toast("Phoenix Rite: revived!");
+        Fx.Burst(Owner.Position, Color, 8f);
+        Fx.Ring(Owner.Position, Color, 4f, 0.6f);
+        Sfx.Play(Sound.LevelUp, 0.9f, 0f);
+        Haptics.Notification(Haptics.Notify.Success);
+        // Clear some space so the revive isn't instantly wasted.
+        foreach (var e in EnemiesWithin(Owner.Position, 4f))
+            e.TakeDamage(0f, (e.Position - Owner.Position).normalized * 15f);
+        return true;
     }
 
     protected override void Cast()

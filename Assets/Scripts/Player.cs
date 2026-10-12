@@ -163,6 +163,14 @@ public class Player : MonoBehaviour
 
     public void Heal(float amount) => Health = Mathf.Min(MaxHealth, Health + amount);
 
+    // Rejuvenate III: back to full health instead of dying.
+    public void Revive()
+    {
+        Health = MaxHealth;
+        foreach (var r in renderers) r.enabled = true;
+        Phase(2f);
+    }
+
     // Ethereal Veil: no damage for a while.
     public void Phase(float duration)
     {
@@ -182,6 +190,8 @@ public class Player : MonoBehaviour
         GameManager.Instance.Shake(0.2f);
         Sfx.Play(Sound.PlayerHurt, 0.8f);
         Haptics.Tap(Haptics.Impact.Heavy);
+
+        if (!IsAlive && GetSpell<Rejuvenate>() is Rejuvenate rejuv && rejuv.TryRevive()) return;
 
         if (!IsAlive)
         {
