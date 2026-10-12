@@ -235,7 +235,76 @@
     "goldPerBoss": 25,
     "goldPerMinute": 5,
     "goldWin": 50,
-    "_about": "Gold and the Grimoire. Gold per run = kills + bosses + minutes survived (+ goldWin on a win), kept even if you die. Arcane Missile, Fireball and Frost Nova tomes are free; the rest cost tomeCost. Evolution II needs its feat (beat featBossesT2 bosses with the spell in your build), III needs a win with the spell at tier II+."
+    "_about": "Gold and the Grimoire. Gold per run = kills + bosses + minutes survived (+ goldWin on a win), kept even if you die. Arcane Missile, Fireball and Frost Nova tomes are free; the rest cost tomeCost. Evolution II needs its feat (beat featBossesT2 bosses with the spell in your build), III needs its signature feat (see feats).",
+    "feats": {
+      "_about": "Tier III signature feats: done within one run while the spell is at tier II+. kind: count (adds up), max (best single moment), win (adds up, completes only on a win). {goal} in text shows the goal. Spells without an entry keep the old feat (win a run with the spell at tier II+).",
+      "ArcaneMissile": {
+        "goal": 1500,
+        "kind": "count",
+        "text": "Land {goal} Arcane Missile hits in one run"
+      },
+      "Fireball": {
+        "goal": 10,
+        "kind": "max",
+        "text": "Hit {goal} foes with a single Fireball explosion"
+      },
+      "FrostNova": {
+        "goal": 40,
+        "kind": "count",
+        "text": "Shatter {goal} foes in one run"
+      },
+      "ChainLightning": {
+        "goal": 6,
+        "kind": "max",
+        "text": "Chain through {goal} foes in one cast"
+      },
+      "Rejuvenate": {
+        "goal": 30,
+        "kind": "win",
+        "below": 0.25,
+        "text": "Spend {goal}s below 25% health and win the run"
+      },
+      "Overgrowth": {
+        "goal": 100,
+        "kind": "count",
+        "text": "Kill {goal} foes while they're trapped in vines, in one run"
+      },
+      "Veil": {
+        "goal": 3,
+        "kind": "count",
+        "text": "Avoid {goal} killing blows in one run"
+      },
+      "TidalLance": {
+        "goal": 300,
+        "kind": "count",
+        "text": "Hit Wet foes {goal} times with Storm or Frost spells in one run"
+      },
+      "Enthrall": {
+        "goal": 75,
+        "kind": "count",
+        "text": "Charmed foes kill {goal} foes in one run"
+      },
+      "MirrorWard": {
+        "goal": 100,
+        "kind": "count",
+        "text": "Reflect {goal} bullets in one run"
+      },
+      "StoneSpikes": {
+        "goal": 1500,
+        "kind": "count",
+        "text": "Block {goal} bullets with stone walls in one run"
+      },
+      "SpectralBlades": {
+        "goal": 8,
+        "kind": "max",
+        "text": "Hit {goal} foes with a single blade throw"
+      },
+      "Sunspots": {
+        "goal": 90,
+        "kind": "count",
+        "text": "Stay Sunlit for {goal}s in one run"
+      }
+    }
   },
   "telemetry": {
     "enabled": true,

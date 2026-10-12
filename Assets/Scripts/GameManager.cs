@@ -152,6 +152,7 @@ public class GameManager : MonoBehaviour
         Director.ResetRun(Arena.Biome);
         Upgrades = new RuneSystem();
         Upgrades.Begin(Player);
+        Grimoire.BeginRunFeats();
         Telemetry.BeginRun(this, zones);
         State = GameState.TomePick;
         Time.timeScale = 0f;

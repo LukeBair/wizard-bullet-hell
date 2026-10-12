@@ -11,7 +11,7 @@ using UnityEngine.Networking;
 // spell to the pool a run can offer, an evolution lets that spell evolve during a run.
 //   Tomes: three are free, the rest cost gold (meta.tomeCost).
 //   Evolution II of a spell: feat "defeat meta.featBossesT2 bosses with it in your build", then gold.
-//   Evolution III: feat "win a run with it at tier II or higher", then gold.
+//   Evolution III: the spell's signature feat (meta.feats, done in one run at tier II+), then gold.
 // The tuner on the Mac mirrors all of this (SyncWithMac) and can edit it.
 public static class Grimoire
 {
@@ -64,7 +64,68 @@ public static class Grimoire
         string name = Spell.Preview(id).Name;
         if (tier == 2)
             return $"Defeat {FeatGoal(2)} bosses with {name} in your build ({Mathf.Min(FeatProgress(id, 2), FeatGoal(2))}/{FeatGoal(2)})";
-        return $"Win a run with {name} at tier II or higher";
+        if (!HasSignatureFeat(id)) return $"Win a run with {name} at tier II or higher";
+        return Tune.S($"meta.feats.{id}.text", "Signature feat").Replace("{goal}", $"{SignatureGoal(id):0}") + $" (with {name} at tier II+)";
+    }
+
+    // ---------------------------------------------------------------- tier III signature feats
+    // Each spell's tier III feat is a challenge done within one run while the spell is at tier II or
+    // higher (meta.feats.<SpellId>: goal, text, kind). kind "count" adds up over the run, "max" is the
+    // best single moment (e.g. foes hit by one explosion), "win" counts up but only completes on a win.
+    // Spells without an entry keep the old feat: win a run with the spell at tier II+.
+
+    static readonly Dictionary<SpellId, float> runFeat = new Dictionary<SpellId, float>();
+    // Signature feats not done yet, with their goal and whether they need a win; read once per run.
+    static readonly Dictionary<SpellId, (float goal, bool needsWin)> openFeats = new Dictionary<SpellId, (float, bool)>();
+
+    static bool HasSignatureFeat(SpellId id) => Tune.Has($"meta.feats.{id}.goal");
+    static float SignatureGoal(SpellId id) => Tune.F($"meta.feats.{id}.goal", 1f);
+    static string FeatKind(SpellId id) => Tune.S($"meta.feats.{id}.kind", "count");
+
+    public static void BeginRunFeats()
+    {
+        runFeat.Clear();
+        openFeats.Clear();
+        foreach (var id in Spell.AllIds)
+            if (HasSignatureFeat(id) && !FeatDone(id, 3)) openFeats[id] = (SignatureGoal(id), FeatKind(id) == "win");
+    }
+
+    // Progress on a spell's tier III feat. Ignored unless the spell is in the build at tier II+.
+    public static void Feat(SpellId id, float amount = 1f)
+    {
+        if (!Tracking(id)) return;
+        runFeat.TryGetValue(id, out float v);
+        runFeat[id] = v + amount;
+        CheckFeat(id, false);
+    }
+
+    // A "max" feat: the best value reached in one go this run.
+    public static void FeatMax(SpellId id, float value)
+    {
+        if (!Tracking(id)) return;
+        runFeat.TryGetValue(id, out float v);
+        if (value <= v) return;
+        runFeat[id] = value;
+        CheckFeat(id, false);
+    }
+
+    static bool Tracking(SpellId id)
+    {
+        if (!openFeats.ContainsKey(id)) return false;   // hot path (every missile hit): no string or PlayerPrefs work
+        var player = GameManager.Instance != null ? GameManager.Instance.Player : null;
+        var spell = player != null ? player.GetSpell(id) : null;
+        return spell != null && spell.Tier >= 2;
+    }
+
+    static void CheckFeat(SpellId id, bool won)
+    {
+        if (!openFeats.TryGetValue(id, out var feat) || (feat.needsWin && !won)) return;
+        runFeat.TryGetValue(id, out float v);
+        if (v < feat.goal) return;
+        openFeats.Remove(id);
+        PlayerPrefs.SetInt($"feat.{id}.3", 1);
+        PlayerPrefs.Save();
+        GameManager.Instance.Toast($"Feat done: {Spell.Preview(id).Name} III in the Grimoire");
     }
 
     // Tier III also needs tier II unlocked first.
@@ -87,11 +148,16 @@ public static class Grimoire
         PlayerPrefs.Save();
     }
 
-    // The run was won: spells at tier II or higher complete their tier III feat.
+    // The run was won: spells at tier II+ without a signature feat complete their tier III feat, and
+    // "win" signature feats (e.g. Rejuvenate's) complete if their goal was reached.
     public static void RecordWin(Player player)
     {
         foreach (var s in player.Spells)
-            if (s.CanEvolve && s.Tier >= 2) Bump(s, 3, 1);
+        {
+            if (!s.CanEvolve || s.Tier < 2) continue;
+            if (!HasSignatureFeat(s.Id)) Bump(s, 3, 1);
+            else CheckFeat(s.Id, true);
+        }
         PlayerPrefs.Save();
     }
 

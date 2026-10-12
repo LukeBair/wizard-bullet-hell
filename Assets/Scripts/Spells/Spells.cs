@@ -40,6 +40,7 @@ public class ArcaneMissile : Spell
         p.OnHit = (proj, e) =>
         {
             Hit(e, Damage, proj.Velocity.normalized * 2f);
+            Grimoire.Feat(SpellId.ArcaneMissile);
             if (Tier == 3 && canSplit)
             {
                 var next = Enemy.Nearest(e.Position, Range * T("followUpRange", 0.6f), new[] { e });
@@ -114,11 +115,13 @@ public class Fireball : Spell
         Fx.Burst(at, Color, radius * 2.2f);
         Fx.Ring(at, Color, radius);
         Sfx.Play(Sound.Explosion, 0.5f);
-        foreach (var e in EnemiesWithin(at, radius))
+        var caught = EnemiesWithin(at, radius);
+        foreach (var e in caught)
         {
             if (Tier >= 2) e.ApplyBurn(Damage * TT("burnFactor", 0.3f), TT("burnDuration", 2.5f));
             Hit(e, Damage, (e.Position - at).normalized * 4f);
         }
+        Grimoire.FeatMax(SpellId.Fireball, caught.Count);
         if (splits)
         {
             int n = Mathf.RoundToInt(T("shrapnelCount_t3", 6f));
@@ -224,6 +227,12 @@ public class ChainLightning : Spell
     {
         Sfx.Play(Sound.Lightning, 0.45f);
         var struck = new List<Enemy>();
+        Bolts(struck);
+        Grimoire.FeatMax(SpellId.ChainLightning, struck.Count);   // foes the lightning passed through this cast
+    }
+
+    void Bolts(List<Enemy> struck)
+    {
         for (int b = 0; b < Count; b++)
         {
             Vector2 from = Owner.Position;

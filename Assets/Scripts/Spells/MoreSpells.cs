@@ -138,6 +138,7 @@ public class MirrorWard : Spell, IOrbiter
         bullet.Release();   // leaves Projectile.All at once, so no other shard takes it
         Fx.Burst(at, Color, 1f);
         Sfx.Play(Sound.WispHit, 0.3f, 0.3f);
+        Grimoire.Feat(SpellId.MirrorWard);
 
         var target = Enemy.Nearest(at, Range);
         Vector2 dir = target != null ? target.Position - at : back;

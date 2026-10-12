@@ -253,6 +253,7 @@ public class Spike : MonoBehaviour
             float r = radius + p.Radius;
             if ((p.Position - c).sqrMagnitude > r * r) continue;
             Fx.Burst(p.Position, new Color(0.8f, 0.65f, 0.45f), 0.6f);
+            Grimoire.Feat(SpellId.StoneSpikes);
             p.Release();
         }
         foreach (var e in Spell.EnemiesWithin(c, radius))
@@ -275,6 +276,7 @@ public class Blade : MonoBehaviour
     bool returning;
     Action<Enemy, Vector2> hit;
     readonly HashSet<Enemy> struck = new HashSet<Enemy>();
+    readonly HashSet<Enemy> everHit = new HashSet<Enemy>();   // across the whole throw, for the tier III feat
     Transform spin;
 
     public static void Create(Player owner, Vector2 dir, float reach, float speed, float size, int trips, Color color, float alpha, Action<Enemy, Vector2> onHit)
@@ -331,6 +333,7 @@ public class Blade : MonoBehaviour
         foreach (var e in Spell.EnemiesWithin(pos, size))
         {
             if (!struck.Add(e)) continue;
+            if (everHit.Add(e)) Grimoire.FeatMax(SpellId.SpectralBlades, everHit.Count);
             Particles.Hit(e.Position, new Color(1f, 0.5f, 0.8f), dir);
             hit(e, (returning ? -dir : dir) * 2f);
         }
