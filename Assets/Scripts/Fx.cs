@@ -63,23 +63,49 @@ public class Fx : MonoBehaviour
         Particles.Zap(b, c);
     }
 
+    // Flashes and rings are the most common effect by far, so finished ones are parked and reused.
+    static readonly System.Collections.Generic.Stack<Fx> pool = new System.Collections.Generic.Stack<Fx>();
+    bool pooled;
+
     static void Make(Vector2 pos, Sprite sprite, Color c, float from, float to, float duration)
     {
-        var go = new GameObject("Fx");
-        go.transform.position = pos;
-        var fx = go.AddComponent<Fx>();
-        fx.sr = SpriteFactory.Add(go, sprite, c, 85);
+        Fx fx = null;
+        while (fx == null && pool.Count > 0) fx = pool.Pop();
+        if (fx == null)
+        {
+            var go = new GameObject("Fx");
+            fx = go.AddComponent<Fx>();
+            fx.sr = SpriteFactory.Add(go, sprite, c, 85);
+            fx.pooled = true;
+        }
+        else
+        {
+            fx.sr.sprite = sprite;
+            fx.sr.color = c;
+            fx.gameObject.SetActive(true);
+        }
+        fx.transform.position = pos;
         fx.color = c;
         fx.life = fx.maxLife = duration;
         fx.startScale = from;
         fx.endScale = to;
-        go.transform.localScale = Vector3.one * from;
+        fx.transform.localScale = Vector3.one * from;
     }
+
+    void Finish()
+    {
+        if (!pooled) { Destroy(gameObject); return; }
+        gameObject.SetActive(false);
+        pool.Push(this);
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetPool() => pool.Clear();
 
     void Update()
     {
         life -= Time.deltaTime;
-        if (life <= 0f) { Destroy(gameObject); return; }
+        if (life <= 0f) { Finish(); return; }
         float t = 1f - life / maxLife;
         var c = color;
         c.a *= 1f - t;

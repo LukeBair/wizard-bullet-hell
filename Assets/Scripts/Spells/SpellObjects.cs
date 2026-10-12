@@ -251,10 +251,9 @@ public class Spike : MonoBehaviour
         foreach (var p in scratch)
         {
             float r = radius + p.Radius;
-            if (((Vector2)p.transform.position - c).sqrMagnitude > r * r) continue;
-            Fx.Burst(p.transform.position, new Color(0.8f, 0.65f, 0.45f), 0.6f);
-            p.enabled = false;
-            Destroy(p.gameObject);
+            if ((p.Position - c).sqrMagnitude > r * r) continue;
+            Fx.Burst(p.Position, new Color(0.8f, 0.65f, 0.45f), 0.6f);
+            p.Release();
         }
         foreach (var e in Spell.EnemiesWithin(c, radius))
         {

@@ -16,6 +16,8 @@ public class XpGem : MonoBehaviour
         var go = new GameObject("Gem");
         go.transform.position = pos + Random.insideUnitCircle * 0.2f;
         var g = go.AddComponent<XpGem>();
+        g.pos = go.transform.position;
+        if (field == null) field = new GameObject("Gems").AddComponent<Field>();
         g.value = value;
         Color c = value >= 20 ? new Color(1f, 0.8f, 0.3f) : value >= 5 ? new Color(0.4f, 1f, 0.6f) : new Color(0.45f, 0.75f, 1f);
         g.color = c;
@@ -43,27 +45,49 @@ public class XpGem : MonoBehaviour
         }
     }
 
-    void Update()
+    // One driver updates every gem, instead of each of the hundreds left on the ground in a long run
+    // paying for its own Update call. Idle gems only compare their cached position with the wizard's.
+    Vector2 pos;
+
+    class Field : MonoBehaviour
     {
-        var gm = GameManager.Instance;
-        if (gm.State != GameState.Playing) return;
-        var player = gm.Player;
-        if (player == null || !player.IsAlive) return;
+        static readonly List<XpGem> scratch = new List<XpGem>();
 
-        Vector2 to = player.Position - (Vector2)transform.position;
+        void Update()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || gm.State != GameState.Playing) return;
+            var player = gm.Player;
+            if (player == null || !player.IsAlive) return;
+
+            Vector2 at = player.Position;
+            float pickup = player.PickupRadius;
+            scratch.Clear();
+            foreach (var g in All) if (g.magnet || (at - g.pos).sqrMagnitude < pickup * pickup) scratch.Add(g);
+            foreach (var g in scratch)
+            {
+                if (gm.State != GameState.Playing) break;   // a level-up opened: the rest wait, as before
+                if (g != null) g.Fly(player, at);
+            }
+        }
+    }
+    static Field field;
+
+    void Fly(Player player, Vector2 at)
+    {
+        magnet = true;
+        Vector2 to = at - pos;
         float dist = to.magnitude;
-        if (!magnet && dist < player.PickupRadius) magnet = true;
-        if (!magnet) return;
-
         speed += 30f * Time.deltaTime;
         if (dist < 0.4f)
         {
             player.AddXp(value);
             Sfx.Play(Sound.Gem, 0.3f, 0.15f);
-            Particles.Pickup(transform.position, color);
+            Particles.Pickup(pos, color);
             Destroy(gameObject);
             return;
         }
-        transform.position += (Vector3)(to / dist * Mathf.Min(speed * Time.deltaTime, dist));
+        pos += to / dist * Mathf.Min(speed * Time.deltaTime, dist);
+        transform.position = pos;
     }
 }

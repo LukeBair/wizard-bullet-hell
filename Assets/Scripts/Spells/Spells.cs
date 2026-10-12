@@ -103,9 +103,9 @@ public class Fireball : Spell
         p.OnHit = (proj, e) =>
         {
             if (Tier == 1) e.ApplyBurn(Damage * T("burnFactor", 0.25f), T("burnDuration", 2f));
-            Explode(proj.transform.position, splits, scale);
+            Explode(proj.Position, splits, scale);
         };
-        if (!splits) p.OnExpire = proj => Explode(proj.transform.position, false, scale);   // bursts even on a miss
+        if (!splits) p.OnExpire = proj => Explode(proj.Position, false, scale);   // bursts even on a miss
     }
 
     void Explode(Vector2 at, bool splits, float scale)

@@ -11,36 +11,59 @@ public class DamageText : MonoBehaviour
     TextMesh text;
     Color color;
 
+    // Finished numbers are parked and reused instead of building a new TextMesh per hit.
+    static readonly System.Collections.Generic.Stack<DamageText> pool = new System.Collections.Generic.Stack<DamageText>();
+
     public static void Spawn(Vector2 pos, float amount, Color color)
     {
         if (live >= MaxLive || amount < 0.5f) return;
         if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-        var go = new GameObject("Dmg");
-        go.transform.position = pos + new Vector2(Random.Range(-0.2f, 0.2f), 0.3f);
-        var d = go.AddComponent<DamageText>();
-        d.text = go.AddComponent<TextMesh>();
-        d.text.font = font;
-        d.text.text = Mathf.RoundToInt(amount).ToString();
-        d.text.fontSize = 48;
-        d.text.characterSize = 0.05f;
-        d.text.anchor = TextAnchor.MiddleCenter;
-        d.text.fontStyle = FontStyle.Bold;
+        DamageText d = null;
+        while (d == null && pool.Count > 0) d = pool.Pop();
+        if (d == null)
+        {
+            var go = new GameObject("Dmg");
+            d = go.AddComponent<DamageText>();
+            d.text = go.AddComponent<TextMesh>();
+            d.text.font = font;
+            d.text.fontSize = 48;
+            d.text.characterSize = 0.05f;
+            d.text.anchor = TextAnchor.MiddleCenter;
+            d.text.fontStyle = FontStyle.Bold;
+            var mr = go.GetComponent<MeshRenderer>();
+            mr.sharedMaterial = font.material;
+            mr.sortingOrder = 95;
+        }
+        else d.gameObject.SetActive(true);
+
+        d.transform.position = pos + new Vector2(Random.Range(-0.2f, 0.2f), 0.3f);
+        d.text.text = Number(Mathf.RoundToInt(amount));
         d.color = color;
         d.text.color = color;
-        var mr = go.GetComponent<MeshRenderer>();
-        mr.sharedMaterial = font.material;
-        mr.sortingOrder = 95;
         d.life = 0.6f;
         live++;
     }
 
-    void OnDestroy() => live--;
+    static readonly string[] numbers = new string[1000];
+    static string Number(int n) => n >= 0 && n < numbers.Length ? numbers[n] ??= n.ToString() : n.ToString();
+
+    void Release()
+    {
+        live--;
+        gameObject.SetActive(false);
+        pool.Push(this);
+    }
+
+    void OnDestroy()
+    {
+        if (gameObject.activeSelf) live--;   // parked ones were already counted out
+    }
 
     void Update()
     {
         life -= Time.deltaTime;
-        if (life <= 0f) { Destroy(gameObject); return; }
+        if (life <= 0f) { Release(); return; }
         transform.position += Vector3.up * 1.5f * Time.deltaTime;
         var c = color;
         c.a = Mathf.Clamp01(life / 0.3f);
@@ -48,5 +71,9 @@ public class DamageText : MonoBehaviour
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetCount() => live = 0;
+    static void ResetCount()
+    {
+        live = 0;
+        pool.Clear();
+    }
 }
