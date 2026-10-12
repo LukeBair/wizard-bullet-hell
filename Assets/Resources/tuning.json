@@ -178,7 +178,7 @@
     "mediumEveryStage0": 10,
     "mediumEveryStage1": 8,
     "pairChanceStage1": 0.3,
-    "mediumEveryStage2": 6,
+    "mediumEveryStage2": 7,
     "mediumEveryMin": 1.5,
     "maxPack": 5,
     "swarmBasePreBoss": 14,
@@ -204,7 +204,7 @@
     "zoneRampSeconds": 40,
     "zoneRampFactor": 0.75,
     "zoneFirstMedium": 8,
-    "zoneRateStep": 2,
+    "zoneRateStep": 1.5,
     "_zoneRampSeconds": "A new zone starts empty; spawning ramps from 0 to full over this many seconds (second zone), times zoneRampFactor for each zone after that. zoneFirstMedium is the delay before the first medium enemy, scaled the same way.",
     "_zoneRateStep": "Extra chaff per second for each zone already cleared; every zone otherwise reuses the first zone's curve from its own start."
   },
