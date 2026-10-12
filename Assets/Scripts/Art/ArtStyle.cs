@@ -14,7 +14,8 @@ public static class ArtStyle
 
     // Dusk's 7-colour palette (20 Minutes Till Dawn look).
     static readonly Color DuskGround = Hex(0x1d1a2b), DuskNavy = Hex(0x2b2f4a), DuskSage = Hex(0x6f9b7a),
-                          DuskDeepSage = Hex(0x3e5a4e), DuskCream = Hex(0xf0d2bc), DuskCoral = Hex(0xe5555f);
+                          DuskDeepSage = Hex(0x3e5a4e), DuskCream = Hex(0xf0d2bc), DuskCoral = Hex(0xe5555f),
+                          DuskWine = Hex(0x8c3446);   // only in the boss robes
 
     // Enemy radius each sprite was drawn for (matches EnemyRoster); bigger variants scale up.
     static readonly Dictionary<EnemyLook, float> drawnRadius = new Dictionary<EnemyLook, float>
@@ -95,6 +96,21 @@ public static class ArtStyle
 
     // Dusk keeps every enemy bullet coral so threats always read the same.
     public static Color EnemyBullet(Color c) => Current == ArtStyleId.Dusk ? DuskCoral : c;
+
+    // Death debris colours for each Dusk enemy sprite: its two main body colours (no cream, no outline),
+    // so a dying slime bursts into the greens it's drawn in.
+    static readonly Dictionary<EnemyLook, Color[]> duskDebris = new Dictionary<EnemyLook, Color[]>
+    {
+        { EnemyLook.Blob, new[] { DuskSage, DuskDeepSage } }, { EnemyLook.Bat, new[] { DuskDeepSage, DuskSage } },
+        { EnemyLook.Beast, new[] { DuskDeepSage, DuskNavy } }, { EnemyLook.Goblin, new[] { DuskSage, DuskDeepSage } },
+        { EnemyLook.Wizard, new[] { DuskDeepSage, DuskCoral } }, { EnemyLook.Mushroom, new[] { DuskCoral, DuskWine } },
+        { EnemyLook.Pixie, new[] { DuskSage, DuskCoral } }, { EnemyLook.Mole, new[] { DuskDeepSage, DuskNavy } },
+        { EnemyLook.Treant, new[] { DuskSage, DuskDeepSage } }, { EnemyLook.Witch, new[] { DuskWine, DuskSage } },
+        { EnemyLook.Headmaster, new[] { DuskWine, DuskNavy } }, { EnemyLook.Golem, new[] { DuskDeepSage, DuskSage } },
+    };
+
+    public static Color[] DebrisColors(EnemyLook look) =>
+        duskDebris.TryGetValue(look, out var c) ? c : new[] { DuskSage, DuskDeepSage };
 
     // Particle colours: Dusk snaps every spark to its palette (warm -> coral, bright and icy -> cream,
     // green and deep blue -> sage); other styles keep the colour as given.

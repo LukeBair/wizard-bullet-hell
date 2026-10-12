@@ -901,8 +901,8 @@ public class Enemy : MonoBehaviour
         if (blessed) Fx.Ring(Position, new Color(1f, 0.95f, 0.6f), 1f, 0.4f);
         DropExtras();
 
-        Fx.Burst(Position, Def.Color, Radius * 2.5f);
-        Particles.Death(Position, Def.Color, Def.Accent, Radius, Def.Tier);
+        Fx.Burst(Position, Def.Color, Radius * 2.5f, false);   // Particles.Death throws the debris
+        Particles.Death(Position, Def.Look, Radius, Def.Tier);
         if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();
         Died?.Invoke(this);

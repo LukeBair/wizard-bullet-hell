@@ -12,10 +12,10 @@ public class Fx : MonoBehaviour
 
     static Material lineMaterial;
 
-    public static void Burst(Vector2 pos, Color c, float size)
+    public static void Burst(Vector2 pos, Color c, float size, bool particles = true)
     {
         Make(pos, SpriteFactory.Glow, c, size * 0.4f, size, 0.3f);
-        Particles.Burst(pos, c, size);
+        if (particles) Particles.Burst(pos, c, size);
     }
 
     public static void Ring(Vector2 pos, Color c, float radius, float duration = 0.35f)

@@ -66,9 +66,11 @@ public static class Particles
         Emit(pos + Random.insideUnitCircle * radius * 0.5f, v, tint, radius * F("trail.size", 0.9f), F("trail.life", 0.25f));
     }
 
-    // Body debris when an enemy dies: its body colour plus accent chips, much bigger for bosses.
-    public static void Death(Vector2 pos, Color body, Color accent, float radius, EnemyTier tier)
+    // Body debris when an enemy dies, in the colours its Dusk sprite is drawn in; much bigger for bosses.
+    public static void Death(Vector2 pos, EnemyLook look, float radius, EnemyTier tier)
     {
+        var colors = ArtStyle.DebrisColors(look);
+        Color body = colors[0], accent = colors[1];
         float mult = tier == EnemyTier.Boss ? F("death.bossMultiplier", 6f) : tier == EnemyTier.Medium ? F("death.mediumMultiplier", 1.8f) : 1f;
         int n = Mathf.RoundToInt(F("death.count", 7f) * mult);
         float speed = F("death.speed", 4f) * (0.6f + radius);
@@ -77,9 +79,9 @@ public static class Particles
         for (int i = 0; i < n; i++)
         {
             var dir = Random.insideUnitCircle.normalized;
-            Emit(pos + dir * radius * 0.4f, dir * speed * Random.Range(0.3f, 1f), Style(i % 3 == 0 ? accent : body), size * Random.Range(0.6f, 1.2f), life * Random.Range(0.7f, 1.2f));
+            Emit(pos + dir * radius * 0.4f, dir * speed * Random.Range(0.3f, 1f), i % 3 == 0 ? accent : body, size * Random.Range(0.6f, 1.2f), life * Random.Range(0.7f, 1.2f));
         }
-        if (tier == EnemyTier.Boss) Fountain(pos, accent, (int)F("death.bossMotes", 40f), radius, false);
+        if (tier == EnemyTier.Boss) Fountain(pos, accent, (int)F("death.bossMotes", 40f), radius, false, true);
     }
 
     // White glints, with a few in the gem's own colour, when the wizard swallows an XP gem.
