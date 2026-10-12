@@ -15,7 +15,7 @@ public class ArcaneMissile : Spell
 
     public override string TierName(int tier) => tier == 2 ? "Seeker Bolts" : tier == 3 ? "Arcane Barrage" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? "Missiles home in on foes." : "Stronger tracking, and each hit fires another missile at a new foe.";
+        tier == 2 ? "Missiles home in on foes." : "Stronger tracking, a little more damage, and each hit fires another missile at a new foe.";
 
     protected override void Cast()
     {
@@ -64,14 +64,16 @@ public class Fireball : Spell
 
     public override string TierName(int tier) => tier == 2 ? "Greater Fireball" : tier == 3 ? "Meteor Cluster" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? "Slower but much bigger, and burns everything in the blast." : "Each explosion throws out a ring of fireballs.";
+        tier == 2 ? "Slower but much bigger and stronger, and burns everything in the blast."
+                  : $"Each fireball's explosion throws out a ring of {T("shrapnelCount_t3", 6f):0} smaller fireballs.";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
-            case Rune.Potency: return "+25% damage and burn";
-            case Rune.Area: return $"+{AreaStep * 100f:0}% explosion radius";
+            case Rune.Potency: return $"+{Pct(PotencyStep)} damage and burn";
+            case Rune.Split: return "+1 fireball";
+            case Rune.Area: return $"+{Pct(AreaStep)} explosion radius";
             case Rune.Pierce: return "Bursts through +1 enemy";
             default: return base.RuneEffect(r);
         }
@@ -144,17 +146,17 @@ public class FrostNova : Spell
 
     public override string TierName(int tier) => tier == 2 ? "Glacial Nova" : tier == 3 ? "Shatterstorm" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? "Full size, and chills foes (slows 50%)."
-                  : "Bigger. Stacks frostbite on every pulse; at 100% the foe shatters for 30% of its remaining health. Bigger foes resist.";
+        tier == 2 ? $"Bigger, and chills foes (slows {Pct(Tune.F("status.chillSlow", 0.5f))})."
+                  : $"Bigger. Stacks frostbite on every pulse; at 100% the foe shatters for {Pct(Tune.F("status.shatter", 0.3f))} of its remaining health. Bigger foes resist.";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
-            case Rune.Potency: return "+20% damage, longer chill";
+            case Rune.Potency: return Tier >= 2 ? $"+{Pct(PotencyStep)} damage and chill time" : $"+{Pct(PotencyStep)} damage";
             case Rune.Split: return "+1 follow-up pulse";
             case Rune.Pierce: return "Pushes foes back harder";
-            case Rune.Area: return $"+{AreaStep * 100f:0}% radius";
+            case Rune.Area: return $"+{Pct(AreaStep)} radius";
             case Rune.Frost: return Tier == 3 ? "Much more frostbite per pulse" : base.RuneEffect(r);
             default: return base.RuneEffect(r);
         }
@@ -212,7 +214,7 @@ public class ChainLightning : Spell
         {
             case Rune.Split: return "+1 bolt";
             case Rune.Pierce: return Tier >= 2 ? "Chains to +1 more enemy" : "Bigger splash";
-            case Rune.Area: return $"+{AreaStep * 100f:0}% splash and jump distance";
+            case Rune.Area: return $"+{Pct(AreaStep)} splash and jump distance";
             default: return base.RuneEffect(r);
         }
     }
@@ -305,17 +307,17 @@ public class Wisps : Spell
 
     public override string TierName(int tier) => tier == 2 ? "Twin Halo" : tier == 3 ? "Lifebloom Halo" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? "Starts with two rings. After 3s without striking anything, the wisps heal you 10%."
-                  : "Two rings, and the wisps also heal you a little every time they strike.";
+        tier == 2 ? $"Starts with two rings. After {T("quietSeconds_t2", 3f):0.#}s without striking anything, the wisps heal you {Pct(T("quietHeal_t2", 0.1f))}."
+                  : $"Two rings, and the wisps also heal you {Pct(T("hitHeal_t3", 0.01f))} when they strike (up to 4 times a second).";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
             case Rune.Split: return "+1 wisp on every ring";
-            case Rune.Haste: return "Wisps orbit 15% faster";
+            case Rune.Haste: return $"Wisps orbit {Pct(1f / HasteMultiplier - 1f)} faster";
             case Rune.Pierce: return "Strikes the same foe more often";
-            case Rune.Area: return $"+{AreaStep * 100f:0}% orbit size";
+            case Rune.Area: return $"+{Pct(AreaStep)} orbit size";
             case Rune.Echo: return "+1 ring spinning the other way";
             default: return base.RuneEffect(r);
         }

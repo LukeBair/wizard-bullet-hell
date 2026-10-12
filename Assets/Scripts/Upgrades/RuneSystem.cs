@@ -105,7 +105,7 @@ public class RuneSystem : UpgradeSystem
 
     bool DrawRuneChoice()
     {
-        Header($"Level {Player.Level}", "Take a rune stone");
+        Header($"Level {Player.Level}", "Take a rune stone", InteractionNote);
         var col = UI.Column(0.24f, 0.72f);
         float h = 170f * UI.S, gap = 16f * UI.S, y = col.y;
         bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
@@ -162,7 +162,7 @@ public class RuneSystem : UpgradeSystem
     bool DrawSocketChoice()
     {
         var rune = held.Value;
-        Header($"{Spell.RuneName(rune)} Rune", "Tap a spell to socket it");
+        Header($"{Spell.RuneName(rune)} Rune", "Tap a spell to socket it", InteractionNote);
         var col = UI.Column(0.22f, 0.74f);
         float s = UI.S;
         float h = 172f * s, gap = 12f * s, y = col.y;
@@ -211,6 +211,8 @@ public class RuneSystem : UpgradeSystem
         return false;
     }
 
+    const string InteractionNote = "Runes may interact strangely with some spells.";
+
     static string RomanTier(int t) => t == 1 ? "I" : t == 2 ? "II" : "III";
 
     static int CountOf(List<Rune> list, Rune r)
@@ -225,16 +227,16 @@ public class RuneSystem : UpgradeSystem
         switch (r)
         {
             case Rune.Potency: return "More effective: damage, healing or duration, depending on the spell.";
-            case Rune.Haste: return "Faster casting.";
+            case Rune.Haste: return "Shorter cooldown: casts, heals or recharges more often.";
             case Rune.Split: return "More projectiles, bolts, pulses, wisps or beams.";
-            case Rune.Pierce: return "Pass through, chain further, push harder or last longer.";
+            case Rune.Pierce: return "Pass through, chain further, push harder or last longer. Varies by spell.";
             case Rune.Area: return "Bigger explosions, auras and orbits.";
-            case Rune.Echo: return "The spell casts a second time.";
+            case Rune.Echo: return "The spell casts a second time. A few spells get an extra ring or charge instead.";
             case Rune.Ember: return "Hits set foes on fire.";
             case Rune.Frost: return "Hits chill and slow foes.";
-            case Rune.Curse: return "Marks foes: their next hit from anything deals +50%.";
-            case Rune.Infest: return "Infests foes for 1s. If they die, bugs burst out and hurt others.";
-            default: return "Kills may drop a big XP gem.";
+            case Rune.Curse: return $"Marks foes it hits: the next spell to hit them deals +{Tune.F("runes.Curse.bonusPerRune", 0.5f) * 100f:0}%.";
+            case Rune.Infest: return $"Infests foes for {Tune.F("runes.Infest.duration", 1f):0.#}s. If they die, bugs burst out and hurt others.";
+            default: return "Foes it hits may drop a big XP gem when they die.";
         }
     }
 }
