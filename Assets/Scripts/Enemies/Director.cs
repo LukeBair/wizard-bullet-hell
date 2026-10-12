@@ -65,7 +65,8 @@ public class Director : MonoBehaviour
         Elapsed += dt;
         if (Boss != null) return;   // boss fight: no other spawns
 
-        float chaffRate = (0.4f + Elapsed / 90f) * (1f + 0.2f * Threat) * (1f + 0.5f * BossesDefeated);
+        // Slow climb until the first boss; each boss kill then steps the pressure up sharply.
+        float chaffRate = (0.4f + Elapsed / 240f) * (1f + 0.1f * Threat) * (1f + 1.2f * BossesDefeated);
         chaffRate = Mathf.Min(chaffRate, 10f);
         chaffBudget += chaffRate * dt;
         while (chaffBudget >= 1f)
@@ -85,7 +86,7 @@ public class Director : MonoBehaviour
             }
             else if (stage == 1)
             {
-                mediumTimer = 9f;
+                mediumTimer = 11f;
                 int pack = Random.value < 0.3f ? 2 : 1;
                 for (int i = 0; i < pack; i++) SpawnAtEdge(PickMedium());
             }
@@ -127,7 +128,7 @@ public class Director : MonoBehaviour
     void SpawnSwarm(GameManager gm)
     {
         // A closing ring of bats; slimes join from the second swarm, medium escorts after a boss kill.
-        int n = 16 + 6 * Threat;
+        int n = BossesDefeated == 0 ? 14 + 3 * Threat : 16 + 6 * Threat;
         var bat = roster.Chaff[Mathf.Min(1, roster.Chaff.Length - 1)];
         for (int i = 0; i < n; i++)
         {
@@ -143,12 +144,27 @@ public class Director : MonoBehaviour
 
     readonly List<EnemyDef> pool = new List<EnemyDef>();
 
+    static bool IsCaster(EnemyDef d) =>
+        d.Behavior == EnemyBehavior.Caster || d.Behavior == EnemyBehavior.Blinker ||
+        d.Behavior == EnemyBehavior.Lobber || d.Behavior == EnemyBehavior.Trickster;
+
+    // Casters are rare (a quarter as likely) until the first boss is down.
     EnemyDef PickMedium()
     {
         pool.Clear();
         foreach (var d in roster.Medium) if (d.EarlyGame || Threat > 0) pool.Add(d);
-        return pool[Random.Range(0, pool.Count)];
+        float total = 0f;
+        foreach (var d in pool) total += Weight(d);
+        float roll = Random.value * total;
+        foreach (var d in pool)
+        {
+            roll -= Weight(d);
+            if (roll <= 0f) return d;
+        }
+        return pool[pool.Count - 1];
     }
+
+    float Weight(EnemyDef d) => IsCaster(d) && BossesDefeated == 0 ? 0.25f : 1f;
 
     Vector2 EdgePoint(float radius)
     {
