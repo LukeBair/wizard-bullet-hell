@@ -303,6 +303,11 @@
         "goal": 90,
         "kind": "count",
         "text": "Stay Sunlit for {goal}s in one run"
+      },
+      "Wisps": {
+        "goal": 5,
+        "kind": "max",
+        "text": "Trigger all {goal} wisp reactions in one run (burning, wet, chilled, infested, rooted foes)"
       }
     }
   },

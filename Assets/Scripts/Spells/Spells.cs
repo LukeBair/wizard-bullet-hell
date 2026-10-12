@@ -322,6 +322,7 @@ public class Wisps : Spell, IOrbiter
     class WispState { public Mode mode; public Enemy target; public Vector2 pos; public float cool, dead; }
     readonly Dictionary<(int, int, int), WispState> states = new Dictionary<(int, int, int), WispState>();
     readonly List<Enemy> claimed = new List<Enemy>();
+    int reactionsSeen;   // bitmask of the five reactions triggered this run (signature feat)
     float HuntEvery => T("huntEvery", 2.5f) * Cooldown;
     float HuntRange => T("huntRange", 4.5f) * (1f + 0.5f * (Area - 1f));
     int RingCount(int ring) => Count + (ring == 0 ? bonusWisps.Count : 0);
@@ -504,6 +505,14 @@ public class Wisps : Spell, IOrbiter
         Hit(e, Damage * T("huntDamage", 1.5f), dir * 3f);
         if (Tier == 3 && !e.IsAlive) kills++;
         float power = Damage / Mathf.Max(0.01f, TT("damage", BaseDamage));   // potency, sunlit, overload
+        int reaction = burning ? 1 : wet ? 2 : chilled ? 4 : infested ? 8 : rooted ? 16 : 0;
+        if (reaction != 0 && (reactionsSeen & reaction) == 0)
+        {
+            reactionsSeen |= reaction;
+            int n = 0;
+            for (int bits = reactionsSeen; bits != 0; bits >>= 1) n += bits & 1;
+            Grimoire.FeatMax(SpellId.Wisps, n);
+        }
 
         if (burning)
         {
