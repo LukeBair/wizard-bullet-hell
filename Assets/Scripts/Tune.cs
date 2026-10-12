@@ -123,15 +123,21 @@ public static class Tune
         ip = "127.0.0.1";
 #endif
         Fetching = true;
+        bool reached = false;
         using (var req = UnityWebRequest.Get($"http://{ip}:{Port}/tuning.json"))
         {
             req.timeout = 2;
             yield return req.SendWebRequest();
-            if (req.result == UnityWebRequest.Result.Success && TryApply(req.downloadHandler.text))
+            reached = req.result == UnityWebRequest.Result.Success;
+            if (reached && TryApply(req.downloadHandler.text))
                 Source = $"live from {ip}";
         }
+        // Same server: pick up save edits made in the tuner and report this device's progress.
+        if (reached) yield return Grimoire.SyncWithMac($"http://{ip}:{Port}");
         Fetching = false;
     }
+
+    public static object ParseJson(string json) => Json.Parse(json);
 
     // ------------------------------------------------------------------ tiny JSON parser
 
