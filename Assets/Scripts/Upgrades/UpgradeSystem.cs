@@ -41,6 +41,7 @@ public abstract class UpgradeSystem
             if (UI.Card(new Rect(col.x, y, col.width, h), $"Tome: {preview.Name}", preview.Blurb, preview.Color, "START"))
             {
                 Player.Learn(id);
+                Telemetry.StartTome(startOffer, id);
                 return true;
             }
             y += h + gap;
@@ -48,7 +49,12 @@ public abstract class UpgradeSystem
         return false;
     }
 
-    public void AutoPickStart() => Player.Learn(startOffer[Random.Range(0, startOffer.Count)]);
+    public void AutoPickStart()
+    {
+        var id = startOffer[Random.Range(0, startOffer.Count)];
+        Player.Learn(id);
+        Telemetry.StartTome(startOffer, id);
+    }
 
     // Called each time a level-up screen opens.
     public abstract void Open();
@@ -61,6 +67,10 @@ public abstract class UpgradeSystem
 
     // Optional extra HUD (e.g. element levels).
     public virtual void DrawHud(Rect area) { }
+
+    // What the pause menu shows for each spell.
+    public virtual IReadOnlyList<Rune> SocketedRunes(Spell spell) => Array.Empty<Rune>();
+    public virtual int SocketCount => 0;
 
     protected List<SpellId> UnlearnedSpells()
     {

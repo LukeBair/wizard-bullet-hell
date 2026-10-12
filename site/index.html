@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wizard Bullet Hell</title>
+<meta name="description" content="A pocket wizard roguelite for iPhone and Android. Survive ten minutes of monsters while your spells cast themselves.">
+<meta name="theme-color" content="#1D1A2B">
+<link rel="icon" href="assets/player.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Pixelify+Sans:wght@500;700&family=Silkscreen&display=swap">
+<style>
+/* Layout: full-bleed live game hero, then a run told minute by minute, runes, bestiary, Grimoire, closing CTA. One dark world: the game's Dusk palette. */
+:root {
+  --night: #1D1A2B;      /* ground */
+  --dusk: #2B2F4A;       /* panels, shadows */
+  --moss: #3E5A4E;       /* foliage, quiet accents */
+  --sage: #6F9B7A;       /* secondary text, chaff */
+  --bone: #F0D2BC;       /* main text */
+  --ember: #E5555F;      /* hearts, calls to action */
+  --wine: #8C3446;       /* robe, pressed states */
+  --ink: #141120;        /* 1px outlines */
+  --display: "Pixelify Sans", "Silkscreen", ui-monospace, monospace;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --hud: "Silkscreen", ui-monospace, "SF Mono", monospace;
+  --px: 3px;             /* one game pixel at page scale */
+  --gutter: clamp(16px, 4vw, 48px);
+  --wrap: 1120px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--night); }
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--bone);
+  font: 400 1.0625rem/1.6 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--ember); outline-offset: 3px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.05; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+.wrap { max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); }
+.eyebrow { font-family: var(--hud); font-size: 0.8125rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sage); }
+
+/* Pixel frames cut from the game's own 9-slice UI textures */
+.panel {
+  border: 15px solid transparent;
+  border-image: url(assets/ui_panel.png) 5 fill / 15px stretch;
+  image-rendering: pixelated;
+}
+.slot {
+  border: 12px solid transparent;
+  border-image: url(assets/ui_slot.png) 4 fill / 12px stretch;
+  image-rendering: pixelated;
+}
+
+/* ---------- Hero ---------- */
+.hero { position: relative; overflow: hidden; isolation: isolate; border-bottom: var(--px) solid var(--ink); }
+.hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; image-rendering: pixelated; }
+.hero::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(29,26,43,.92) 0%, rgba(29,26,43,.7) 38%, rgba(29,26,43,0) 62%);
+}
+.hud { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 12px; padding: 10px var(--gutter); font-family: var(--hud); color: var(--bone); pointer-events: none; }
+.xp { flex: 1; height: 18px; background: var(--dusk); border: var(--px) solid var(--ink); position: relative; max-width: 420px; }
+.xp i { position: absolute; inset: 0 auto 0 0; width: 40%; background: var(--moss); transition: width .25s steps(6); }
+.hud .lvl { font-size: 0.875rem; white-space: nowrap; }
+.hud .clock { margin-left: auto; text-align: right; line-height: 1; }
+.hud .clock b { display: block; font-family: var(--display); font-size: 2rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.hud .clock span { font-size: 0.75rem; color: var(--sage); }
+.hero-inner { padding-block: 128px 96px; display: grid; gap: 28px; max-width: var(--wrap); }
+.hero-copy { max-width: 34rem; display: grid; gap: 20px; }
+.hero h1 { font-size: clamp(3rem, 9vw, 6.25rem); letter-spacing: -0.01em; color: var(--bone); text-shadow: var(--px) var(--px) 0 var(--ink), calc(var(--px) * 2) calc(var(--px) * 2) 0 var(--wine); }
+.hero h1 em { font-style: normal; color: var(--ember); }
+.lede { font-size: 1.25rem; max-width: 30rem; }
+.hearts { display: flex; gap: 6px; }
+.hearts svg { width: 27px; height: 24px; }
+
+.stores { display: flex; flex-wrap: wrap; gap: 14px; }
+.store {
+  display: inline-flex; align-items: center; gap: 12px; min-width: 200px;
+  padding: 2px 8px 4px; text-decoration: none; color: var(--bone);
+  border: 15px solid transparent; border-image: url(assets/ui_button.png) 5 fill / 15px stretch; image-rendering: pixelated;
+  transition: transform .08s steps(2);
+}
+.store:hover { transform: translateY(-3px); }
+.store:active { transform: translateY(2px); }
+.store svg { width: 26px; height: 26px; flex: none; }
+.store small { display: block; font-family: var(--hud); font-size: 0.6875rem; letter-spacing: .06em; color: var(--sage); text-transform: uppercase; line-height: 1.2; }
+.store strong { display: block; font-family: var(--display); font-size: 1.375rem; font-weight: 500; line-height: 1.1; }
+.store-note { font-family: var(--hud); font-size: 0.75rem; color: var(--sage); }
+
+/* ---------- Sections ---------- */
+section { padding-block: clamp(64px, 10vw, 120px); }
+section + section { border-top: var(--px) dashed var(--dusk); }
+.head { display: grid; gap: 12px; margin-bottom: 40px; max-width: 40rem; }
+.head h2 { font-size: clamp(2.25rem, 5.5vw, 3.5rem); }
+.head p { color: var(--bone); opacity: .86; }
+
+/* Run timeline */
+.run { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; position: relative; }
+.run::before { content: ""; position: absolute; left: 0; right: 0; top: 34px; height: var(--px); background: repeating-linear-gradient(90deg, var(--moss) 0 9px, transparent 9px 15px); }
+.run li { display: grid; align-content: start; gap: 10px; padding-right: 20px; min-width: 0; }
+.run time { font-family: var(--display); font-size: 2rem; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--bone); background: var(--night); justify-self: start; padding-right: 10px; line-height: 1.6; }
+.run .boss time { color: var(--ember); }
+.run h3 { font-size: 1.25rem; font-weight: 500; }
+.run p { font-size: 0.9375rem; color: var(--bone); opacity: .8; }
+.run img { height: 52px; width: 52px; object-fit: contain; object-position: left bottom; }
+
+/* Runes */
+.runes-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 64px); align-items: start; }
+.spell { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); display: grid; gap: 16px; padding: 10px 12px 14px; }
+.spell-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.spell h3 { font-size: 1.75rem; }
+.tier { font-family: var(--hud); font-size: .75rem; color: var(--sage); }
+.sockets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.sockets .slot { aspect-ratio: 1; max-width: 100%; display: grid; place-items: center; font-family: var(--hud); font-size: .6875rem; text-align: center; line-height: 1.15; }
+.sockets .slot svg { width: 30px; height: 30px; display: block; margin: 0 auto 6px; }
+.sockets .empty { color: var(--sage); }
+.spell .res { font-size: .9375rem; color: var(--bone); opacity: .85; }
+.spell .res b { color: var(--ember); font-weight: 700; }
+.rune-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 32px; padding: 0; list-style: none; }
+.rune-list li { font-family: var(--hud); font-size: .8125rem; padding: 6px 10px; background: var(--dusk); border: var(--px) solid var(--ink); }
+.combos { display: grid; align-items: start; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 28px; margin: 0; }
+.combos div { display: grid; gap: 2px; padding-left: 14px; border-left: var(--px) solid var(--moss); min-width: 0; }
+.combos dt { font-family: var(--display); font-size: 1.1875rem; font-weight: 500; }
+.combos dd { margin: 0; font-size: .9375rem; color: var(--sage); }
+
+/* Bestiary */
+.tier-label { font-family: var(--hud); font-size: .8125rem; letter-spacing: .08em; text-transform: uppercase; color: var(--sage); margin: 0 0 14px; }
+.foes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 40px; }
+.foe { display: grid; grid-template-rows: 96px auto auto; gap: 6px; padding: 14px; background: var(--dusk); border: var(--px) solid var(--ink); box-shadow: 0 var(--px) 0 var(--ink); min-width: 0; }
+.foe img { align-self: end; justify-self: start; max-width: 100%; object-fit: contain; object-position: left bottom; }
+.foe h3 { font-size: 1.125rem; font-weight: 500; }
+.foe p { font-size: .875rem; color: var(--sage); line-height: 1.4; }
+.bosses .foe { grid-template-rows: 172px auto auto; }
+.bosses .foe h3 { color: var(--ember); font-size: 1.375rem; }
+
+/* Grimoire */
+.grimoire { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 64px); align-items: center; }
+.book { padding: 14px 18px 18px; display: grid; gap: 4px; }
+.book-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 10px; border-bottom: 2px dashed var(--dusk); }
+.book-row:last-child { border-bottom: 0; }
+.book-row span { font-family: var(--display); font-size: 1.125rem; font-weight: 500; }
+.book-row small { font-family: var(--hud); font-size: .75rem; color: var(--sage); white-space: nowrap; }
+.book-row.locked span { color: var(--sage); }
+.book-row.locked small { color: var(--ember); }
+.points { display: grid; gap: 22px; margin: 0; padding: 0; list-style: none; }
+.points li { display: grid; gap: 4px; }
+.points h3 { font-size: 1.5rem; font-weight: 500; }
+.points p { opacity: .86; }
+
+/* Closing CTA */
+.cta { text-align: left; }
+.cta-inner { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(24px, 4vw, 48px); align-items: center; }
+.cta img { width: 160px; height: auto; }
+.cta h2 { font-size: clamp(2.25rem, 5.5vw, 3.75rem); margin-bottom: 20px; }
+footer { padding-block: 28px 40px; font-family: var(--hud); font-size: .75rem; color: var(--sage); border-top: var(--px) solid var(--ink); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+
+@media (max-width: 900px) {
+  .hero::after { background: linear-gradient(180deg, rgba(29,26,43,.9) 0%, rgba(29,26,43,.75) 55%, rgba(29,26,43,.1) 100%); }
+  .hero-inner { padding-block: 104px 300px; }
+  .run { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .run::before { left: 14px; right: auto; top: 0; bottom: 0; width: var(--px); height: auto; background: repeating-linear-gradient(180deg, var(--moss) 0 9px, transparent 9px 15px); }
+  .run li { padding-left: 40px; padding-right: 0; }
+  .run time { line-height: 1.2; }
+  .runes-grid, .grimoire { grid-template-columns: minmax(0, 1fr); }
+  .spell { position: static; }
+  .foes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .hud .lvl { display: none; }
+  .store { min-width: 0; flex: 1 1 100%; }
+  .cta-inner { grid-template-columns: minmax(0, 1fr); }
+  .cta img { width: 112px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .store, .xp i { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="field" aria-hidden="true"></canvas>
+  <div class="hud" aria-hidden="true">
+    <div class="xp"><i id="xp"></i></div>
+    <span class="lvl" id="lvl">Level 12</span>
+    <div class="clock"><b id="clock">07:42</b><span>Survive!</span></div>
+  </div>
+  <div class="wrap hero-inner">
+    <div class="hero-copy">
+      <p class="eyebrow">A wizard roguelite for iPhone &amp; Android</p>
+      <h1>Wizard <em>Bullet</em> Hell</h1>
+      <div class="hearts" aria-label="Four hearts left">
+        <svg viewBox="0 0 9 8" class="px"><path fill="#141120" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/><path fill="#E5555F" d="M1 1h2v1h1v1h1V2h1V1h2v3H7v1H6v1H5v1H4V6H3V5H2V4H1z"/><path fill="#F0D2BC" d="M2 2h1v1H2z"/></svg>
+        <svg viewBox="0 0 9 8" class="px"><path fill="#141120" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/><path fill="#E5555F" d="M1 1h2v1h1v1h1V2h1V1h2v3H7v1H6v1H5v1H4V6H3V5H2V4H1z"/><path fill="#F0D2BC" d="M2 2h1v1H2z"/></svg>
+        <svg viewBox="0 0 9 8" class="px"><path fill="#141120" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/><path fill="#E5555F" d="M1 1h2v1h1v1h1V2h1V1h2v3H7v1H6v1H5v1H4V6H3V5H2V4H1z"/><path fill="#F0D2BC" d="M2 2h1v1H2z"/></svg>
+        <svg viewBox="0 0 9 8" class="px"><path fill="#141120" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/><path fill="#E5555F" d="M1 1h2v1h1v1h1V2h1V1h2v3H7v1H6v1H5v1H4V6H3V5H2V4H1z"/><path fill="#F0D2BC" d="M2 2h1v1H2z"/></svg>
+        <svg viewBox="0 0 9 8" class="px"><path fill="#141120" d="M1 0h3v1h1V0h3v1h1v3H8v1H7v1H6v1H5v1H4V7H3V6H2V5H1V4H0V1h1z"/><path fill="#2B2F4A" d="M1 1h2v1h1v1h1V2h1V1h2v3H7v1H6v1H5v1H4V6H3V5H2V4H1z"/></svg>
+      </div>
+      <p class="lede">Ten minutes. Hundreds of monsters. Your spells cast themselves, so all you do is move, dodge, and decide which runes go where.</p>
+      <div class="stores">
+        <a class="store" href="#" data-store="ios" aria-label="App Store, coming soon">
+          <svg viewBox="0 0 13 13" class="px" aria-hidden="true"><path fill="#F0D2BC" d="M7 0h2v1H8v1H7zM3 3h3v1h1V3h3v1h1v1h-1v3h1v2h-1v1H9v1H8v-1H5v1H4v-1H3v-1H2V8H1V5h1V4h1z"/><path fill="#141120" d="M5 5h1v1H5z"/></svg>
+          <span><small>Coming soon to the</small><strong>App Store</strong></span>
+        </a>
+        <a class="store" href="#" data-store="android" aria-label="Google Play, coming soon">
+          <svg viewBox="0 0 13 13" class="px" aria-hidden="true"><path fill="#6F9B7A" d="M2 1h2v1h1v1h1v1h1v1h1v1H7v1H6v1H5v1H4v1H3v1H2z"/><path fill="#E5555F" d="M8 5h2v1h1v1h-1v1H8V7h1V6H8z"/><path fill="#F0D2BC" d="M2 1h1v10H2z"/></svg>
+          <span><small>Coming soon on</small><strong>Google Play</strong></span>
+        </a>
+      </div>
+      <p class="store-note">In development. Store links go live at launch.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="run">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">How a run plays out</p>
+        <h2>Every run lasts ten minutes. Most wizards don't.</h2>
+        <p>You pick a spellbook and walk into the dark. Your spells fire on their own at whatever is closest. Every level-up hands you a choice, and every boss you beat moves the fight somewhere new.</p>
+      </div>
+      <ol class="run">
+        <li>
+          <time>0:00</time>
+          <img class="px" src="assets/player.png" alt="" width="52" height="52">
+          <h3>Pick a tome</h3>
+          <p>Start with one spellbook: Arcane Missile, Fireball, Frost Nova, Chain Lightning and more.</p>
+        </li>
+        <li>
+          <time>0:45</time>
+          <img class="px" src="assets/enemy_bat.png" alt="" width="52" height="52">
+          <h3>The first swarm</h3>
+          <p>Dusk Bats pour in from every side. After this, the slimes bring friends.</p>
+        </li>
+        <li class="boss">
+          <time>2:30</time>
+          <img class="px" src="assets/enemy_treant.png" alt="" width="52" height="52">
+          <h3>First boss</h3>
+          <p>Nothing else spawns until it falls. Win, and you gain another rune socket.</p>
+        </li>
+        <li class="boss">
+          <time>5:00</time>
+          <img class="px" src="assets/enemy_headmaster.png" alt="" width="52" height="52">
+          <h3>New zone</h3>
+          <p>Each boss kill shifts the arena to a new zone with its own monsters. Again at 7:30.</p>
+        </li>
+        <li class="boss">
+          <time>10:00</time>
+          <img class="px" src="assets/enemy_witch.png" alt="" width="52" height="52">
+          <h3>Witch's Hollow</h3>
+          <p>The final boss. Beat it and the run is yours.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="runes">
+    <div class="wrap runes-grid">
+      <div class="spell panel">
+        <div class="spell-top">
+          <h3>Chain Lightning</h3>
+          <span class="tier">Tier II</span>
+        </div>
+        <div class="sockets">
+          <div class="slot"><span><svg viewBox="0 0 7 7" class="px" aria-hidden="true"><path fill="#141120" d="M2 0h3v1h1v1h1v3H6v1H5v1H2V6H1V5H0V2h1V1h1z"/><path fill="#E5555F" d="M2 1h3v1h1v3H5v1H2V5H1V2h1z"/><path fill="#F0D2BC" d="M2 2h1v1H2z"/></svg>Ember</span></div>
+          <div class="slot"><span><svg viewBox="0 0 7 7" class="px" aria-hidden="true"><path fill="#141120" d="M2 0h3v1h1v1h1v3H6v1H5v1H2V6H1V5H0V2h1V1h1z"/><path fill="#6F9B7A" d="M2 1h3v1h1v3H5v1H2V5H1V2h1z"/><path fill="#F0D2BC" d="M2 2h1v1H2z"/></svg>Split</span></div>
+          <div class="slot"><span><svg viewBox="0 0 7 7" class="px" aria-hidden="true"><path fill="#141120" d="M2 0h3v1h1v1h1v3H6v1H5v1H2V6H1V5H0V2h1V1h1z"/><path fill="#E5555F" d="M2 1h3v1h1v3H5v1H2V5H1V2h1z"/><path fill="#F0D2BC" d="M2 2h1v1H2z"/></svg>Ember</span></div>
+          <div class="slot empty"><span>Empty</span></div>
+        </div>
+        <p class="res">One more <b>Ember</b> and the runes Resonate: three of a kind in one spell earns a free extra copy. Fill all four sockets and the spell can evolve.</p>
+      </div>
+      <div>
+        <div class="head">
+          <p class="eyebrow">Rune sockets</p>
+          <h2>Build the spell, not the wizard.</h2>
+          <p>Each level-up offers a rune stone. You choose which spell it goes into, and the card shows exactly what it will do there. Split on a fireball is a different game from Split on a frost nova.</p>
+        </div>
+        <ul class="rune-list" aria-label="Runes">
+          <li>Potency</li><li>Haste</li><li>Split</li><li>Pierce</li><li>Area</li><li>Echo</li><li>Ember</li><li>Frost</li><li>Curse</li><li>Infest</li><li>Bless</li>
+        </ul>
+        <dl class="combos">
+          <div><dt>Steam Burst</dt><dd>Burning plus chilled.</dd></div>
+          <div><dt>Conductive</dt><dd>Wet foes take +50% from lightning.</dd></div>
+          <div><dt>Deep Freeze</dt><dd>Wet plus frost.</dd></div>
+          <div><dt>Firebugs</dt><dd>Infested foes, set alight.</dd></div>
+          <div><dt>Hex Swarm</dt><dd>Infested plus cursed.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section id="bestiary">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Bestiary</p>
+        <h2>Things that live in the dark.</h2>
+      </div>
+      <p class="tier-label">The horde</p>
+      <div class="foes">
+        <article class="foe"><img class="px" src="assets/enemy_bat.png" alt="Dusk Bat" width="88" height="88"><h3>Dusk Bat</h3><p>Fast, weaving, and never alone.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_blob.png" alt="Moss Slime" width="72" height="72"><h3>Moss Slime</h3><p>Slow. Very many.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_beast.png" alt="Thornback Wolf" width="84" height="84"><h3>Thornback Wolf</h3><p>Crouches, then lunges.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_goblin.png" alt="Goblin Hexer" width="75" height="75"><h3>Goblin Hexer</h3><p>Keeps its distance and fires fans of hexes.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_wizard.png" alt="Rogue Apprentice" width="84" height="84"><h3>Rogue Apprentice</h3><p>A rival wizard who blinks in close.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_mushroom.png" alt="Spore Lobber" width="66" height="66"><h3>Spore Lobber</h3><p>Lobs spore bombs. Watch the circle.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_pixie.png" alt="Pixie Trickster" width="60" height="60"><h3>Pixie Trickster</h3><p>Teleports away from your spells.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_mole.png" alt="Root Burrower" width="78" height="78"><h3>Root Burrower</h3><p>Tunnels under you, then erupts.</p></article>
+      </div>
+      <p class="tier-label">Bosses</p>
+      <div class="foes bosses">
+        <article class="foe"><img class="px" src="assets/enemy_treant.png" alt="Elder Treant" width="144" height="144"><h3>Elder Treant</h3><p>Leaf rings, summoned slimes, aimed volleys.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_witch.png" alt="The Hedge Witch" width="156" height="156"><h3>The Hedge Witch</h3><p>Spiral barrages and homing orbs.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_headmaster.png" alt="Headmaster Vexley" width="156" height="156"><h3>Headmaster Vexley</h3><p>Detention grids with one safe cell.</p></article>
+        <article class="foe"><img class="px" src="assets/enemy_golem.png" alt="Crystal Golem" width="144" height="144"><h3>Crystal Golem</h3><p>Charges that leave crystal shards hanging in the air.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="grimoire">
+    <div class="wrap grimoire">
+      <div>
+        <div class="head">
+          <p class="eyebrow">The Grimoire</p>
+          <h2>Lose the run. Keep the knowledge.</h2>
+        </div>
+        <ul class="points">
+          <li><h3>New spells, not bigger numbers</h3><p>Gold from each run unlocks new tomes for your Grimoire. Every run still starts from scratch, so a good run is always your doing.</p></li>
+          <li><h3>Evolutions to earn</h3><p>Spells evolve up to tier III. Pull off feats during runs to unlock each evolution.</p></li>
+          <li><h3>Short enough for a bus ride</h3><p>Ten minutes, portrait mode, one thumb.</p></li>
+        </ul>
+      </div>
+      <div class="book panel" aria-label="Grimoire example">
+        <p class="eyebrow">Grimoire</p>
+        <div class="book-row"><span>Arcane Missile</span><small>Known</small></div>
+        <div class="book-row"><span>Fireball</span><small>Known</small></div>
+        <div class="book-row"><span>Frost Nova</span><small>Known</small></div>
+        <div class="book-row locked"><span>Tidal Lance</span><small>100 gold</small></div>
+        <div class="book-row locked"><span>Cyclone</span><small>100 gold</small></div>
+        <div class="book-row locked"><span>Enthrall</span><small>100 gold</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta" id="get">
+    <div class="wrap cta-inner">
+      <img class="px" src="assets/player.png" alt="The wizard" width="160" height="160">
+      <div>
+        <h2>Coming soon to iPhone and Android.</h2>
+        <div class="stores">
+          <a class="store" href="#" data-store="ios" aria-label="App Store, coming soon">
+            <svg viewBox="0 0 13 13" class="px" aria-hidden="true"><path fill="#F0D2BC" d="M7 0h2v1H8v1H7zM3 3h3v1h1V3h3v1h1v1h-1v3h1v2h-1v1H9v1H8v-1H5v1H4v-1H3v-1H2V8H1V5h1V4h1z"/><path fill="#141120" d="M5 5h1v1H5z"/></svg>
+            <span><small>Coming soon to the</small><strong>App Store</strong></span>
+          </a>
+          <a class="store" href="#" data-store="android" aria-label="Google Play, coming soon">
+            <svg viewBox="0 0 13 13" class="px" aria-hidden="true"><path fill="#6F9B7A" d="M2 1h2v1h1v1h1v1h1v1h1v1H7v1H6v1H5v1H4v1H3v1H2z"/><path fill="#E5555F" d="M8 5h2v1h1v1h-1v1H8V7h1V6H8z"/><path fill="#F0D2BC" d="M2 1h1v10H2z"/></svg>
+            <span><small>Coming soon on</small><strong>Google Play</strong></span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 Wizard Bullet Hell</span>
+    <span>Survive the dark.</span>
+  </div>
+</footer>
+
+<script>
+/* Store links: fill these in at launch and the buttons switch from "Coming soon" to "Download". */
+const STORE_LINKS = { ios: "", android: "" };
+document.querySelectorAll(".store").forEach(a => {
+  const url = STORE_LINKS[a.dataset.store];
+  if (url) {
+    a.href = url;
+    a.querySelector("small").textContent = a.dataset.store === "ios" ? "Download on the" : "Get it on";
+    a.removeAttribute("aria-label");
+  } else {
+    a.addEventListener("click", e => e.preventDefault());
+  }
+});
+if (STORE_LINKS.ios || STORE_LINKS.android) document.querySelectorAll(".store-note").forEach(n => n.hidden = true);
+
+/* Hero: a live slice of a run drawn with the game's own Dusk sprites. */
+(() => {
+  const canvas = document.getElementById("field");
+  const ctx = canvas.getContext("2d");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const S = 3;                       // page pixels per game pixel
+  const C = { night: "#1D1A2B", dusk: "#2B2F4A", moss: "#3E5A4E", sage: "#6F9B7A", bone: "#F0D2BC", ember: "#E5555F", wine: "#8C3446", ink: "#141120" };
+  const names = ["player_sheet", "bullet", "gem", "enemy_bat", "enemy_blob", "enemy_beast", "enemy_goblin", "enemy_mushroom", "obstacle_tree", "obstacle_rock"];
+  const img = {};
+  let W = 0, H = 0, ground = null, t = 0, last = 0;
+  let foes = [], shots = [], gems = [], bits = [], rings = [];
+  let fireCd = 0, novaCd = 2.5, spawnCd = 0, xp = 0.4, level = 12, clock = 7 * 60 + 30;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  // walk frames 4..9 and cast 10..13 of player_sheet (from player_sheet.json)
+  const WALK = [4, 5, 6, 7, 8, 9], CAST = [10, 11, 12, 13];
+  let castT = 0;
+
+  function load() {
+    return Promise.all(names.map(n => new Promise(res => {
+      const i = new Image(); i.onload = () => res(); i.onerror = () => res(); i.src = "assets/" + n + ".png"; img[n] = i;
+    })));
+  }
+
+  function wizardPos() {
+    return W * S > 900 ? { x: Math.round(W * 0.72), y: Math.round(H * 0.56) } : { x: Math.round(W * 0.5), y: Math.round(H - 52) };
+  }
+
+  function buildGround() {
+    const g = document.createElement("canvas"), TW = 240, TH = 200;
+    g.width = TW; g.height = TH;
+    const c = g.getContext("2d");
+    c.fillStyle = C.night; c.fillRect(0, 0, TW, TH);
+    // dark puddles of shade
+    c.fillStyle = C.dusk;
+    [[30, 150, 18], [190, 40, 14]].forEach(([x, y, r]) => { for (let yy = -r; yy <= r; yy++) { const w = Math.round(Math.sqrt(r * r - yy * yy) * 1.4); c.fillRect(x - w, y + yy, w * 2, 1); } });
+    // grass tufts
+    for (let i = 0; i < 46; i++) {
+      const x = Math.floor(Math.random() * TW), y = Math.floor(Math.random() * TH);
+      c.fillStyle = i % 5 === 0 ? C.sage : C.moss;
+      c.fillRect(x, y, 1, 2); c.fillRect(x - 1, y + 1, 1, 1); c.fillRect(x + 1, y + 1, 1, 1);
+    }
+    if (img.obstacle_tree.width) c.drawImage(img.obstacle_tree, 150, 110);
+    if (img.obstacle_rock.width) c.drawImage(img.obstacle_rock, 40, 20);
+    ground = c.createPattern(g, "repeat");
+  }
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    W = Math.max(1, Math.ceil(r.width / S)); H = Math.max(1, Math.ceil(r.height / S));
+    canvas.width = W; canvas.height = H;
+    ctx.imageSmoothingEnabled = false;
+  }
+
+  const TYPES = [
+    { n: "enemy_bat", sp: 30, hp: 2, w: 6 },
+    { n: "enemy_blob", sp: 14, hp: 2, w: 3 },
+    { n: "enemy_beast", sp: 22, hp: 3, w: 1 },
+    { n: "enemy_goblin", sp: 16, hp: 3, w: 1 },
+    { n: "enemy_mushroom", sp: 12, hp: 2, w: 1 },
+  ];
+  const pick = () => { const tot = TYPES.reduce((s, k) => s + k.w, 0); let r = Math.random() * tot; for (const k of TYPES) { if ((r -= k.w) < 0) return k; } return TYPES[0]; };
+
+  function spawn(swarm) {
+    const k = swarm ? TYPES[0] : pick();
+    const side = Math.floor(Math.random() * 4), m = 24;
+    const x = side === 0 ? -m : side === 1 ? W + m : rand(-m, W + m);
+    const y = side === 2 ? -m : side === 3 ? H + m : rand(-m, H + m);
+    foes.push({ x, y, k, hp: k.hp, ph: rand(0, 6.28), flash: 0 });
+  }
+
+  function burst(x, y, n, cols) {
+    for (let i = 0; i < n; i++) { const a = rand(0, 6.28), s = rand(15, 55); bits.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(.25, .6), c: cols[i % cols.length] }); }
+  }
+
+  function step(dt) {
+    t += dt; clock += dt; if (clock >= 600) clock = 7 * 60 + 30;
+    const wz = wizardPos();
+    spawnCd -= dt;
+    if (spawnCd <= 0 && foes.length < 90) { spawn(false); spawnCd = rand(.06, .16); }
+    if (Math.floor(t) % 9 === 0 && Math.floor(t - dt) % 9 !== 0) for (let i = 0; i < 12; i++) spawn(true);
+
+    for (const f of foes) {
+      const dx = wz.x - f.x, dy = wz.y - f.y, d = Math.hypot(dx, dy) || 1;
+      const wob = f.k.n === "enemy_bat" ? Math.sin(t * 5 + f.ph) * 18 : 0;
+      f.x += (dx / d * f.k.sp + (-dy / d) * wob) * dt;
+      f.y += (dy / d * f.k.sp + (dx / d) * wob) * dt;
+      f.d = d; f.flash = Math.max(0, f.flash - dt);
+    }
+    // auto-cast: Arcane Missile at the nearest foe
+    fireCd -= dt;
+    if (fireCd <= 0) {
+      const tgt = foes.filter(f => f.d < Math.max(W, H)).sort((a, b) => a.d - b.d)[0];
+      if (tgt) {
+        for (let i = -1; i <= 1; i++) {
+          const a = Math.atan2(tgt.y - (wz.y - 10), tgt.x - wz.x) + i * 0.22;
+          shots.push({ x: wz.x + 6, y: wz.y - 12, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 1.6, trail: [] });
+        }
+        castT = 0.3;
+      }
+      fireCd = 0.55;
+    }
+    // Frost Nova every few seconds
+    novaCd -= dt;
+    if (novaCd <= 0) { rings.push({ x: wz.x, y: wz.y - 8, r: 6, life: .55 }); novaCd = 3.2; }
+    for (const r of rings) {
+      r.r += 120 * dt; r.life -= dt;
+      for (const f of foes) if (Math.abs(Math.hypot(f.x - r.x, f.y - r.y) - r.r) < 6) { f.hp -= 0.08; f.flash = .08; }
+    }
+    rings = rings.filter(r => r.life > 0);
+
+    for (const s of shots) {
+      s.trail.push([s.x, s.y]); if (s.trail.length > 7) s.trail.shift();
+      s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+      for (const f of foes) {
+        if (f.hp > 0 && Math.abs(f.x - s.x) < 8 && Math.abs(f.y - s.y) < 8) { f.hp -= 1; f.flash = .1; s.life = 0; burst(s.x, s.y, 4, [C.bone, "#ffffff"]); break; }
+      }
+    }
+    shots = shots.filter(s => s.life > 0);
+    // foes too close get blasted (keeps the wizard alive for the trailer)
+    for (const f of foes) if (f.d < 14) f.hp = 0;
+    for (const f of foes) if (f.hp <= 0) { burst(f.x, f.y, 8, [C.sage, C.moss, C.ink]); gems.push({ x: f.x, y: f.y, age: 0 }); }
+    foes = foes.filter(f => f.hp > 0 && f.x > -80 && f.x < W + 80 && f.y > -80 && f.y < H + 80);
+
+    for (const g of gems) {
+      g.age += dt;
+      if (g.age > .8) { const dx = wz.x - g.x, dy = (wz.y - 8) - g.y, d = Math.hypot(dx, dy) || 1, sp = 40 + g.age * 90; g.x += dx / d * sp * dt; g.y += dy / d * sp * dt; if (d < 5) { g.got = true; xp += 0.012; } }
+    }
+    gems = gems.filter(g => !g.got);
+    if (xp >= 1) { xp = 0; level++; burst(wz.x, wz.y - 12, 24, [C.bone, C.ember, "#ffffff"]); }
+
+    for (const b of bits) { b.x += b.vx * dt; b.y += b.vy * dt; b.vx *= .92; b.vy *= .92; b.life -= dt; }
+    bits = bits.filter(b => b.life > 0);
+    castT = Math.max(0, castT - dt);
+  }
+
+  function sprite(im, x, y, flip) {
+    if (!im || !im.width) return;
+    const w = im.width, h = im.height;
+    if (flip) { ctx.save(); ctx.scale(-1, 1); ctx.drawImage(im, Math.round(-x - w / 2), Math.round(y - h / 2)); ctx.restore(); }
+    else ctx.drawImage(im, Math.round(x - w / 2), Math.round(y - h / 2));
+  }
+
+  function draw() {
+    const wz = wizardPos();
+    ctx.save();
+    ctx.translate(-Math.round(t * 6) % 240, -Math.round(t * 4) % 200);
+    ctx.fillStyle = ground; ctx.fillRect(0, 0, W + 480, H + 400);
+    ctx.restore();
+
+    for (const g of gems) sprite(img.gem, g.x, g.y + Math.round(Math.sin(g.age * 6)), false);
+    // shadows
+    ctx.fillStyle = C.ink;
+    for (const f of foes) ctx.fillRect(Math.round(f.x - 4), Math.round(f.y + f.k.hp * 2 + 5), 8, 1);
+    for (const f of foes.slice().sort((a, b) => a.y - b.y)) {
+      sprite(img[f.k.n], f.x, f.y, f.x > wz.x);
+    }
+    // frost nova rings, plotted as single pixels to stay crisp
+    for (const r of rings) {
+      ctx.fillStyle = r.life > .2 ? C.bone : C.sage;
+      const n = Math.max(24, Math.round(r.r * 6.3));
+      for (let i = 0; i < n; i++) { const a = i / n * 6.283; ctx.fillRect(Math.round(r.x + Math.cos(a) * r.r), Math.round(r.y + Math.sin(a) * r.r * .8), 1, 1); }
+    }
+    // missile trails (dashed, like the mockup) and heads
+    for (const s of shots) {
+      ctx.fillStyle = C.bone;
+      s.trail.forEach(([x, y], i) => { if (i % 2 === 0) ctx.fillRect(Math.round(x), Math.round(y), 1, 1); });
+      sprite(img.bullet, s.x, s.y, false);
+    }
+    // wizard
+    const sheet = img.player_sheet;
+    if (sheet && sheet.width) {
+      const frames = castT > 0 ? CAST : WALK;
+      const fi = frames[Math.floor(t * (castT > 0 ? 12 : 10)) % frames.length];
+      ctx.fillStyle = C.ink; ctx.fillRect(wz.x - 7, wz.y + 13, 14, 2);
+      ctx.drawImage(sheet, fi * 32, 0, 32, 32, wz.x - 16, wz.y - 18, 32, 32);
+    }
+    for (const b of bits) { ctx.fillStyle = b.c; ctx.fillRect(Math.round(b.x), Math.round(b.y), 1, 1); }
+  }
+
+  const xpEl = document.getElementById("xp"), lvlEl = document.getElementById("lvl"), clockEl = document.getElementById("clock");
+  function hud() {
+    xpEl.style.width = Math.round(xp * 100) + "%";
+    lvlEl.textContent = "Level " + level;
+    const s = Math.floor(clock);
+    clockEl.textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0); last = now;
+    if (!document.hidden) { step(dt); draw(); hud(); }
+    requestAnimationFrame(frame);
+  }
+
+  load().then(() => {
+    resize(); buildGround();
+    // pre-roll so the first frame already looks like a run in progress
+    for (let i = 0; i < 600; i++) step(1 / 30);
+    draw(); hud();
+    if (!reduce) requestAnimationFrame(n => { last = n; frame(n); });
+    addEventListener("resize", () => { resize(); draw(); });
+  });
+})();
+</script>
+</body>
+</html>

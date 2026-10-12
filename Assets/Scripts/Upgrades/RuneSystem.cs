@@ -32,6 +32,9 @@ public class RuneSystem : UpgradeSystem
         sockets.Clear();
     }
 
+    public override IReadOnlyList<Rune> SocketedRunes(Spell spell) => SocketsOf(spell);
+    public override int SocketCount => Sockets;
+
     List<Rune> SocketsOf(Spell s)
     {
         if (!sockets.TryGetValue(s, out var list)) sockets[s] = list = new List<Rune>();
@@ -69,18 +72,19 @@ public class RuneSystem : UpgradeSystem
         var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Sockets);
         evolves.Clear();
         evolves.AddRange(ready);
+        Telemetry.Offer(runeOffer, tome, evolves);
     }
 
     public override void AutoPick()
     {
         if (evolve != null && Random.value < 0.5f) { Evolve(evolve); return; }
-        if (tome.HasValue && Random.value < 0.5f) { Player.Learn(tome.Value); return; }
+        if (tome.HasValue && Random.value < 0.5f) { LearnTome(tome.Value); return; }
         var open = Player.Spells.FindAll(s => SocketsOf(s).Count < Sockets);
         if (open.Count == 0)
         {
             if (evolve != null) Evolve(evolve);
-            else if (tome.HasValue) Player.Learn(tome.Value);
-            else Player.Heal(999f);
+            else if (tome.HasValue) LearnTome(tome.Value);
+            else Rest();
             return;
         }
         Socket(open[Random.Range(0, open.Count)], runeOffer[Random.Range(0, runeOffer.Count)]);
@@ -91,7 +95,9 @@ public class RuneSystem : UpgradeSystem
         var list = SocketsOf(spell);
         list.Add(rune);
         spell.AddRune(rune);
-        if (CountOf(list, rune) == Tune.I("runes.resonanceCount", 3))
+        bool resonates = CountOf(list, rune) == Tune.I("runes.resonanceCount", 3);
+        Telemetry.PickRune(rune, spell, resonates);
+        if (resonates)
         {
             spell.AddRune(rune);   // resonance: the third matching rune counts double
             GameManager.Instance.Toast($"{spell.Name} resonates with {Spell.RuneName(rune)}!");
@@ -102,9 +108,22 @@ public class RuneSystem : UpgradeSystem
     {
         SocketsOf(spell).Clear();
         spell.Evolve();
+        Telemetry.PickEvolve(spell);
         GameManager.Instance.Toast($"{spell.Name} evolved: {spell.Title}!");
         Fx.Ring(Player.Position, spell.Color, 3f, 0.6f);
         Fx.Burst(Player.Position, spell.Color, 5f);
+    }
+
+    void LearnTome(SpellId id)
+    {
+        Player.Learn(id);
+        Telemetry.PickTome(id);
+    }
+
+    void Rest()
+    {
+        Player.Heal(999f);
+        Telemetry.PickRest();
     }
 
     public override bool Draw() => held == null ? DrawRuneChoice() : DrawSocketChoice();
@@ -151,7 +170,7 @@ public class RuneSystem : UpgradeSystem
             var rect = new Rect(col.x, y, col.width, h);
             if (UI.Card(rect, $"Tome: {preview.Name}", preview.Blurb, preview.Color, "NEW SPELL"))
             {
-                Player.Learn(tome.Value);
+                LearnTome(tome.Value);
                 return true;
             }
             y += h + gap;
@@ -161,7 +180,7 @@ public class RuneSystem : UpgradeSystem
         {
             if (UI.Card(new Rect(col.x, y, col.width, h), "Rest", "All sockets are full. Heal fully instead.", new Color(1f, 0.4f, 0.55f)))
             {
-                Player.Heal(999f);
+                Rest();
                 return true;
             }
         }

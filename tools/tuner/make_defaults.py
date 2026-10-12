@@ -20,6 +20,12 @@ tuning = {
         "_castRate": "Multiplies every spell cooldown and enemy attack interval.",
     },
     "audio": {"volume": 1.0},
+    "hud": {
+        "fontScale": 1.2,
+        "_fontScale": "Text size multiplier for the pixel font (Dusk and CRT); VT323 draws small for its point size.",
+        "effectCounters": {"enabled": True, "size": 0.035, "offset": 0.6, "life": 0.9, "rise": 0.6,
+            "_about": "The small x### tallies over combos and bug bursts. size = text scale (damage numbers are 0.05), offset = units above the trigger spot, life in seconds, rise in units/s."},
+    },
     "fx": {
         "enabled": True, "maxParticles": 1500, "drag": 4, "highlightShare": 0.25,
         "_about": "Particle sparks, Dusk art style only. count = particles per effect, speed in units/s, size in world units (Dusk rounds to whole pixels), life in seconds.",
@@ -84,6 +90,10 @@ tuning = {
         "goldPerMinute": 5,
         "goldWin": 50,
         "_about": "Gold and the Grimoire. Gold per run = kills + bosses + minutes survived (+ goldWin on a win), kept even if you die. Arcane Missile, Fireball and Frost Nova tomes are free; the rest cost tomeCost. Evolution II needs its feat (beat featBossesT2 bosses with the spell in your build), III needs a win with the spell at tier II+.",
+    },
+    "telemetry": {
+        "enabled": True, "enemyEvents": True, "snapshotEvery": 10, "flushEvery": 30,
+        "_about": "Run logs sent to the tuner (Runs page; files in tools/tuner/telemetry). enabled = record runs at all. enemyEvents = one line per enemy spawn and kill (the summary always has per-enemy totals). snapshotEvery = seconds of play between tick lines (health, level, enemies alive). flushEvery = real seconds between uploads during a run.",
     },
     "runes": {
         "startSockets": 2, "socketsPerBoss": 1, "evolveAt": 4, "maxSpells": 5, "tomeEveryLevels": 2, "resonanceCount": 3,

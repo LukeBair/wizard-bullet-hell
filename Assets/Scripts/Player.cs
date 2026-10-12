@@ -189,6 +189,7 @@ public class Player : MonoBehaviour
         {
             Xp -= XpToNext;
             Level++;
+            Telemetry.LevelUp(Level);
             GameManager.Instance.QueueLevelUp();
         }
     }
@@ -250,13 +251,15 @@ public class Player : MonoBehaviour
         foreach (var r in renderers) r.enabled = true;
     }
 
-    public void TakeDamage(float amount)
+    // source and kind are for telemetry: the enemy's name, and contact, bullet or hazard.
+    public void TakeDamage(float amount, string source = null, string kind = "other")
     {
         if (!IsAlive || invulnTimer > 0f) return;
         var veil = GetSpell<Veil>();
-        if (veil != null && veil.TryAbsorb()) return;
+        if (veil != null && veil.TryAbsorb()) { Telemetry.Blocked("veil", source); return; }
 
         Health -= amount;
+        Telemetry.Hurt(amount, source, kind, Health);
         invulnTimer = InvulnTime;
         GameManager.Instance.Shake(0.2f);
         Sfx.Play(Sound.PlayerHurt, 0.8f);

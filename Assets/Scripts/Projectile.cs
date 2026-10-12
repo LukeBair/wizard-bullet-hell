@@ -22,6 +22,7 @@ public class Projectile : MonoBehaviour
     public float Knockback = 2f;
     public Action<Projectile, Enemy> OnHit;   // spell-specific effects (explode, burn, chain...)
     public Action<Projectile> OnExpire;       // runs if it times out without being used up
+    public string Source;                     // enemy bullets: who fired it, for telemetry
 
     float age, trailTimer;
     Color color;
@@ -58,6 +59,7 @@ public class Projectile : MonoBehaviour
         p.Velocity = velocity;
         p.Radius = radius;
         p.color = color;
+        if (team == Team.Enemy) p.Source = Telemetry.Actor;
 
         // Enemy bullets look bigger than their hitbox, which is what makes bullet hell feel fair.
         float visual = team == Team.Enemy ? 1.6f : 1.3f;
@@ -83,6 +85,7 @@ public class Projectile : MonoBehaviour
         Knockback = 2f;
         OnHit = null;
         OnExpire = null;
+        Source = null;
         age = trailTimer = 0f;
         hit.Clear();
         enabled = true;
@@ -182,7 +185,8 @@ public class Projectile : MonoBehaviour
                 float r = Radius + Player.HitRadius;
                 if ((player.Position - pos).sqrMagnitude < r * r)
                 {
-                    if (!player.BlockBullet()) player.TakeDamage(Damage);
+                    if (player.BlockBullet()) Telemetry.Blocked("ward", Source);
+                    else player.TakeDamage(Damage, Source, "bullet");
                     Release();
                 }
             }

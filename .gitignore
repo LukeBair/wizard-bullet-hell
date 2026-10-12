@@ -31,3 +31,7 @@ Assets/Resources/tuning_host.txt.meta
 
 # The phone's progress mirrored by the tuner (tools/tuner/server.js)
 tools/tuner/save.json
+
+# Gameplay logs sent by the phone to the tuner (tools/tuner/server.js); only the format README is tracked
+tools/tuner/telemetry/*
+!tools/tuner/telemetry/README.md

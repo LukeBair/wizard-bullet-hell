@@ -28,6 +28,8 @@ public class Enemy : MonoBehaviour
     // Cached, since crowds read each other's positions thousands of times a frame; MoveTo keeps it in step with the transform.
     public Vector2 Position { get; private set; }
     public bool Hidden { get; private set; }   // burrowed: can't be hit or targeted
+    public int TelemetryId, TelemetryRun;   // set by Telemetry when a run is being logged
+    public float BornAt;
 
     // Bigger enemies shrug off more frostbite.
     float FrostResist => Def.Tier == EnemyTier.Chaff ? Tune.F("status.frostbiteTakenChaff", 1f)
@@ -66,7 +68,8 @@ public class Enemy : MonoBehaviour
     Color bodyColor, shownColor;
     Enemy[] self;
 
-    public static Enemy Spawn(EnemyDef def, Vector2 position, float healthScale)
+    // cause is for telemetry: what made it appear (the Director passes trickle, swarm, boss...).
+    public static Enemy Spawn(EnemyDef def, Vector2 position, float healthScale, string cause = "summon")
     {
         var go = new GameObject(def.Name);
         go.transform.position = position;
@@ -78,6 +81,7 @@ public class Enemy : MonoBehaviour
         e.fireTimer = def.FireInterval * Tuning.CastRate * Random.Range(0.5f, 1f);
         e.stateTimer = Random.Range(2f, 4f);
         e.BuildVisual();
+        Telemetry.Spawned(e, cause);
         return e;
     }
 
@@ -96,6 +100,7 @@ public class Enemy : MonoBehaviour
 
     void OnEnable() => All.Add(this);
     void OnDisable() => All.Remove(this);
+    void OnDestroy() { if (IsAlive) Telemetry.Despawned(this); }
 
     void MoveTo(Vector2 p)
     {
@@ -263,6 +268,7 @@ public class Enemy : MonoBehaviour
         if (gm.State != GameState.Playing) return;
         var player = gm.Player;
         if (player == null) return;
+        Telemetry.Actor = Def.Name;   // bullets and hazards made below remember who fired them
 
         float dt = Time.deltaTime;
         Vector2 pos = Position;
@@ -331,7 +337,7 @@ public class Enemy : MonoBehaviour
         // Contact damage. Rooted and charmed enemies never hurt the wizard by touch.
         float hit = Radius * 0.85f + Player.BodyRadius;
         if (!Hidden && !IsRooted && !IsCharmed && (player.Position - pos).sqrMagnitude < hit * hit)
-            player.TakeDamage(Def.ContactDamage);
+            player.TakeDamage(Def.ContactDamage, Def.Name, "contact");
 
         if (IsCharmed && prey != null)
         {
@@ -659,6 +665,7 @@ public class Enemy : MonoBehaviour
     System.Collections.IEnumerator SpikeLater(Vector2 at, float delay)
     {
         yield return new WaitForSeconds(delay);
+        Telemetry.Actor = Def.Name;
         Hazard.Spawn(at, 0.85f, 0.8f, 18f, Def.Accent);
     }
 
@@ -946,6 +953,7 @@ public class Enemy : MonoBehaviour
         float radius = fire ? Tune.F("combos.firebugsRadius", 2f) : Tune.F("runes.Infest.burstRadius", 1.4f);
         if (fire) Interactions.Trigger(Interaction.Firebugs, Position);
         if (hex) Interactions.Trigger(Interaction.HexSwarm, Position);
+        if (!fire && !hex) EffectCounter.Count("Bug Burst", Position, new Color(0.6f, 0.75f, 0.2f));
         var c = fire ? new Color(1f, 0.6f, 0.2f) : new Color(0.6f, 0.75f, 0.2f);
         Fx.Burst(Position, c, radius * 2f);
         Fx.Ring(Position, c, radius, 0.3f);
@@ -999,6 +1007,7 @@ public class Enemy : MonoBehaviour
         if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();
         if (IsRooted) rootDeathBloom?.Invoke(Position);
+        Telemetry.Killed(this);   // before Died: a boss kill can end the run
         Died?.Invoke(this);
         if (Def.Behavior == EnemyBehavior.Splitter)
         {
@@ -1006,7 +1015,7 @@ public class Enemy : MonoBehaviour
             for (int i = 0; i < 3; i++)
             {
                 float a = i * Mathf.PI * 2f / 3f + phase;
-                var child = Spawn(small, Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.5f, gm.Director.HealthScale);
+                var child = Spawn(small, Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.5f, gm.Director.HealthScale, "split");
                 child.knockback = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 6f;
             }
         }

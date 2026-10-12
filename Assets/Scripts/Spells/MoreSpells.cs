@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Mirror shards orbit the wizard and throw enemy bullets back as bolts of light.
+// Curved mirror shards orbit the wizard and throw enemy bullets back as bolts of light.
 // II: reflected bolts home in on foes. III: each reflected bolt splits into three.
 public class MirrorWard : Spell, IOrbiter
 {
@@ -16,14 +16,18 @@ public class MirrorWard : Spell, IOrbiter
     protected override bool Overloadable => false;
 
     readonly List<(Transform shard, int set, int index)> shards = new List<(Transform, int, int)>();
+    readonly List<Transform> pieces = new List<Transform>();   // every shard's segments, laid along the ring
     Transform track;
+    float laidRadius;
     static readonly List<Projectile> scratch = new List<Projectile>();
     float angle;
 
     public int OrbitRings => 1;
     int Sets => 1 + Echoes;
     float OrbitRadius => Orbits.Radius(this, 0);
-    float ShardRadius => T("shardSize", 0.32f) * Area;
+    float ShardLength => T("shardLength", 1f) * Area;        // along the ring
+    float ShardThickness => T("shardThickness", 0.16f) * Area;
+    const int Segments = 6;
 
     public override string TierName(int tier) => tier == 2 ? "Prism" : tier == 3 ? "Hall of Mirrors" : Name;
     public override string TierDescription(int tier) =>
@@ -55,17 +59,43 @@ public class MirrorWard : Spell, IOrbiter
         foreach (var s in shards) if (s.shard != null) Object.Destroy(s.shard.gameObject);
         if (track != null) Object.Destroy(track.gameObject);
         shards.Clear();
-        track = SpriteFactory.Child(Owner.transform, "MirrorOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.15f), Vector2.zero, OrbitRadius * 2f + ShardRadius, 47).transform;
+        pieces.Clear();
+        track = SpriteFactory.Child(Owner.transform, "MirrorOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.15f), Vector2.zero, OrbitRadius * 2f + ShardThickness, 47).transform;
+        Color light = Color.Lerp(Color, Color.white, 0.6f);
         for (int set = 0; set < Sets; set++)
         {
             for (int i = 0; i < Count; i++)
             {
+                // The shard pivots on the wizard; its segments sit on the ring and bend with it.
                 var go = new GameObject("MirrorShard");
                 go.transform.SetParent(Owner.transform, false);
-                SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.45f), Vector2.zero, ShardRadius * 4f, 56);
-                SpriteFactory.Child(go.transform, "Shard", SpriteFactory.Diamond, Color.Lerp(Color, Color.white, 0.6f), Vector2.zero, ShardRadius * 2f, 58);
+                for (int k = 0; k < Segments; k++)
+                {
+                    var piece = new GameObject("Piece").transform;
+                    piece.SetParent(go.transform, false);
+                    SpriteFactory.Child(piece, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.2f), Vector2.zero, 1f, 56).transform.localScale = new Vector3(1.4f, 3f, 1f);
+                    SpriteFactory.Child(piece, "Bar", SpriteFactory.Square, light, Vector2.zero, 1f, 58);
+                    pieces.Add(piece);
+                }
                 shards.Add((go.transform, set, i));
             }
+        }
+        laidRadius = 0f;   // lay the segments on the next tick
+    }
+
+    // Place each shard's segments along an arc of the ring, tangent to it.
+    void LaySegments(float radius)
+    {
+        laidRadius = radius;
+        float span = ShardLength / radius;   // radians
+        float step = span / Segments;
+        var size = new Vector3(step * radius * 1.15f, ShardThickness, 1f);   // slight overlap so the bar reads as one piece
+        for (int n = 0; n < pieces.Count; n++)
+        {
+            float phi = -span * 0.5f + step * (n % Segments + 0.5f);
+            pieces[n].localPosition = new Vector2(Mathf.Cos(phi), Mathf.Sin(phi)) * radius;
+            pieces[n].localRotation = Quaternion.Euler(0, 0, phi * Mathf.Rad2Deg + 90f);
+            pieces[n].localScale = size;
         }
     }
 
@@ -74,7 +104,9 @@ public class MirrorWard : Spell, IOrbiter
         angle += T("spinSpeed", 160f) / Cooldown * dt * Tuning.Pace;
         // The ring shifts outward when another orbiting spell is learned first, so keep the track in step.
         float radius = OrbitRadius;
-        if (track != null) track.localScale = Vector3.one * (radius * 2f + ShardRadius);
+        if (track != null) track.localScale = Vector3.one * (radius * 2f + ShardThickness);
+        if (!Mathf.Approximately(radius, laidRadius)) LaySegments(radius);
+        float halfSpan = ShardLength / radius * 0.5f;
         scratch.Clear();
         foreach (var p in Projectile.All) if (p.Team == Team.Enemy && p.enabled) scratch.Add(p);
 
@@ -82,17 +114,19 @@ public class MirrorWard : Spell, IOrbiter
         {
             var shard = s.shard;
             float a = Orbits.Angle(angle, 0, s.set, Sets, s.index, Count) * Mathf.Deg2Rad;
-            Vector2 local = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * radius;
-            shard.localPosition = local;
+            shard.localPosition = Vector3.zero;
             shard.localRotation = Quaternion.Euler(0, 0, a * Mathf.Rad2Deg);
-            Vector2 world = Owner.Position + local;
 
+            // A bullet touches the shard when it is on the ring band and within the shard's arc.
             foreach (var p in scratch)
             {
                 if (!p.enabled) continue;
                 Vector2 at = p.Position;
-                float r = ShardRadius + p.Radius;
-                if ((at - world).sqrMagnitude > r * r) continue;
+                Vector2 d = at - Owner.Position;
+                float dist = d.magnitude;
+                if (Mathf.Abs(dist - radius) > ShardThickness * 0.5f + p.Radius) continue;
+                float off = Mathf.Abs(Mathf.DeltaAngle(a * Mathf.Rad2Deg, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg)) * Mathf.Deg2Rad;
+                if (off > halfSpan + p.Radius / Mathf.Max(0.01f, dist)) continue;
                 Reflect(p, at);
             }
         }

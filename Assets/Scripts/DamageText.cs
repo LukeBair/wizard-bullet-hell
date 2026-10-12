@@ -5,10 +5,11 @@ public class DamageText : MonoBehaviour
 {
     const int MaxLive = 60;
     static int live;
-    static Font font;
+    static Font builtin;
 
     float life;
     TextMesh text;
+    MeshRenderer mr;
     Color color;
 
     // Finished numbers are parked and reused instead of building a new TextMesh per hit.
@@ -17,7 +18,8 @@ public class DamageText : MonoBehaviour
     public static void Spawn(Vector2 pos, float amount, Color color)
     {
         if (live >= MaxLive || amount < 0.5f) return;
-        if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (builtin == null) builtin = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        var font = UI.Font != null ? UI.Font : builtin;
 
         DamageText d = null;
         while (d == null && pool.Count > 0) d = pool.Pop();
@@ -26,17 +28,21 @@ public class DamageText : MonoBehaviour
             var go = new GameObject("Dmg");
             d = go.AddComponent<DamageText>();
             d.text = go.AddComponent<TextMesh>();
-            d.text.font = font;
             d.text.fontSize = 48;
-            d.text.characterSize = 0.05f;
             d.text.anchor = TextAnchor.MiddleCenter;
-            d.text.fontStyle = FontStyle.Bold;
-            var mr = go.GetComponent<MeshRenderer>();
-            mr.sharedMaterial = font.material;
-            mr.sortingOrder = 95;
+            d.mr = go.GetComponent<MeshRenderer>();
+            d.mr.sortingOrder = 95;
         }
         else d.gameObject.SetActive(true);
 
+        // The UI font can change with the art style, so set it on reused numbers too.
+        if (d.text.font != font)
+        {
+            d.text.font = font;
+            d.mr.sharedMaterial = font.material;
+        }
+        d.text.characterSize = 0.05f * UI.FontScale;
+        d.text.fontStyle = font == builtin ? FontStyle.Bold : FontStyle.Normal;
         d.transform.position = pos + new Vector2(Random.Range(-0.2f, 0.2f), 0.3f);
         d.text.text = Number(Mathf.RoundToInt(amount));
         d.color = color;

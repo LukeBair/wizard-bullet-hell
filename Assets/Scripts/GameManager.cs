@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum GameState { Title, Grimoire, TomePick, Playing, LevelUp, GameOver, Victory }
+public enum GameState { Title, Grimoire, TomePick, Playing, LevelUp, Paused, GameOver, Victory }
 
 // Owns the run: title screen, camera, starting tome, level-up flow, zone changes, game over, victory
 // and the HUD.
@@ -12,6 +12,15 @@ public class GameManager : MonoBehaviour
 
     const string BestKey = "best_time_Runes";
     const string WinsKey = "wins";
+    const string DebugUiKey = "debug_ui";
+
+    // Developer readouts (threat, enemy scaling, fps, tuning source). Toggled on the title screen.
+    public static bool DebugUi
+    {
+        get => PlayerPrefs.GetInt(DebugUiKey, 0) == 1;
+        set { PlayerPrefs.SetInt(DebugUiKey, value ? 1 : 0); PlayerPrefs.Save(); }
+    }
+    float fps = 60f;
     const float FadeTime = 0.6f;
     const float CameraSize = 7.5f;
     static readonly Color GoldColor = new Color(1f, 0.85f, 0.4f);
@@ -60,6 +69,9 @@ public class GameManager : MonoBehaviour
         State = GameState.Title;
         StartCoroutine(Tune.FetchFromMac());
     }
+
+    // Going to the background may be the last we see of this run: keep its log on the device.
+    void OnApplicationPause(bool paused) { if (paused) Telemetry.SaveToDevice(); }
 
     void OnEnable() => Enemy.Died += OnEnemyDied;
     void OnDisable() => Enemy.Died -= OnEnemyDied;
@@ -115,6 +127,7 @@ public class GameManager : MonoBehaviour
         Clear<Fx>();
         Clear<Hazard>();
         Clear<DamageText>();
+        Clear<EffectCounter>();
         Clear<Vortex>();
         Clear<WaterBeam>();
         Clear<WaterPillar>();
@@ -139,6 +152,7 @@ public class GameManager : MonoBehaviour
         Director.ResetRun(Arena.Biome);
         Upgrades = new RuneSystem();
         Upgrades.Begin(Player);
+        Telemetry.BeginRun(this, zones);
         State = GameState.TomePick;
         Time.timeScale = 0f;
         Joystick.Blocked = true;   // released once the starting tap lifts
@@ -174,6 +188,7 @@ public class GameManager : MonoBehaviour
         Player.transform.position = Vector3.zero;
         camPos = Vector2.zero;
         Director.EnterZone(next);
+        Telemetry.Zone(zoneIndex + 1, next.Name);
         Director.Holding = false;
         fadeInUntil = Time.time + FadeTime;
         Toast(next.Name);
@@ -186,6 +201,7 @@ public class GameManager : MonoBehaviour
         gameOverTime = Time.unscaledTime;
         Grimoire.RecordWin(Player);
         BankGold(true);
+        Telemetry.EndRun(this, "win", bankedGold);
         PlayerPrefs.SetInt(WinsKey, PlayerPrefs.GetInt(WinsKey, 0) + 1);
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f)) PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
         PlayerPrefs.Save();
@@ -209,6 +225,7 @@ public class GameManager : MonoBehaviour
         State = GameState.GameOver;
         gameOverTime = Time.unscaledTime;
         BankGold(false);
+        Telemetry.EndRun(this, "death", bankedGold);
         StartCoroutine(Tune.FetchFromMac());   // pick up tuner edits before the next try
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f))
         {
@@ -219,7 +236,9 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        if (Time.unscaledDeltaTime > 0f) fps = Mathf.Lerp(fps, 1f / Time.unscaledDeltaTime, 0.05f);
         if (State == GameState.Playing && shiftAt > 0f && Time.time >= shiftAt) ShiftZone();
+        if (State == GameState.Playing || State == GameState.LevelUp) Telemetry.Update(this);
 
         if (Autoplay && State == GameState.TomePick)
         {
@@ -294,6 +313,7 @@ public class GameManager : MonoBehaviour
                     else { State = GameState.Playing; Time.timeScale = 1f; }
                 }
                 break;
+            case GameState.Paused: DrawHud(); DrawPause(); break;
             case GameState.GameOver: DrawHud(); DrawGameOver(); break;
             case GameState.Victory: DrawHud(); DrawVictory(); break;
         }
@@ -321,10 +341,15 @@ public class GameManager : MonoBehaviour
             OpenGrimoire();
         DrawStylePicker(new Rect(col.x, col.y + 455f * s, col.width, 110f * s));
 
-        string tuning = Tune.Fetching ? "Tuning: checking Mac..." : $"Tuning: {Tune.Source}";
-        UI.Text(new Rect(col.x, col.y + 720f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
-        if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 765f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
-            StartCoroutine(Tune.FetchFromMac());
+        if (DebugUi)
+        {
+            string tuning = Tune.Fetching ? "Tuning: checking Mac..." : $"Tuning: {Tune.Source}";
+            UI.Text(new Rect(col.x, col.y + 720f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
+            if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 765f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
+                StartCoroutine(Tune.FetchFromMac());
+        }
+
+        DrawDebugToggle();
         UI.Text(new Rect(col.x, col.y + 585f * s, col.width, 140f * s),
             "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nBeat the bosses for more sockets and a new zone.",
             24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
@@ -450,13 +475,9 @@ public class GameManager : MonoBehaviour
         UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
         UI.Text(new Rect(left + 130f * s, top + 8f * s, 200f * s, 30f * s), $"{Mathf.FloorToInt(runGold)} gold", 24, TextAnchor.UpperLeft, GoldColor);
         UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
-        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}  ·  Threat {Director.Threat + 1}  ·  Foes x{Director.HealthScale:0.##}", 20, TextAnchor.UpperCenter, new Color(1f, 0.6f, 0.5f));
+        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
-        {
-            BankGold(false);
-            State = GameState.Title;
-            Time.timeScale = 1f;
-        }
+            Pause();
         top += 52f * s;
 
         // Health bar
@@ -464,6 +485,9 @@ public class GameManager : MonoBehaviour
         UI.Bar(new Rect(left, top, hpW, 20f * s), Player.Health / Player.MaxHealth, ArtStyle.HealthColor);
         UI.Text(new Rect(left + hpW + 10f * s, top - 6f * s, 200f * s, 30f * s), Mathf.CeilToInt(Mathf.Max(0f, Player.Health)).ToString(), 22);
         top += 32f * s;
+
+        if (DebugUi)
+            UI.Text(new Rect(left, top, 420f * s, 28f * s), $"Threat {Director.Threat + 1}  ·  Foes x{Director.HealthScale:0.##}  ·  {Mathf.RoundToInt(fps)} fps", 18, TextAnchor.UpperLeft, new Color(1f, 0.6f, 0.5f, 0.8f), false);
 
         Upgrades.DrawHud(new Rect(left, top, 400f * s, 200f * s));
 
@@ -489,6 +513,103 @@ public class GameManager : MonoBehaviour
             UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"{tier}Lv{spell.Level}", 20, TextAnchor.UpperCenter);
             x += d + gap;
         }
+    }
+
+    // Bottom-left button on the title screen and pause menu.
+    void DrawDebugToggle()
+    {
+        float s = UiScale;
+        Rect safe = Screen.safeArea;
+        var r = new Rect(safe.xMin + 20f * s, Screen.height - safe.yMin - 84f * s, 200f * s, 64f * s);
+        if (UI.Button(r, DebugUi ? "Debug: On" : "Debug: Off", DebugUi ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.5f, 0.5f, 0.6f)))
+            DebugUi = !DebugUi;
+    }
+
+    // ---------------------------------------------------------------- pause menu
+
+    string confirming;   // "Restart" or "Quit" once tapped; a second tap does it
+
+    void Pause()
+    {
+        Sfx.Play(Sound.Select, 0.8f);
+        Haptics.Selection();
+        confirming = null;
+        State = GameState.Paused;
+        Time.timeScale = 0f;
+    }
+
+    void Resume()
+    {
+        Sfx.Play(Sound.Select, 0.8f);
+        Haptics.Selection();
+        State = GameState.Playing;
+        Time.timeScale = 1f;
+        Joystick.Blocked = true;   // released once the tap lifts, so it doesn't start a drag
+    }
+
+    // The run's spells up top, then Resume, the Grimoire, and Restart / Quit (each asks for a second tap).
+    void DrawPause()
+    {
+        float s = UiScale;
+        UI.Dim(0.75f);
+        var col = UI.Column(0.06f, 0.9f);
+        UI.Text(new Rect(col.x, col.y, col.width, 60f * s), "Paused", 52, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
+        UI.Text(new Rect(col.x, col.y + 62f * s, col.width, 36f * s), "Your spells", 26, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
+
+        float y = col.y + 104f * s, h = 124f * s, gap = 10f * s;
+        foreach (var spell in Player.Spells)
+        {
+            DrawPauseSpell(spell, new Rect(col.x, y, col.width, h));
+            y += h + gap;
+        }
+        if (Player.Spells.Count == 0) y += 40f * s;
+
+        y += 14f * s;
+        if (UI.Button(new Rect(col.x + col.width * 0.1f, y, col.width * 0.8f, 110f * s), "Resume", new Color(0.6f, 0.45f, 1f)))
+        {
+            Resume();
+            return;
+        }
+        y += 126f * s;
+        float bw = (col.width - 2f * gap) / 3f, bh = 90f * s;
+        if (UI.Button(new Rect(col.x, y, bw, bh), "Spellbook", GoldColor))
+        {
+            confirming = null;
+            OpenGrimoire();
+        }
+        if (UI.Button(new Rect(col.x + bw + gap, y, bw, bh), confirming == "Restart" ? "Sure?" : "Restart", new Color(1f, 0.55f, 0.4f)))
+        {
+            if (confirming != "Restart") confirming = "Restart";
+            else { BankGold(false); Telemetry.EndRun(this, "quit", bankedGold); StartRun(); }
+        }
+        if (UI.Button(new Rect(col.x + 2f * (bw + gap), y, bw, bh), confirming == "Quit" ? "Sure?" : "Quit", new Color(0.6f, 0.6f, 0.7f)))
+        {
+            if (confirming != "Quit") confirming = "Quit";
+            else
+            {
+                BankGold(false);
+                Telemetry.EndRun(this, "quit", bankedGold);
+                State = GameState.Title;
+                Time.timeScale = 1f;
+            }
+        }
+        if (confirming != null)
+            UI.Text(new Rect(col.x, y + bh + 8f * s, col.width, 30f * s), $"Tap again to {confirming.ToLower()}. This run ends and its gold is banked.", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
+        DrawDebugToggle();
+    }
+
+    // One spell: name, tier and level, its socketed runes and any power kept from evolving.
+    void DrawPauseSpell(Spell spell, Rect r)
+    {
+        float s = UiScale;
+        var runes = Upgrades.SocketedRunes(spell);
+        var names = new List<string>();
+        foreach (var rune in runes) names.Add($"<color=#{ColorUtility.ToHtmlStringRGB(Spell.RuneColor(rune))}>{Spell.RuneName(rune)}</color>");
+        string body = names.Count > 0 ? string.Join(", ", names) : "No runes yet";
+        string kept = spell.RetainedSummary();
+        if (kept.Length > 0) body += $"\n<size={Mathf.RoundToInt(18 * s)}><color=#ffd966>Kept: {kept}</color></size>";
+        string tier = spell.CanEvolve ? $"TIER {(spell.Tier == 1 ? "I" : spell.Tier == 2 ? "II" : "III")}  ·  " : "";
+        UI.Card(r, spell.Title, body, spell.Color, $"{tier}{runes.Count}/{Upgrades.SocketCount} RUNES");
     }
 
     void DrawGameOver()
