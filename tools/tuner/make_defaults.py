@@ -63,9 +63,17 @@ tuning = {
         "healthPerSwarm": 0.25, "healthPerBossKill": 1.0, "bossHealthScaleRate": 0.5, "bossKillHeal": 30,
         "_chaff": "Chaff per second = (chaffBase + seconds*chaffPerSecond) * (1 + chaffPerThreat*swarms) * (1 + chaffPerBossKill*bossKills), capped at chaffMax.",
     },
+    "run": {
+        "bosses": 4, "startTomeChoices": 3, "zoneShiftDelay": 3, "favoredWeight": 3,
+        "_bosses": "Bosses per run. Each one (spawning.bossEvery apart) moves the run to a new zone; killing the last one wins. 0 = endless.",
+        "_startTomeChoices": "How many starting tomes are offered at the start of a run.",
+        "_zoneShiftDelay": "Seconds between a boss dying and the zone changing (time to grab the loot).",
+        "_favoredWeight": "How much more often a zone's home medium enemies show up.",
+    },
     "runes": {
-        "sockets": 4, "maxSpells": 5, "tomeEveryLevels": 2, "resonanceCount": 3,
+        "startSockets": 2, "socketsPerBoss": 1, "evolveAt": 4, "maxSpells": 5, "tomeEveryLevels": 2, "resonanceCount": 3,
         "evolveRetain": 0.75,
+        "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A full spell with at least evolveAt runes can evolve.",
         "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
         "Potency": {"weight": 10},
         "Haste": {"weight": 10, "cooldownMultiplier": 0.85},

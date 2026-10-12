@@ -135,7 +135,8 @@ public static class ArtStyle
             case ArtStyleId.Dusk:
                 b.Ground = DuskGround;
                 b.GroundSpeck = DuskNavy;
-                b.Flowers = b.Style == ObstacleStyle.Tree ? new[] { DuskSage, DuskDeepSage, DuskCream } : new[] { DuskCream, DuskCoral };
+                b.Flowers = b.Final ? new[] { DuskCoral, DuskWine, DuskSage }
+                          : b.Style == ObstacleStyle.Tree ? new[] { DuskSage, DuskDeepSage, DuskCream } : new[] { DuskCream, DuskCoral };
                 break;
             case ArtStyleId.Crt:
                 b.Ground = new Color(0.02f, 0.02f, 0.03f);

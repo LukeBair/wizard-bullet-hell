@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum ObstacleStyle { Tree, Pillar, Rock }
 
-// Everything that makes one setting look different. Biomes are cosmetic for now (same enemies),
-// except that each one decides which boss arrives first. One is picked at random per run.
+// Everything that makes one setting look different. A run passes through four zones: the first three
+// in random order, each ending with its own boss, then the Witch's Hollow for the final boss. Every
+// zone has the same enemies, but some medium enemies show up more often in their home zone.
 public class Biome
 {
     public string Name;
@@ -16,6 +18,21 @@ public class Biome
     public int ObstacleCount;
     public Vector2 ObstacleSize;   // min/max radius
     public EnemyRoster Roster;
+    public string[] Favored = new string[0];   // medium enemies that are more common here
+    public bool Final;                         // the last zone of a run
+
+    // The zones of one run: the three regular ones shuffled, then the final zone.
+    public static List<Biome> RunZones()
+    {
+        var zones = new List<Biome> { Forest, Academy, Caves };
+        for (int i = zones.Count - 1; i > 0; i--)
+        {
+            int j = UnityEngine.Random.Range(0, i + 1);
+            (zones[i], zones[j]) = (zones[j], zones[i]);
+        }
+        zones.Add(Hollow);
+        return zones;
+    }
 
     public static Biome Random()
     {
@@ -39,6 +56,7 @@ public class Biome
         ObstacleCount = 34,
         ObstacleSize = new Vector2(0.7f, 1.4f),
         Roster = EnemyRoster.Standard("Elder Treant"),
+        Favored = new[] { "Thornback Wolf", "Root Burrower", "Mother Slime" },
     };
 
     public static Biome Academy => new Biome
@@ -53,6 +71,7 @@ public class Biome
         ObstacleCount = 26,
         ObstacleSize = new Vector2(0.7f, 1.0f),
         Roster = EnemyRoster.Standard("Headmaster Vexley"),
+        Favored = new[] { "Goblin Hexer", "Rogue Apprentice", "Pixie Trickster" },
     };
 
     public static Biome Caves => new Biome
@@ -67,5 +86,23 @@ public class Biome
         ObstacleCount = 30,
         ObstacleSize = new Vector2(0.6f, 1.5f),
         Roster = EnemyRoster.Standard("Crystal Golem"),
+        Favored = new[] { "Root Burrower", "Spore Lobber", "Mother Slime" },
+    };
+
+    // Final zone: a dark swamp wood, home of the Hedge Witch.
+    public static Biome Hollow => new Biome
+    {
+        Name = "Witch's Hollow",
+        Ground = new Color(0.1f, 0.12f, 0.1f),
+        GroundSpeck = new Color(0.16f, 0.18f, 0.13f),
+        ObstacleColor = new Color(0.2f, 0.22f, 0.16f),
+        ObstacleShade = new Color(0.1f, 0.12f, 0.08f),
+        Flowers = new[] { new Color(0.6f, 1f, 0.5f), new Color(0.75f, 0.4f, 0.9f) },   // will-o'-wisps
+        Style = ObstacleStyle.Tree,
+        ObstacleCount = 38,
+        ObstacleSize = new Vector2(0.6f, 1.3f),
+        Roster = EnemyRoster.Standard("The Hedge Witch"),
+        Favored = new[] { "Spore Lobber", "Pixie Trickster", "Goblin Hexer" },
+        Final = true,
     };
 }

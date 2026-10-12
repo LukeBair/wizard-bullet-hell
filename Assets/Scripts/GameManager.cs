@@ -1,15 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum GameState { Title, Playing, LevelUp, GameOver }
+public enum GameState { Title, TomePick, Playing, LevelUp, GameOver, Victory }
 
-// Owns the run: title screen, camera, level-up flow, game over and the HUD.
+// Owns the run: title screen, camera, starting tome, level-up flow, zone changes, game over, victory
+// and the HUD.
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
     public static float UiScale => Mathf.Min(Screen.width / 720f, Screen.height / 1280f);
 
     const string BestKey = "best_time_Runes";
+    const string WinsKey = "wins";
+    const float FadeTime = 0.6f;
     const float CameraSize = 7.5f;
 
     public GameState State { get; private set; }
@@ -28,6 +31,10 @@ public class GameManager : MonoBehaviour
     float shake;
     int pendingLevelUps;
     float gameOverTime;
+    List<Biome> zones;
+    int zoneIndex;
+    float shiftAt = -1f;     // when the next zone change happens (game time), or -1
+    float fadeInUntil;
     readonly List<(string text, float until)> toasts = new List<(string, float)>();
 
     void Awake()
@@ -61,20 +68,26 @@ public class GameManager : MonoBehaviour
         cam.backgroundColor = Color.black;
     }
 
-    void BuildWorld()
+    void BuildWorld(Biome biome = null)
     {
-        Clear<Projectile>();
-        Clear<Enemy>();
+        ClearField();
         Clear<XpGem>();
-        Clear<Fx>();
-        Clear<Hazard>();
-        Clear<DamageText>();
         if (Player != null) Destroy(Player.gameObject);
         if (Arena != null) Destroy(Arena.gameObject);
 
-        Arena = Arena.Create(Biome.Random());
+        Arena = Arena.Create(biome ?? Biome.Random());
         Player = Player.Create(Vector2.zero);
         camPos = Vector2.zero;
+    }
+
+    // Everything that lives in the play field, apart from the wizard and the arena itself.
+    static void ClearField()
+    {
+        Clear<Projectile>();
+        Clear<Enemy>();
+        Clear<Fx>();
+        Clear<Hazard>();
+        Clear<DamageText>();
     }
 
     static void Clear<T>() where T : MonoBehaviour
@@ -84,17 +97,65 @@ public class GameManager : MonoBehaviour
 
     public void StartRun()
     {
-        BuildWorld();
+        zones = Biome.RunZones();
+        zoneIndex = 0;
+        shiftAt = -1f;
+        BuildWorld(zones[0]);
         Score = 0;
         pendingLevelUps = 0;
         toasts.Clear();
-        Director.ResetRun(Arena.Biome.Roster);
+        Director.ResetRun(Arena.Biome);
         Upgrades = new RuneSystem();
         Upgrades.Begin(Player);
+        State = GameState.TomePick;
+        Time.timeScale = 0f;
+        Joystick.Blocked = true;   // released once the starting tap lifts
+    }
+
+    void BeginPlaying()
+    {
         State = GameState.Playing;
         Time.timeScale = 1f;
-        Joystick.Blocked = true;   // released once the starting tap lifts
         Toast(Arena.Biome.Name);
+    }
+
+    // Called by the Director when a boss dies. The last boss wins the run; the others move it on to
+    // the next zone after a short pause to collect the loot.
+    public void BossDefeated(bool final)
+    {
+        if (final) { Win(); return; }
+        Toast("+1 rune socket on every spell");
+        Director.Holding = true;
+        shiftAt = Time.time + Tune.F("run.zoneShiftDelay", 3f);
+    }
+
+    void ShiftZone()
+    {
+        shiftAt = -1f;
+        if (zoneIndex + 1 >= zones.Count) zones.Add(Biome.Random());   // runs with more bosses than zones
+        var next = zones[++zoneIndex];
+        XpGem.CollectAll(Player);
+        ClearField();
+        Destroy(Arena.gameObject);
+        Arena = Arena.Create(next);
+        Player.transform.position = Vector3.zero;
+        camPos = Vector2.zero;
+        Director.EnterZone(next);
+        Director.Holding = false;
+        fadeInUntil = Time.time + FadeTime;
+        Toast(next.Name);
+        Sfx.Play(Sound.Warning, 0.5f, 0f);
+    }
+
+    void Win()
+    {
+        State = GameState.Victory;
+        gameOverTime = Time.unscaledTime;
+        PlayerPrefs.SetInt(WinsKey, PlayerPrefs.GetInt(WinsKey, 0) + 1);
+        if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f)) PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
+        PlayerPrefs.Save();
+        if (Player != null) Particles.LevelUp(Player.Position);
+        StartCoroutine(Tune.FetchFromMac());
     }
 
     public void AddScore(int points)
@@ -122,6 +183,14 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        if (State == GameState.Playing && shiftAt > 0f && Time.time >= shiftAt) ShiftZone();
+
+        if (Autoplay && State == GameState.TomePick)
+        {
+            Upgrades.AutoPickStart();
+            BeginPlaying();
+        }
+
         if (State == GameState.Playing && pendingLevelUps > 0)
         {
             State = GameState.LevelUp;
@@ -168,7 +237,15 @@ public class GameManager : MonoBehaviour
         switch (State)
         {
             case GameState.Title: DrawTitle(); break;
-            case GameState.Playing: DrawHud(); break;
+            case GameState.TomePick:
+                if (Upgrades.DrawStart())
+                {
+                    Sfx.Play(Sound.Select, 0.8f);
+                    Haptics.Selection();
+                    BeginPlaying();
+                }
+                break;
+            case GameState.Playing: DrawHud(); DrawZoneFade(); break;
             case GameState.LevelUp:
                 DrawHud();
                 if (Upgrades.Draw())
@@ -181,6 +258,7 @@ public class GameManager : MonoBehaviour
                 }
                 break;
             case GameState.GameOver: DrawHud(); DrawGameOver(); break;
+            case GameState.Victory: DrawHud(); DrawVictory(); break;
         }
         DrawToasts();
     }
@@ -192,8 +270,9 @@ public class GameManager : MonoBehaviour
         var col = UI.Column(0.18f, 0.8f);
         UI.Text(new Rect(col.x, col.y, col.width, 90f * s), "Wizard Bullet Hell", 60, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
         float best = PlayerPrefs.GetFloat(BestKey, 0f);
+        int wins = PlayerPrefs.GetInt(WinsKey, 0);
         if (best > 0f)
-            UI.Text(new Rect(col.x, col.y + 90f * s, col.width, 50f * s), $"Best: {FormatTime(best)}", 28, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.4f));
+            UI.Text(new Rect(col.x, col.y + 90f * s, col.width, 50f * s), wins > 0 ? $"Wins: {wins}  ·  Best: {FormatTime(best)}" : $"Best: {FormatTime(best)}", 28, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.4f));
 
         if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 220f * s, col.width * 0.7f, 120f * s), "Play", new Color(0.6f, 0.45f, 1f)))
         {
@@ -208,7 +287,7 @@ public class GameManager : MonoBehaviour
         if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 730f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
             StartCoroutine(Tune.FetchFromMac());
         UI.Text(new Rect(col.x, col.y + 500f * s, col.width, 200f * s),
-            "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nFill a spell's sockets to evolve it.",
+            "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nBeat the bosses for more sockets and a new zone.",
             24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
     }
 
@@ -248,7 +327,7 @@ public class GameManager : MonoBehaviour
 
         UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
         UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
-        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Threat {Director.Threat + 1}  ·  Foes x{Director.HealthScale:0.##}", 20, TextAnchor.UpperCenter, new Color(1f, 0.6f, 0.5f));
+        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}  ·  Threat {Director.Threat + 1}  ·  Foes x{Director.HealthScale:0.##}", 20, TextAnchor.UpperCenter, new Color(1f, 0.6f, 0.5f));
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
         {
             State = GameState.Title;
@@ -299,6 +378,33 @@ public class GameManager : MonoBehaviour
             48, TextAnchor.UpperCenter);
         if (Time.unscaledTime - gameOverTime < 0.8f) return;  // so a finger still dragging doesn't tap a button
         if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), "Try again", new Color(0.6f, 0.45f, 1f)))
+            StartRun();
+        if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), "Title screen", new Color(0.6f, 0.6f, 0.7f)))
+        {
+            State = GameState.Title;
+            StartCoroutine(Tune.FetchFromMac());
+        }
+    }
+
+    // Fades to black just before a zone change and back in after it.
+    void DrawZoneFade()
+    {
+        float a = 0f;
+        if (shiftAt > 0f) a = 1f - Mathf.Clamp01((shiftAt - Time.time) / FadeTime);
+        else if (Time.time < fadeInUntil) a = Mathf.Clamp01((fadeInUntil - Time.time) / FadeTime);
+        if (a > 0f) UI.Dim(a);
+    }
+
+    void DrawVictory()
+    {
+        float s = UiScale;
+        UI.Dim(0.6f);
+        var col = UI.Column(0.25f, 0.6f);
+        UI.Text(new Rect(col.x, col.y, col.width, 300f * s),
+            $"Victory!\n\n<size={Mathf.RoundToInt(30 * s)}>The wizard survived every zone\n{FormatTime(Director.Elapsed)}  ·  Level {Player.Level}  ·  Wins: {PlayerPrefs.GetInt(WinsKey, 0)}</size>",
+            56, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.4f));
+        if (Time.unscaledTime - gameOverTime < 0.8f) return;
+        if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), "Play again", new Color(0.6f, 0.45f, 1f)))
             StartRun();
         if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), "Title screen", new Color(0.6f, 0.6f, 0.7f)))
         {

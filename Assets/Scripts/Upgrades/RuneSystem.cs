@@ -2,15 +2,19 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Rune Sockets: each level you take a rune stone, then choose which spell to socket it into.
-// While holding a rune, every spell shows what that rune would do to it. Each spell has 4 sockets,
-// and three matching runes in one spell Resonate for a free extra copy.
+// While holding a rune, every spell shows what that rune would do to it. Every spell starts a run
+// with 2 sockets and gains one more each time a boss dies. Three matching runes in one spell
+// Resonate for a free extra copy.
 // Split and Echo are rare. Spell tomes appear every other level. A spell whose sockets are full
-// can Evolve: its runes are wiped for a stronger base form (up to tier III).
+// (with at least runes.evolveAt runes) can Evolve: its runes are wiped for a stronger base form
+// (up to tier III).
 public class RuneSystem : UpgradeSystem
 {
     public override string Name => "Rune Sockets";
 
-    static int Sockets => Tune.I("runes.sockets", 4);
+    static int Sockets => Mathf.Max(1, Tune.I("runes.startSockets", 2)
+        + Tune.I("runes.socketsPerBoss", 1) * GameManager.Instance.Director.BossesDefeated);
+    static int EvolveAt => Tune.I("runes.evolveAt", 4);
 
     // Rarity: runes.<Rune>.weight. Rare runes default to a quarter of the common weight.
     static float Weight(Rune r) => Tune.F($"runes.{r}.weight", Spell.IsRare(r) ? 2.5f : 10f);
@@ -61,7 +65,7 @@ public class RuneSystem : UpgradeSystem
         if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
             tome = unlearned[Random.Range(0, unlearned.Count)];
 
-        var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && SocketsOf(s).Count >= Sockets);
+        var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && SocketsOf(s).Count >= Mathf.Max(Sockets, EvolveAt));
         evolve = ready.Count > 0 ? ready[Random.Range(0, ready.Count)] : null;
     }
 
