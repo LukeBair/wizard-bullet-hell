@@ -34,6 +34,7 @@ public class Director : MonoBehaviour
     float chaffBudget, mediumTimer, swarmTimer, bossTimer;
     int bossIndex;
     int zoneNumber;          // 0 for the first zone of the run
+    int zoneThreat;          // swarms survived in this zone
     float zoneTime;          // seconds since entering this zone
 
     public void ResetRun(Biome b)
@@ -60,6 +61,7 @@ public class Director : MonoBehaviour
         bossIndex = 0;
         zoneNumber++;
         zoneTime = 0f;
+        zoneThreat = 0;
         chaffBudget = 0f;
         if (zoneNumber > 0)
         {
@@ -100,10 +102,11 @@ public class Director : MonoBehaviour
         if (Boss != null || Holding) return;   // boss fight or zone change: no other spawns
         zoneTime += dt;
 
-        // Slow climb until the first boss; each boss kill then steps the pressure up sharply.
-        float chaffRate = (T("chaffBase", 0.4f) + Elapsed * T("chaffPerSecond", 1f / 240f))
-                          * (1f + T("chaffPerThreat", 0.1f) * Threat)
-                          * (1f + T("chaffPerBossKill", 1.2f) * BossesDefeated);
+        // Every zone climbs on the same curve (time and swarms counted from the zone's start), raised
+        // by run.zoneRateStep chaff per second for each zone already cleared.
+        float chaffRate = (T("chaffBase", 0.4f) + zoneTime * T("chaffPerSecond", 1f / 240f))
+                          * (1f + T("chaffPerThreat", 0.1f) * zoneThreat)
+                          + Tune.F("run.zoneRateStep", 2f) * zoneNumber;
         chaffRate = Mathf.Min(chaffRate, T("chaffMax", 10f)) * ZoneRamp;
         chaffBudget += chaffRate * dt;
         while (chaffBudget >= 1f)
@@ -147,6 +150,7 @@ public class Director : MonoBehaviour
             Sfx.Play(Sound.Warning, 0.5f, 0f);
             Haptics.Tap(Haptics.Impact.Medium);
             Threat++;
+            zoneThreat++;
             HealthScale += T("healthPerSwarm", 0.25f);
         }
 

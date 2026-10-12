@@ -56,12 +56,12 @@ tuning = {
     },
     "spawning": {
         "maxEnemies": 200, "bossEvery": 150, "swarmEvery": 45, "firstMediumAt": 40,
-        "chaffBase": 0.4, "chaffPerSecond": round(1 / 240, 5), "chaffPerThreat": 0.1, "chaffPerBossKill": 1.2, "chaffMax": 10,
+        "chaffBase": 0.4, "chaffPerSecond": round(1 / 240, 5), "chaffPerThreat": 0.1, "chaffMax": 10,
         "mediumEveryStage0": 14, "mediumEveryStage1": 11, "pairChanceStage1": 0.3, "mediumEveryStage2": 6, "mediumEveryMin": 2.5, "maxPack": 5,
         "swarmBasePreBoss": 14, "swarmPerThreatPreBoss": 3, "swarmBase": 16, "swarmPerThreat": 6,
         "casterWeightPreBoss": 0.25,
         "healthPerSwarm": 0.25, "healthPerBossKill": 1.0, "bossHealthScaleRate": 0.5, "bossKillHeal": 30,
-        "_chaff": "Chaff per second = (chaffBase + seconds*chaffPerSecond) * (1 + chaffPerThreat*swarms) * (1 + chaffPerBossKill*bossKills), capped at chaffMax.",
+        "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) + run.zoneRateStep*zones cleared, capped at chaffMax.",
     },
     "run": {
         "bosses": 4, "startTomeChoices": 3, "zoneShiftDelay": 3, "favoredWeight": 3,
@@ -69,7 +69,8 @@ tuning = {
         "_startTomeChoices": "How many starting tomes are offered at the start of a run.",
         "_zoneShiftDelay": "Seconds between a boss dying and the zone changing (time to grab the loot).",
         "_favoredWeight": "How much more often a zone's home medium enemies show up.",
-        "zoneRampSeconds": 40, "zoneRampFactor": 0.75, "zoneFirstMedium": 8,
+        "zoneRampSeconds": 40, "zoneRampFactor": 0.75, "zoneFirstMedium": 8, "zoneRateStep": 2,
+        "_zoneRateStep": "Extra chaff per second for each zone already cleared; every zone otherwise reuses the first zone's curve from its own start.",
         "_zoneRampSeconds": "A new zone starts empty; spawning ramps from 0 to full over this many seconds (second zone), times zoneRampFactor for each zone after that. zoneFirstMedium is the delay before the first medium enemy, scaled the same way.",
     },
     "meta": {

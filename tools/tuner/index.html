@@ -356,10 +356,12 @@ function xpToNext(L) {
   return Math.max(1, Math.round(Math.floor(raw) * Math.pow(n("xp.stepMultiplier", 1.25), steps)));
 }
 
-function chaffRate(t, kills) {
+// Each zone runs the same curve from its own start, raised by run.zoneRateStep per zone cleared.
+// (Ignores the short ramp from zero at the start of each new zone.)
+function chaffRate(t, zone) {
   const threat = Math.floor(t / n("spawning.swarmEvery", 45));
   const r = (n("spawning.chaffBase", 0.4) + t * n("spawning.chaffPerSecond", 1 / 240))
-          * (1 + n("spawning.chaffPerThreat", 0.1) * threat) * (1 + n("spawning.chaffPerBossKill", 1.2) * kills);
+          * (1 + n("spawning.chaffPerThreat", 0.1) * threat) + n("run.zoneRateStep", 2) * zone;
   return Math.min(n("spawning.chaffMax", 10), r);
 }
 
@@ -387,7 +389,7 @@ const CHARTS = {
     const markerLegend = [{ name: "Swarm", color: "#5cc8ff" }, { name: "Boss", color: "#ff6b7d" }];
     return [
       { title: "Chaff spawned per second", sub: "Over a run (ignores time paused during boss fights)", x: t, xLabel: fmtTime, markers, markerLegend, series: [
-        { name: "Each boss killed when it arrives", y: t.map((s) => chaffRate(s, Math.floor(s / be))) },
+        { name: "Each boss killed when it arrives", y: t.map((s) => chaffRate(s % be, Math.floor(s / be))) },
         { name: "No bosses killed", y: t.map((s) => chaffRate(s, 0)) },
       ] },
       { title: "Enemy health multiplier", sub: "+ per swarm and per boss kill", x: t, xLabel: fmtTime, markers, markerLegend, series: [

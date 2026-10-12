@@ -174,7 +174,6 @@
     "chaffBase": 0.4,
     "chaffPerSecond": 0.00217,
     "chaffPerThreat": 0.05,
-    "chaffPerBossKill": 0.5,
     "chaffMax": 10,
     "mediumEveryStage0": 10,
     "mediumEveryStage1": 8,
@@ -191,7 +190,7 @@
     "healthPerBossKill": 1,
     "bossHealthScaleRate": 0.5,
     "bossKillHeal": 50,
-    "_chaff": "Chaff per second = (chaffBase + seconds*chaffPerSecond) * (1 + chaffPerThreat*swarms) * (1 + chaffPerBossKill*bossKills), capped at chaffMax."
+    "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) + run.zoneRateStep*zones cleared, capped at chaffMax."
   },
   "run": {
     "bosses": 4,
@@ -205,7 +204,9 @@
     "zoneRampSeconds": 40,
     "zoneRampFactor": 0.75,
     "zoneFirstMedium": 8,
-    "_zoneRampSeconds": "A new zone starts empty; spawning ramps from 0 to full over this many seconds (second zone), times zoneRampFactor for each zone after that. zoneFirstMedium is the delay before the first medium enemy, scaled the same way."
+    "zoneRateStep": 2,
+    "_zoneRampSeconds": "A new zone starts empty; spawning ramps from 0 to full over this many seconds (second zone), times zoneRampFactor for each zone after that. zoneFirstMedium is the delay before the first medium enemy, scaled the same way.",
+    "_zoneRateStep": "Extra chaff per second for each zone already cleared; every zone otherwise reuses the first zone's curve from its own start."
   },
   "meta": {
     "tomeCost": 100,

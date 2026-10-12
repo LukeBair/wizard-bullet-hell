@@ -39,6 +39,7 @@ public class GameManager : MonoBehaviour
     float runGold;           // gold picked up this run, banked when the run ends
     int bankedGold = -1;     // what the last run paid out (-1 = not banked yet)
     int grimoirePage;
+    GameState grimoireReturn;   // where Back goes: the title, or the death / victory screen
     readonly List<(string text, float until)> toasts = new List<(string, float)>();
 
     void Awake()
@@ -312,12 +313,7 @@ public class GameManager : MonoBehaviour
             StartRun();
         }
         if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 355f * s, col.width * 0.7f, 80f * s), $"Grimoire  ·  {Grimoire.Gold} gold", GoldColor))
-        {
-            Sfx.Play(Sound.Select, 0.8f);
-            Haptics.Selection();
-            grimoirePage = 0;
-            State = GameState.Grimoire;
-        }
+            OpenGrimoire();
         DrawStylePicker(new Rect(col.x, col.y + 455f * s, col.width, 110f * s));
 
         string tuning = Tune.Fetching ? "Tuning: checking Mac..." : $"Tuning: {Tune.Source}";
@@ -352,9 +348,18 @@ public class GameManager : MonoBehaviour
 
         float by = col.y + 115f * s + perPage * (rowH + 14f * s) + 6f * s, bw = (col.width - 2f * gap) / 3f, bh = 80f * s;
         if (grimoirePage > 0 && UI.Button(new Rect(col.x, by, bw, bh), "‹ Prev", new Color(0.6f, 0.6f, 0.7f))) grimoirePage--;
-        if (UI.Button(new Rect(col.x + bw + gap, by, bw, bh), "Back", new Color(0.6f, 0.45f, 1f))) State = GameState.Title;
+        if (UI.Button(new Rect(col.x + bw + gap, by, bw, bh), "Back", new Color(0.6f, 0.45f, 1f))) State = grimoireReturn;
         if (grimoirePage < pages - 1 && UI.Button(new Rect(col.x + 2f * (bw + gap), by, bw, bh), "Next ›", new Color(0.6f, 0.6f, 0.7f))) grimoirePage++;
         UI.Text(new Rect(col.x, by + bh + 8f * s, col.width, 30f * s), $"Page {grimoirePage + 1} / {pages}", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
+    }
+
+    void OpenGrimoire()
+    {
+        Sfx.Play(Sound.Select, 0.8f);
+        Haptics.Selection();
+        grimoirePage = 0;
+        grimoireReturn = State;
+        State = GameState.Grimoire;
     }
 
     void DrawGrimoireRow(SpellId id, Rect r)
@@ -491,7 +496,9 @@ public class GameManager : MonoBehaviour
         if (Time.unscaledTime - gameOverTime < 0.8f) return;  // so a finger still dragging doesn't tap a button
         if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), "Try again", new Color(0.6f, 0.45f, 1f)))
             StartRun();
-        if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), "Title screen", new Color(0.6f, 0.6f, 0.7f)))
+        if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), $"Grimoire  ·  {Grimoire.Gold} gold", GoldColor))
+            OpenGrimoire();
+        if (UI.Button(new Rect(col.x, col.y + 570f * s, col.width, 100f * s), "Title screen", new Color(0.6f, 0.6f, 0.7f)))
         {
             State = GameState.Title;
             StartCoroutine(Tune.FetchFromMac());
@@ -518,7 +525,9 @@ public class GameManager : MonoBehaviour
         if (Time.unscaledTime - gameOverTime < 0.8f) return;
         if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), "Play again", new Color(0.6f, 0.45f, 1f)))
             StartRun();
-        if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), "Title screen", new Color(0.6f, 0.6f, 0.7f)))
+        if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), $"Grimoire  ·  {Grimoire.Gold} gold", GoldColor))
+            OpenGrimoire();
+        if (UI.Button(new Rect(col.x, col.y + 570f * s, col.width, 100f * s), "Title screen", new Color(0.6f, 0.6f, 0.7f)))
         {
             State = GameState.Title;
             StartCoroutine(Tune.FetchFromMac());
