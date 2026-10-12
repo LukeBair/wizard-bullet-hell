@@ -12,6 +12,15 @@ public class GameManager : MonoBehaviour
 
     const string BestKey = "best_time_Runes";
     const string WinsKey = "wins";
+    const string DebugUiKey = "debug_ui";
+
+    // Developer readouts (threat, enemy scaling, fps, tuning source). Toggled on the title screen.
+    public static bool DebugUi
+    {
+        get => PlayerPrefs.GetInt(DebugUiKey, 0) == 1;
+        set { PlayerPrefs.SetInt(DebugUiKey, value ? 1 : 0); PlayerPrefs.Save(); }
+    }
+    float fps = 60f;
     const float FadeTime = 0.6f;
     const float CameraSize = 7.5f;
     static readonly Color GoldColor = new Color(1f, 0.85f, 0.4f);
@@ -113,6 +122,7 @@ public class GameManager : MonoBehaviour
         Clear<Fx>();
         Clear<Hazard>();
         Clear<DamageText>();
+        Clear<EffectCounter>();
         Clear<Vortex>();
         Clear<WaterBeam>();
         Clear<WaterPillar>();
@@ -217,6 +227,7 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        if (Time.unscaledDeltaTime > 0f) fps = Mathf.Lerp(fps, 1f / Time.unscaledDeltaTime, 0.05f);
         if (State == GameState.Playing && shiftAt > 0f && Time.time >= shiftAt) ShiftZone();
 
         if (Autoplay && State == GameState.TomePick)
@@ -320,10 +331,15 @@ public class GameManager : MonoBehaviour
             OpenGrimoire();
         DrawStylePicker(new Rect(col.x, col.y + 455f * s, col.width, 110f * s));
 
-        string tuning = Tune.Fetching ? "Tuning: checking Mac..." : $"Tuning: {Tune.Source}";
-        UI.Text(new Rect(col.x, col.y + 720f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
-        if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 765f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
-            StartCoroutine(Tune.FetchFromMac());
+        if (DebugUi)
+        {
+            string tuning = Tune.Fetching ? "Tuning: checking Mac..." : $"Tuning: {Tune.Source}";
+            UI.Text(new Rect(col.x, col.y + 720f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
+            if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 765f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
+                StartCoroutine(Tune.FetchFromMac());
+        }
+
+        DrawDebugToggle();
         UI.Text(new Rect(col.x, col.y + 585f * s, col.width, 140f * s),
             "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nBeat the bosses for more sockets and a new zone.",
             24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
@@ -449,7 +465,7 @@ public class GameManager : MonoBehaviour
         UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
         UI.Text(new Rect(left + 130f * s, top + 8f * s, 200f * s, 30f * s), $"{Mathf.FloorToInt(runGold)} gold", 24, TextAnchor.UpperLeft, GoldColor);
         UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
-        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}  ·  Threat {Director.Threat + 1}  ·  Foes x{Director.HealthScale:0.##}", 20, TextAnchor.UpperCenter, new Color(1f, 0.6f, 0.5f));
+        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
             Pause();
         top += 52f * s;
@@ -459,6 +475,9 @@ public class GameManager : MonoBehaviour
         UI.Bar(new Rect(left, top, hpW, 20f * s), Player.Health / Player.MaxHealth, ArtStyle.HealthColor);
         UI.Text(new Rect(left + hpW + 10f * s, top - 6f * s, 200f * s, 30f * s), Mathf.CeilToInt(Mathf.Max(0f, Player.Health)).ToString(), 22);
         top += 32f * s;
+
+        if (DebugUi)
+            UI.Text(new Rect(left, top, 420f * s, 28f * s), $"Threat {Director.Threat + 1}  ·  Foes x{Director.HealthScale:0.##}  ·  {Mathf.RoundToInt(fps)} fps", 18, TextAnchor.UpperLeft, new Color(1f, 0.6f, 0.5f, 0.8f), false);
 
         Upgrades.DrawHud(new Rect(left, top, 400f * s, 200f * s));
 
@@ -484,6 +503,16 @@ public class GameManager : MonoBehaviour
             UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"{tier}Lv{spell.Level}", 20, TextAnchor.UpperCenter);
             x += d + gap;
         }
+    }
+
+    // Bottom-left button on the title screen and pause menu.
+    void DrawDebugToggle()
+    {
+        float s = UiScale;
+        Rect safe = Screen.safeArea;
+        var r = new Rect(safe.xMin + 20f * s, Screen.height - safe.yMin - 84f * s, 200f * s, 64f * s);
+        if (UI.Button(r, DebugUi ? "Debug: On" : "Debug: Off", DebugUi ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.5f, 0.5f, 0.6f)))
+            DebugUi = !DebugUi;
     }
 
     // ---------------------------------------------------------------- pause menu
@@ -555,6 +584,7 @@ public class GameManager : MonoBehaviour
         }
         if (confirming != null)
             UI.Text(new Rect(col.x, y + bh + 8f * s, col.width, 30f * s), $"Tap again to {confirming.ToLower()}. This run ends and its gold is banked.", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
+        DrawDebugToggle();
     }
 
     // One spell: name, tier and level, its socketed runes and any power kept from evolving.
