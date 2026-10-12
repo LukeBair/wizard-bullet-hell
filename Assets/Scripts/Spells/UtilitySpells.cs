@@ -6,27 +6,31 @@ public class Rejuvenate : Spell
 {
     public override string Name => "Rejuvenate";
     public override Element Element => Element.Light;
-    public override string Blurb => "Heals you 6% of your health every few seconds.";
+    public override string Blurb => $"Heals you {Pct(T("damage", 0.06f))} of your max health every {Secs(T("cooldown", 9f))}.";
     public override bool CanEvolve => true;
     protected override float BaseDamage => Tier == 1 ? 0.06f : 0.05f;   // fraction of max health per pulse
     protected override float BaseCooldown => Tier == 1 ? 9f : 3f;
 
     public override string TierName(int tier) => tier == 2 ? "Swift Mending" : tier == 3 ? "Phoenix Rite" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? "Heals far more often (every ~3s), slightly less per pulse."
-                  : "Swift Mending, plus a revive that charges over 90s: if you die with it full, you come back at full health.";
+        tier == 2 ? $"Heals far more often (every {Secs(T("cooldown_t2", 3f))}), {Pct(T("damage_t2", 0.05f))} per pulse."
+                  : $"Swift Mending, plus a revive that charges over {T("reviveChargeTime_t3", 90f):0}s: if you die with it full, you come back at full health.";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
-            case Rune.Potency: return "+30% healing";
+            case Rune.Potency: return $"+{Pct(PotencyStep)} healing";
+            case Rune.Haste: return Tier == 3 ? $"Heals and charges the revive {Pct(1f - HasteMultiplier)} faster" : $"Heals {Pct(1f - HasteMultiplier)} more often";
             case Rune.Split: return "+1 extra pulse each cast";
-            case Rune.Area: return "Also heals a bit more when you're low";
-            case Rune.Pierce: return "+10 max health";
+            case Rune.Area: return "Heals more the lower your health";
+            case Rune.Pierce: return $"+{T("maxHealthPerPierce", 10f):0} max health";
+            case Rune.Echo: return "Heals again a moment later";
             default: return base.RuneEffect(r);
         }
     }
+
+    protected override bool HitsFoes => false;
 
     float reviveCharge;
     float ReviveTime => T("reviveChargeTime_t3", 90f) * Mathf.Pow(Tune.F("runes.Haste.cooldownMultiplier", 0.85f), RuneCount(Rune.Haste));
@@ -114,9 +118,10 @@ public class Overgrowth : Spell
     {
         switch (r)
         {
-            case Rune.Potency: return Tier >= 2 ? "+25% damage, thorns and trap time" : "+25% damage and trap time";
+            case Rune.Potency: return Tier >= 2 ? $"+{Pct(PotencyStep)} damage, thorns and trap time" : $"+{Pct(PotencyStep)} damage and trap time";
             case Rune.Split: return "+1 patch of vines";
             case Rune.Pierce: return "Trapped foes take +15% damage from everything";
+            case Rune.Area: return $"+{Pct(AreaStep)} vine radius";
             default: return base.RuneEffect(r);
         }
     }
@@ -148,7 +153,7 @@ public class Veil : Spell
 {
     public override string Name => "Ethereal Veil";
     public override Element Element => Element.Arcane;
-    public override string Blurb => "When ready, the next hit is ignored and you phase out for 1.5s.";
+    public override string Blurb => $"Every {Secs(T("cooldown", 12f))}, the next hit is ignored and you phase out for {T("damage", 1.5f):0.#}s.";
     public override bool CanEvolve => true;
     protected override float BaseDamage => Tier == 1 ? 1.5f : 3.5f;   // seconds of invulnerability
     protected override float BaseCooldown => Tier == 3 ? 4f : 12f;
@@ -156,19 +161,23 @@ public class Veil : Spell
 
     public override string TierName(int tier) => tier == 2 ? "Phantom Stride" : tier == 3 ? "Flickerstep" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? "Phase out 2s longer, and foes you pass through while phased take heavy damage."
-                  : "Recharges dramatically faster (about every 4s).";
+        tier == 2 ? $"Phase out for {T("damage_t2", 3.5f):0.#}s, and foes you pass through while phased take {T("passDamage_t2", 60f):0} damage."
+                  : $"Recharges dramatically faster (every {Secs(T("cooldown_t3", 4f))}).";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
             case Rune.Potency: return Tier >= 2 ? "+25% phase time and pass-through damage" : "+25% phase time";
-            case Rune.Haste: return "Recharges 15% faster";
+            case Rune.Haste: return $"Recharges {Pct(1f - HasteMultiplier)} faster";
             case Rune.Area: return "Phasing out knocks nearby foes back";
-            case Rune.Split: return "Phasing out also fires a ring of arcane bolts";
-            case Rune.Echo: return "Holds two charges";
-            default: return base.RuneEffect(r);
+            case Rune.Split: return "Phasing out also fires a ring of 8 arcane bolts";
+            case Rune.Pierce: return "Split's arcane bolts pass through +1 enemy";
+            case Rune.Echo: return "+1 stored charge";
+            default:
+                // Veil only touches foes with Split's bolts, and with pass-through hits once evolved.
+                if (IsStatusRune(r)) return base.RuneEffect(r) + (Tier >= 2 ? " (bolts and pass-through only)" : " (only Split's bolts hit foes)");
+                return base.RuneEffect(r);
         }
     }
 
@@ -231,7 +240,7 @@ public class TidalLance : Spell
     public override string TierName(int tier) => tier == 2 ? "Torrent" : tier == 3 ? "Monsoon" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Sprays a wide cone instead of a beam, pushing foes back hard."
-                  : "The cone, plus every 5s pillars of water erupt under foes for 2s.";
+                  : $"The cone, plus every {Secs(T("pillarEvery_t3", 5f))} pillars of water erupt under foes for {T("pillarDuration_t3", 2f):0.#}s.";
 
     public override string RuneEffect(Rune r)
     {
@@ -239,7 +248,7 @@ public class TidalLance : Spell
         {
             case Rune.Split: return Tier == 3 ? "+1 beam and +1 water pillar" : "+1 beam at an angle";
             case Rune.Pierce: return "Spray lasts 30% longer";
-            case Rune.Area: return $"+{AreaStep * 100f:0}% spray size";
+            case Rune.Area: return $"+{Pct(AreaStep)} spray size";
             default: return base.RuneEffect(r);
         }
     }
@@ -298,10 +307,10 @@ public class Cyclone : Spell
     {
         switch (r)
         {
-            case Rune.Potency: return "+30% damage and pull strength";
+            case Rune.Potency: return $"+{Pct(PotencyStep)} damage and pull strength";
             case Rune.Split: return "+1 whirlwind";
             case Rune.Pierce: return "Lasts 30% longer";
-            case Rune.Area: return $"+{AreaStep * 100f:0}% pull radius";
+            case Rune.Area: return $"+{Pct(AreaStep)} pull radius";
             default: return base.RuneEffect(r);
         }
     }
@@ -328,7 +337,7 @@ public class Enthrall : Spell
 {
     public override string Name => "Enthrall";
     public override Element Element => Element.Shadow;
-    public override string Blurb => "The toughest foe nearby fights for you for 3s. Bosses resist.";
+    public override string Blurb => $"The toughest foe nearby fights for you for {T("damage", 3f):0.#}s. Bosses are immune.";
     public override bool CanEvolve => true;
     protected override float BaseDamage => 3f;   // seconds
     protected override float BaseCooldown => 9f;
@@ -336,19 +345,21 @@ public class Enthrall : Spell
     public override string TierName(int tier) => tier == 2 ? "Mass Hysteria" : tier == 3 ? "Eternal Thrall" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "A burst around the toughest foe charms every foe caught in it."
-                  : "The burst, and charmed foes stay on your side permanently.";
+                  : $"The burst, and charmed foes stay on your side permanently (up to {T("maxThralls_t3", 12f):0} at once).";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
-            case Rune.Potency: return Tier == 3 ? "Charmed foes hit 30% harder" : "+30% charm time";
+            case Rune.Potency: return Tier == 3 ? $"Charmed foes hit {Pct(PotencyStep)} harder" : $"+{Pct(PotencyStep)} charm time";
             case Rune.Split: return Tier >= 2 ? "+1 burst" : "Charms +1 more foe";
             case Rune.Pierce: return "Charmed foes hit 25% harder";
-            case Rune.Area: return Tier >= 2 ? $"+{AreaStep * 100f:0}% burst radius" : "Charmed foes burst on expiry, hurting neighbours";
+            case Rune.Area: return Tier >= 2 ? $"+{Pct(AreaStep)} burst radius" : "Charmed foes burst on expiry, hurting neighbours";
             default: return base.RuneEffect(r);
         }
     }
+
+    protected override bool HitsFoes => false;   // charmed foes do the damage, outside Hit()
 
     protected override bool Ready() => Pick(null) != null && (Tier < 3 || Thralls() < T("maxThralls_t3", 12f));
 
