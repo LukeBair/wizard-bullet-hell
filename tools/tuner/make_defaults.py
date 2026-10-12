@@ -20,6 +20,10 @@ tuning = {
         "_castRate": "Multiplies every spell cooldown and enemy attack interval.",
     },
     "audio": {"volume": 1.0},
+    "hud": {
+        "effectCounters": {"enabled": True, "size": 0.035, "offset": 0.6, "life": 0.9, "rise": 0.6,
+            "_about": "The small x### tallies over combos and bug bursts. size = text scale (damage numbers are 0.05), offset = units above the trigger spot, life in seconds, rise in units/s."},
+    },
     "fx": {
         "enabled": True, "maxParticles": 1500, "drag": 4, "highlightShare": 0.25,
         "_about": "Particle sparks, Dusk art style only. count = particles per effect, speed in units/s, size in world units (Dusk rounds to whole pixels), life in seconds.",

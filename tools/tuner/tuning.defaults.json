@@ -14,6 +14,16 @@
   "audio": {
     "volume": 1.0
   },
+  "hud": {
+    "effectCounters": {
+      "enabled": true,
+      "size": 0.035,
+      "offset": 0.6,
+      "life": 0.9,
+      "rise": 0.6,
+      "_about": "The small x### tallies over combos and bug bursts. size = text scale (damage numbers are 0.05), offset = units above the trigger spot, life in seconds, rise in units/s."
+    }
+  },
   "fx": {
     "enabled": true,
     "maxParticles": 1500,

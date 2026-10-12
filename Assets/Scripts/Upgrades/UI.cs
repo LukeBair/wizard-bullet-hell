@@ -5,16 +5,26 @@ public static class UI
 {
     static GUIStyle label;
     static Texture2D white;
+    static Font pixelFont;
 
     public static float S => GameManager.UiScale;
+
+    // The pixel styles use Pixelify Sans (SIL OFL, Assets/Resources/Fonts); the others keep the default font.
+    public static Font Font =>
+        ArtStyle.Current == ArtStyleId.Dusk || ArtStyle.Current == ArtStyleId.Crt
+            ? pixelFont != null ? pixelFont : pixelFont = Resources.Load<Font>("Fonts/PixelifySans")
+            : null;
 
     static GUIStyle Style(int size, TextAnchor anchor, Color color, bool bold = true)
     {
         if (label == null)
             label = new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, clipping = TextClipping.Overflow };
+        var font = Font;
+        label.font = font;
         label.fontSize = Mathf.Max(8, Mathf.RoundToInt(size * S));
         label.alignment = anchor;
-        label.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+        // The pixel font is already chunky; synthetic bold just smears it.
+        label.fontStyle = bold && font == null ? FontStyle.Bold : FontStyle.Normal;
         label.normal.textColor = color;
         return label;
     }
