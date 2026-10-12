@@ -283,9 +283,9 @@ public class ChainLightning : Spell
     }
 }
 
-// Spirits orbiting the wizard. Echo adds a counter-rotating outer ring.
+// Spirits orbiting the wizard. Echo adds a counter-rotating set of wisps on the same ring.
 // II: starts with two rings; 3s without a wisp hit heals you 10%. III: every kill adds a temporary wisp to the inner ring.
-public class Wisps : Spell
+public class Wisps : Spell, IOrbiter
 {
     public override string Name => "Forest Wisps";
     public override Element Element => Element.Nature;
@@ -298,7 +298,7 @@ public class Wisps : Spell
     protected override bool EchoRecasts => false;
     protected override bool Overloadable => false;
 
-    readonly List<(Transform orb, int ring, int index, int ringCount)> orbs = new List<(Transform, int, int, int)>();
+    readonly List<(Transform orb, int ring, int set, int index, int ringCount)> orbs = new List<(Transform, int, int, int, int)>();
     readonly List<float> bonusWisps = new List<float>();   // tier III: time left on each extra wisp
     readonly List<Transform> tracks = new List<Transform>();
     readonly Dictionary<Enemy, float> lastHit = new Dictionary<Enemy, float>();
@@ -307,9 +307,10 @@ public class Wisps : Spell
     int MaxBonusWisps => Mathf.RoundToInt(T("maxBonusWisps_t3", 4f));
     int RingCount(int ring) => Count + (ring == 0 ? bonusWisps.Count : 0);
 
-    int Rings => 1 + Echoes + (Tier >= 2 ? 1 : 0);
-    float OrbitRadius(int ring) => T("orbit", 1.7f) * Area * (1f + T("ringSpacing", 0.55f) * ring);
-    float OrbRadius => T("wispSize", 0.28f) * Mathf.Sqrt(Area);
+    public int OrbitRings => Tier >= 2 ? 2 : 1;
+    int Sets => 1 + Echoes;
+    float OrbitRadius(int ring) => Orbits.Radius(this, ring);
+    float OrbRadius => T("wispSize", 0.28f) * Area;
 
     public override string TierName(int tier) => tier == 2 ? "Twin Halo" : tier == 3 ? "Lifebloom Halo" : Name;
     public override string TierDescription(int tier) =>
@@ -320,11 +321,11 @@ public class Wisps : Spell
     {
         switch (r)
         {
-            case Rune.Split: return "+1 wisp on every ring";
+            case Rune.Split: return "+1 wisp in every set";
             case Rune.Haste: return $"Wisps orbit {Pct(HastePerRune)} faster";
             case Rune.Pierce: return "Strikes the same foe more often";
-            case Rune.Area: return $"+{Pct(AreaStep)} orbit size";
-            case Rune.Echo: return "+1 ring spinning the other way";
+            case Rune.Area: return $"+{Pct(AreaStep)} wisp size";
+            case Rune.Echo: return "+1 set of wisps spinning the other way";
             case Rune.Ward: return "No effect: this spell never casts";
             default: return base.RuneEffect(r);
         }
@@ -343,10 +344,11 @@ public class Wisps : Spell
         foreach (var t in tracks) if (t != null) Object.Destroy(t.gameObject);
         orbs.Clear();
         tracks.Clear();
-        for (int ring = 0; ring < Rings; ring++)
+        for (int ring = 0; ring < OrbitRings; ring++)
         {
             tracks.Add(SpriteFactory.Child(Owner.transform, "WispOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.22f), Vector2.zero, OrbitRadius(ring) * 2f + OrbRadius, 47).transform);
             int n = RingCount(ring);
+            for (int set = 0; set < Sets; set++)
             for (int i = 0; i < n; i++)
             {
                 var go = new GameObject("Wisp");
@@ -354,7 +356,7 @@ public class Wisps : Spell
                 SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.5f), Vector2.zero, OrbRadius * 5f, 56);
                 SpriteFactory.Child(go.transform, "Halo", SpriteFactory.Ring, Color, Vector2.zero, OrbRadius * 2.4f, 57);
                 SpriteFactory.Child(go.transform, "Core", SpriteFactory.Diamond, Color.Lerp(Color, Color.white, 0.4f), Vector2.zero, OrbRadius * 1.4f, 58);
-                orbs.Add((go.transform, ring, i, n));
+                orbs.Add((go.transform, ring, set, i, n));
             }
         }
     }
@@ -362,14 +364,15 @@ public class Wisps : Spell
     protected override void OnTick(float dt)
     {
         angle += T("spinSpeed", 200f) / Cooldown * dt * Tuning.Pace;
+        // Rings shift outward when another orbiting spell is learned first, so keep the tracks in step.
+        for (int r = 0; r < tracks.Count; r++) tracks[r].localScale = Vector3.one * (OrbitRadius(r) * 2f + OrbRadius);
         float hitEvery = T("hitEvery", 0.5f) / (1f + 0.3f * RuneCount(Rune.Pierce));
         bool hitSomething = false;
         int kills = 0;
         for (int i = 0; i < orbs.Count; i++)
         {
-            var (_, ring, index, ringCount) = orbs[i];
-            float dirSign = ring % 2 == 0 ? 1f : -1f;
-            float a = (angle * dirSign + index * 360f / ringCount + ring * 30f) * Mathf.Deg2Rad;
+            var (_, ring, set, index, ringCount) = orbs[i];
+            float a = Orbits.Angle(angle, ring, set, Sets, index, ringCount) * Mathf.Deg2Rad;
             Vector2 local = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * OrbitRadius(ring);
             orbs[i].orb.localPosition = local;
             Vector2 world = Owner.Position + local;

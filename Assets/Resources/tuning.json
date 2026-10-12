@@ -6,6 +6,11 @@
     "_pace": "Multiplies all movement (wizard, enemies, projectiles).",
     "_castRate": "Multiplies every spell cooldown and enemy attack interval."
   },
+  "orbits": {
+    "radius": 1.5,
+    "spacing": 0.85,
+    "_about": "Forest Wisps and Mirror Ward share evenly spaced rings around the wizard, inner ring first to whichever was learned first. radius = inner ring, spacing = gap between rings, in world units."
+  },
   "audio": {
     "volume": 1
   },
@@ -223,8 +228,7 @@
   "runes": {
     "startSockets": 2,
     "socketsPerBoss": 1,
-    "evolveAt": 4,
-    "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A full spell with at least evolveAt runes can evolve.",
+    "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A spell with every socket filled can evolve.",
     "maxSpells": 5,
     "tomeEveryLevels": 2,
     "resonanceCount": 3,
@@ -397,8 +401,6 @@
       "damage": 9,
       "cooldown": 1,
       "count": 2,
-      "orbit": 1.7,
-      "ringSpacing": 0.55,
       "wispSize": 0.28,
       "spinSpeed": 200,
       "hitEvery": 0.5,
@@ -514,8 +516,6 @@
       "damage": 12,
       "cooldown": 1,
       "count": 1,
-      "orbit": 1.4,
-      "ringSpacing": 0.5,
       "shardSize": 0.32,
       "spinSpeed": 160,
       "boltSpeed": 10,
