@@ -136,7 +136,7 @@ public class Director : MonoBehaviour
                 var def = PickMedium();
                 Vector2 at = EdgePoint(def.Radius);
                 for (int i = 0; i < pack && Enemy.All.Count < MaxEnemies; i++)
-                    Spawn(i == 0 ? def : PickMedium(), at + Random.insideUnitCircle * 1.5f);
+                    Spawn(i == 0 ? def : PickMedium(), at + Random.insideUnitCircle * 1.5f, "pack");
             }
             else if (stage == 0)
             {
