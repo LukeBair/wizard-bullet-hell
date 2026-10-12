@@ -317,7 +317,7 @@ public class Wisps : Spell
         switch (r)
         {
             case Rune.Split: return "+1 wisp on every ring";
-            case Rune.Haste: return $"Wisps orbit {Pct(1f / HasteMultiplier - 1f)} faster";
+            case Rune.Haste: return $"Wisps orbit {Pct(HastePerRune)} faster";
             case Rune.Pierce: return "Strikes the same foe more often";
             case Rune.Area: return $"+{Pct(AreaStep)} orbit size";
             case Rune.Echo: return "+1 ring spinning the other way";

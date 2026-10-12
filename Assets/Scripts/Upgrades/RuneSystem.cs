@@ -137,7 +137,7 @@ public class RuneSystem : UpgradeSystem
         {
             var rect = new Rect(col.x, y, col.width, h);
             int next = spell.Tier + 1;
-            int keep = Mathf.RoundToInt(Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.75f)) * 100f);
+            int keep = Mathf.RoundToInt(Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.5f)) * 100f);
             if (UI.Card(rect, $"{spell.Name} → {RomanTier(next)}: {spell.TierName(next)}", spell.TierDescription(next) + $" <i>(empties its sockets, keeps {keep}% of their power)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
             {
                 Evolve(spell);
@@ -237,7 +237,7 @@ public class RuneSystem : UpgradeSystem
         switch (r)
         {
             case Rune.Potency: return "More effective: damage, healing or duration, depending on the spell.";
-            case Rune.Haste: return "Shorter cooldown: casts, heals or recharges more often.";
+            case Rune.Haste: return $"+{Tune.F("runes.Haste.castSpeedPerRune", 0.15f) * 100f:0}% cast speed: casts, heals or recharges more often.";
             case Rune.Split: return "More projectiles, bolts, pulses, wisps or beams.";
             case Rune.Pierce: return "Pass through, chain further, push harder or last longer. Varies by spell.";
             case Rune.Area: return "Bigger explosions, auras and orbits.";

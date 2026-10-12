@@ -21,7 +21,7 @@ public class Rejuvenate : Spell
         switch (r)
         {
             case Rune.Potency: return $"+{Pct(PotencyStep)} healing";
-            case Rune.Haste: return Tier == 3 ? $"Heals and charges the revive {Pct(1f - HasteMultiplier)} faster" : $"Heals {Pct(1f - HasteMultiplier)} more often";
+            case Rune.Haste: return Tier == 3 ? $"Heals and charges the revive {Pct(HastePerRune)} faster" : $"Heals {Pct(HastePerRune)} more often";
             case Rune.Split: return "+1 extra pulse each cast";
             case Rune.Area: return "Heals more the lower your health";
             case Rune.Pierce: return $"+{T("maxHealthPerPierce", 10f):0} max health";
@@ -33,7 +33,7 @@ public class Rejuvenate : Spell
     protected override bool HitsFoes => false;
 
     float reviveCharge;
-    float ReviveTime => T("reviveChargeTime_t3", 90f) * Mathf.Pow(Tune.F("runes.Haste.cooldownMultiplier", 0.85f), RuneCount(Rune.Haste));
+    float ReviveTime => T("reviveChargeTime_t3", 90f) * HasteFactor;
     public bool ReviveReady => Tier == 3 && reviveCharge >= ReviveTime;
     public override float CooldownProgress => Tier == 3 ? Mathf.Clamp01(reviveCharge / ReviveTime) : base.CooldownProgress;
 
@@ -149,6 +149,7 @@ public class Overgrowth : Spell
 
 // Passive ward: when you'd take a hit while it's ready, you take nothing and turn ethereal.
 // II: phases for 2s longer, and foes you pass through take heavy damage. III: recharges much faster.
+// The recharge starts when the phase ends.
 public class Veil : Spell
 {
     public override string Name => "Ethereal Veil";
@@ -162,14 +163,14 @@ public class Veil : Spell
     public override string TierName(int tier) => tier == 2 ? "Phantom Stride" : tier == 3 ? "Flickerstep" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? $"Phase out for {T("damage_t2", 3.5f):0.#}s, and foes you pass through while phased take {T("passDamage_t2", 60f):0} damage."
-                  : $"Recharges dramatically faster (every {Secs(T("cooldown_t3", 4f))}).";
+                  : $"Recharges dramatically faster ({Secs(T("cooldown_t3", 4f))} after each phase ends).";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
             case Rune.Potency: return Tier >= 2 ? $"+{Pct(PhaseStep)} phase time, +{Pct(PotencyStep)} pass-through damage" : $"+{Pct(PhaseStep)} phase time";
-            case Rune.Haste: return $"Recharges {Pct(1f - HasteMultiplier)} faster";
+            case Rune.Haste: return $"Recharges {Pct(HastePerRune)} faster";
             case Rune.Area: return "Phasing out knocks nearby foes back";
             case Rune.Split: return "Phasing out also fires a ring of 8 arcane bolts";
             case Rune.Pierce: return "Split's arcane bolts pass through +1 enemy";
@@ -194,10 +195,14 @@ public class Veil : Spell
     protected override void Cast() => charges++;
     public override float CooldownProgress => charges > 0 ? 1f : base.CooldownProgress;
 
-    // Tier II+: anything you pass through while phased takes one big hit per phase.
     protected override void OnTick(float dt)
     {
-        if (Tier < 2 || Owner == null || !Owner.IsPhased) return;
+        if (Owner == null || !Owner.IsPhased) return;
+        // The recharge only starts once the phase ends (otherwise Flickerstep was never hittable).
+        if (charges < MaxCharges) ResetCooldown();
+
+        // Tier II+: anything you pass through while phased takes one big hit per phase.
+        if (Tier < 2) return;
         foreach (var e in EnemiesWithin(Owner.Position, Player.BodyRadius + 0.2f))
         {
             if (!passed.Add(e)) continue;

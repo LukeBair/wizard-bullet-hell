@@ -15,7 +15,7 @@ public enum Rune { Potency, Haste, Split, Pierce, Area, Echo, Ember, Frost, Curs
 // A spell the wizard casts automatically. Subclasses define the base numbers and what a cast does;
 // runes stack on top and are read through the computed properties below. Some spells can Evolve
 // (tier 1 -> 3): evolving empties that spell's sockets for a stronger base form, but keeps a share
-// of the runes' power (runes.evolveRetain, default 75%). Kept power can be fractional: continuous
+// of the runes' power (runes.evolveRetain, default 50%). Kept power can be fractional: continuous
 // effects (Potency, Area, Haste, Ember...) use it directly, and whole-number effects (Split, Pierce,
 // Echo) roll the fraction as a chance each cast, e.g. 1.5 Pierce = 1 pierce plus a 50% chance of 2.
 public abstract class Spell
@@ -78,7 +78,9 @@ public abstract class Spell
     protected float AreaStep => TT("areaPerRune", AreaPerRune);
     public float Potency => 1f + PotencyStep * RuneCount(Rune.Potency);
     public float Damage => TT("damage", BaseDamage) * Potency;
-    public float Cooldown => TT("cooldown", BaseCooldown) * Tuning.CastRate * Mathf.Pow(Tune.F("runes.Haste.cooldownMultiplier", 0.85f), RuneCount(Rune.Haste));
+    public float Cooldown => TT("cooldown", BaseCooldown) * Tuning.CastRate * HasteFactor;
+    // Haste adds cast speed (+15% per rune by default) rather than multiplying the cooldown, so it doesn't compound.
+    public float HasteFactor => 1f / (1f + HastePerRune * RuneCount(Rune.Haste));
     public int Count => Mathf.RoundToInt(TT("count", BaseCount)) + rolledSplit;
     public int PierceCount => Mathf.RoundToInt(TT("pierce", BasePierce)) + rolledPierce;
     public float Area => 1f + AreaStep * RuneCount(Rune.Area);
@@ -144,7 +146,7 @@ public abstract class Spell
     {
         if (!CanEvolve || Tier >= MaxTier) return;
         Tier++;
-        float keep = Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.75f));
+        float keep = Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.5f));
         for (int i = 0; i < runes.Length; i++)
         {
             retained[i] = (retained[i] + runes[i]) * keep;
@@ -207,7 +209,7 @@ public abstract class Spell
         switch (r)
         {
             case Rune.Potency: return $"+{Pct(PotencyStep)} damage";
-            case Rune.Haste: return $"{Pct(1f - HasteMultiplier)} shorter cooldown";
+            case Rune.Haste: return $"+{Pct(HastePerRune)} cast speed";
             case Rune.Split: return "+1 projectile";
             case Rune.Pierce: return "Passes through +1 enemy";
             case Rune.Area: return $"+{Pct(AreaStep)} size";
@@ -224,7 +226,7 @@ public abstract class Spell
     {
         switch (r)
         {
-            case Rune.Ember: return $"Hits burn foes for {Pct(Tune.F("runes.Ember.burnPerRune", 0.4f) * Tune.F("runes.Ember.duration", 2.5f))} of the spell's damage over {Tune.F("runes.Ember.duration", 2.5f):0.#}s";
+            case Rune.Ember: return $"Hits burn foes for {Pct(Tune.F("runes.Ember.burnPerRune", 0.2f) * Tune.F("runes.Ember.duration", 2.5f))} of the spell's damage over {Tune.F("runes.Ember.duration", 2.5f):0.#}s";
             case Rune.Frost: return $"Hits chill foes (slows {Pct(Tune.F("status.chillSlow", 0.5f))})";
             case Rune.Curse: return $"Foes it hits take +{Pct(Tune.F("runes.Curse.bonusPerRune", 0.5f))} from the next spell that hits them";
             case Rune.Infest: return $"Foes it hits burst into bugs if they die within {Tune.F("runes.Infest.duration", 1f):0.#}s";
@@ -232,7 +234,7 @@ public abstract class Spell
         }
     }
 
-    protected static float HasteMultiplier => Tune.F("runes.Haste.cooldownMultiplier", 0.85f);
+    protected static float HastePerRune => Tune.F("runes.Haste.castSpeedPerRune", 0.15f);
     protected static string Pct(float fraction) => $"{fraction * 100f:0}%";
     // Seconds as the player feels them: cooldowns are scaled by the global cast rate.
     protected static string Secs(float cooldown) => $"{cooldown * Tuning.CastRate:0.#}s";
@@ -277,7 +279,7 @@ public abstract class Spell
         }
 
         float ember = RuneCount(Rune.Ember);
-        if (ember > 0) e.ApplyBurn(Damage * Tune.F("runes.Ember.burnPerRune", 0.4f) * ember, Tune.F("runes.Ember.duration", 2.5f));
+        if (ember > 0) e.ApplyBurn(Damage * Tune.F("runes.Ember.burnPerRune", 0.2f) * ember, Tune.F("runes.Ember.duration", 2.5f));
         float frost = RuneCount(Rune.Frost);
         if (frost > 0) e.ApplyChill(Tune.F("runes.Frost.chillBase", 1f) + Tune.F("runes.Frost.chillPerRune", 0.6f) * frost);
         float infest = RuneCount(Rune.Infest);
@@ -288,7 +290,7 @@ public abstract class Spell
         e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
 
         float curse = RuneCount(Rune.Curse);
-        if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(Tune.F("runes.Curse.maxBonus", 5f), Tune.F("runes.Curse.bonusPerRune", 0.5f) * curse));
+        if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(Tune.F("runes.Curse.maxBonus", 1f), Tune.F("runes.Curse.bonusPerRune", 0.5f) * curse));
     }
 
     protected Projectile Shoot(Vector2 from, Vector2 dir, float speed, float radius)

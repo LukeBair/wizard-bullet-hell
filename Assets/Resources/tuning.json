@@ -228,14 +228,15 @@
     "maxSpells": 5,
     "tomeEveryLevels": 2,
     "resonanceCount": 3,
-    "evolveRetain": 0.75,
+    "evolveRetain": 0.5,
     "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
     "Potency": {
       "weight": 10
     },
     "Haste": {
       "weight": 10,
-      "cooldownMultiplier": 0.85
+      "castSpeedPerRune": 0.15,
+      "_castSpeedPerRune": "Each Haste rune adds this much cast speed (cooldown / (1 + this x runes)), so it doesn't compound."
     },
     "Split": {
       "weight": 2.5
@@ -251,7 +252,7 @@
     },
     "Ember": {
       "weight": 10,
-      "burnPerRune": 0.4,
+      "burnPerRune": 0.2,
       "duration": 2.5
     },
     "Frost": {
@@ -262,7 +263,7 @@
     "Curse": {
       "weight": 2.5,
       "bonusPerRune": 0.5,
-      "maxBonus": 5
+      "maxBonus": 1
     },
     "Infest": {
       "weight": 10,
