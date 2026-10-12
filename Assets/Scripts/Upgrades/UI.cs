@@ -9,11 +9,14 @@ public static class UI
 
     public static float S => GameManager.UiScale;
 
-    // The pixel styles use Pixelify Sans (SIL OFL, Assets/Resources/Fonts); the others keep the default font.
+    // The pixel styles use VT323 (SIL OFL, Assets/Resources/Fonts); the others keep the default font.
+    // VT323 draws small for its point size, so it is scaled up by hud.fontScale.
     public static Font Font =>
         ArtStyle.Current == ArtStyleId.Dusk || ArtStyle.Current == ArtStyleId.Crt
-            ? pixelFont != null ? pixelFont : pixelFont = Resources.Load<Font>("Fonts/PixelifySans")
+            ? pixelFont != null ? pixelFont : pixelFont = Resources.Load<Font>("Fonts/VT323")
             : null;
+
+    public static float FontScale => Font != null ? Tune.F("hud.fontScale", 1.2f) : 1f;
 
     static GUIStyle Style(int size, TextAnchor anchor, Color color, bool bold = true)
     {
@@ -21,7 +24,7 @@ public static class UI
             label = new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, clipping = TextClipping.Overflow };
         var font = Font;
         label.font = font;
-        label.fontSize = Mathf.Max(8, Mathf.RoundToInt(size * S));
+        label.fontSize = Mathf.Max(8, Mathf.RoundToInt(size * S * FontScale));
         label.alignment = anchor;
         // The pixel font is already chunky; synthetic bold just smears it.
         label.fontStyle = bold && font == null ? FontStyle.Bold : FontStyle.Normal;

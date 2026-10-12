@@ -24,7 +24,7 @@ public class DamageText : MonoBehaviour
         d.text.font = font;
         d.text.text = Mathf.RoundToInt(amount).ToString();
         d.text.fontSize = 48;
-        d.text.characterSize = 0.05f;
+        d.text.characterSize = 0.05f * UI.FontScale;
         d.text.anchor = TextAnchor.MiddleCenter;
         d.text.fontStyle = font == builtin ? FontStyle.Bold : FontStyle.Normal;
         d.color = color;

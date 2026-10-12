@@ -43,7 +43,7 @@ public class EffectCounter : MonoBehaviour
             live[key] = c;
         }
         c.transform.position = at + new Vector2(0f, Tune.F("hud.effectCounters.offset", 0.6f));
-        c.text.characterSize = Tune.F("hud.effectCounters.size", 0.035f);
+        c.text.characterSize = Tune.F("hud.effectCounters.size", 0.035f) * UI.FontScale;
         c.text.text = "x" + n;
         c.color = color;
         c.maxLife = c.life = Tune.F("hud.effectCounters.life", 0.9f);

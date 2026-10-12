@@ -21,6 +21,8 @@ tuning = {
     },
     "audio": {"volume": 1.0},
     "hud": {
+        "fontScale": 1.2,
+        "_fontScale": "Text size multiplier for the pixel font (Dusk and CRT); VT323 draws small for its point size.",
         "effectCounters": {"enabled": True, "size": 0.035, "offset": 0.6, "life": 0.9, "rise": 0.6,
             "_about": "The small x### tallies over combos and bug bursts. size = text scale (damage numbers are 0.05), offset = units above the trigger spot, life in seconds, rise in units/s."},
     },
