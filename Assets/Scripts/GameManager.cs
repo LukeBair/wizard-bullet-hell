@@ -339,10 +339,7 @@ public class GameManager : MonoBehaviour
                 StartCoroutine(Tune.FetchFromMac());
         }
 
-        Rect safe = Screen.safeArea;
-        var debugRect = new Rect(safe.xMin + 20f * s, Screen.height - safe.yMin - 84f * s, 200f * s, 64f * s);
-        if (UI.Button(debugRect, DebugUi ? "Debug: On" : "Debug: Off", DebugUi ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.5f, 0.5f, 0.6f)))
-            DebugUi = !DebugUi;
+        DrawDebugToggle();
         UI.Text(new Rect(col.x, col.y + 585f * s, col.width, 140f * s),
             "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nBeat the bosses for more sockets and a new zone.",
             24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
@@ -508,6 +505,16 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Bottom-left button on the title screen and pause menu.
+    void DrawDebugToggle()
+    {
+        float s = UiScale;
+        Rect safe = Screen.safeArea;
+        var r = new Rect(safe.xMin + 20f * s, Screen.height - safe.yMin - 84f * s, 200f * s, 64f * s);
+        if (UI.Button(r, DebugUi ? "Debug: On" : "Debug: Off", DebugUi ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.5f, 0.5f, 0.6f)))
+            DebugUi = !DebugUi;
+    }
+
     // ---------------------------------------------------------------- pause menu
 
     string confirming;   // "Restart" or "Quit" once tapped; a second tap does it
@@ -577,6 +584,7 @@ public class GameManager : MonoBehaviour
         }
         if (confirming != null)
             UI.Text(new Rect(col.x, y + bh + 8f * s, col.width, 30f * s), $"Tap again to {confirming.ToLower()}. This run ends and its gold is banked.", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
+        DrawDebugToggle();
     }
 
     // One spell: name, tier and level, its socketed runes and any power kept from evolving.
