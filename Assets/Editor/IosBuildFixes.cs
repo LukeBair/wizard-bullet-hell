@@ -6,6 +6,7 @@ using UnityEditor.iOS.Xcode;
 // Newer Xcode versions turn on two checks that Unity's generated project fails:
 // the module verifier rejects UnityFramework's umbrella header, and user script sandboxing
 // stops the IL2CPP build phase from loading its own tools. Turn both off after every iOS build.
+// Also adds the local-network permission text the live tuner needs.
 static class IosBuildFixes
 {
     [PostProcessBuild(100)]
@@ -24,6 +25,13 @@ static class IosBuildFixes
         }
 
         proj.WriteToFile(projPath);
+
+        // The game fetches live tuning from the Mac over the local network.
+        string plistPath = System.IO.Path.Combine(path, "Info.plist");
+        var plist = new PlistDocument();
+        plist.ReadFromFile(plistPath);
+        plist.root.SetString("NSLocalNetworkUsageDescription", "Loads live tuning values from the development Mac.");
+        plist.WriteToFile(plistPath);
     }
 }
 #endif

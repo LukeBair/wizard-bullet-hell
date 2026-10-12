@@ -33,15 +33,15 @@ public class ArcaneMissile : Spell
 
     void Fire(Vector2 from, Vector2 dir, bool canSplit)
     {
-        var p = Shoot(from, dir, 11f, 0.15f * Area);
-        p.Homing = Tier == 1 ? 0f : Tier == 2 ? 180f : 420f;
-        p.Lifetime = 2f;
+        var p = Shoot(from, dir, TT("speed", 11f), 0.15f * Area);
+        p.Homing = TT("homing", Tier == 1 ? 0f : Tier == 2 ? 180f : 420f);
+        p.Lifetime = T("lifetime", 2f);
         p.OnHit = (proj, e) =>
         {
             Hit(e, Damage, proj.Velocity.normalized * 2f);
             if (Tier == 3 && canSplit)
             {
-                var next = Enemy.Nearest(e.Position, Range * 0.6f, new[] { e });
+                var next = Enemy.Nearest(e.Position, Range * T("followUpRange", 0.6f), new[] { e });
                 if (next != null) Fire(e.Position, next.Position - e.Position, false);
             }
         };
@@ -58,8 +58,8 @@ public class Fireball : Spell
     protected override float BaseDamage => Tier == 1 ? 20f : 30f;
     protected override float BaseCooldown => 2.1f;
     protected override float PotencyPerRune => 0.25f;
-    float Radius => (Tier == 1 ? 1.0f : 1.8f) * Area;
-    float Speed => Tier == 1 ? 7.5f : 6f;
+    float Radius => TT("radius", Tier == 1 ? 1.0f : 1.8f) * Area;
+    float Speed => TT("speed", Tier == 1 ? 7.5f : 6f);
 
     public override string TierDescription(int tier) =>
         tier == 2 ? "Slower but much bigger, and burns everything in the blast." : "Each explosion throws out a ring of fireballs.";
@@ -69,7 +69,7 @@ public class Fireball : Spell
         switch (r)
         {
             case Rune.Potency: return "+25% damage and burn";
-            case Rune.Area: return $"+{AreaPerRune * 100f:0}% explosion radius";
+            case Rune.Area: return $"+{AreaStep * 100f:0}% explosion radius";
             case Rune.Pierce: return "Bursts through +1 enemy";
             default: return base.RuneEffect(r);
         }
@@ -94,7 +94,7 @@ public class Fireball : Spell
         p.Lifetime = life;
         p.OnHit = (proj, e) =>
         {
-            if (Tier == 1) e.ApplyBurn(Damage * 0.25f, 2f);
+            if (Tier == 1) e.ApplyBurn(Damage * T("burnFactor", 0.25f), T("burnDuration", 2f));
             Explode(proj.transform.position, splits);
         };
         if (!splits) p.OnExpire = proj => Explode(proj.transform.position, false);   // shrapnel always bursts
@@ -107,15 +107,18 @@ public class Fireball : Spell
         Sfx.Play(Sound.Explosion, 0.5f);
         foreach (var e in EnemiesWithin(at, Radius))
         {
-            if (Tier >= 2) e.ApplyBurn(Damage * 0.3f, 2.5f);
+            if (Tier >= 2) e.ApplyBurn(Damage * TT("burnFactor", 0.3f), TT("burnDuration", 2.5f));
             Hit(e, Damage, (e.Position - at).normalized * 4f);
         }
         if (splits)
-            for (int i = 0; i < 6; i++)
+        {
+            int n = Mathf.RoundToInt(T("shrapnelCount_t3", 6f));
+            for (int i = 0; i < n; i++)
             {
-                float a = i * 60f * Mathf.Deg2Rad;
-                Launch(at, new Vector2(Mathf.Cos(a), Mathf.Sin(a)), false, 0.6f);
+                float a = i * 360f / n * Mathf.Deg2Rad;
+                Launch(at, new Vector2(Mathf.Cos(a), Mathf.Sin(a)), false, T("shrapnelLifetime_t3", 0.6f));
             }
+        }
     }
 }
 
@@ -130,7 +133,7 @@ public class FrostNova : Spell
     protected override float BaseCooldown => 2.6f;
     protected override float PotencyPerRune => 0.2f;
     protected override float AreaPerRune => 0.15f;
-    float Radius => (Tier == 1 ? 2.0f : Tier == 2 ? 2.4f : 2.8f) * Area;
+    float Radius => TT("radius", Tier == 1 ? 2.0f : Tier == 2 ? 2.4f : 2.8f) * Area;
 
     public override string TierDescription(int tier) =>
         tier == 2 ? "Full size, and chills foes (slows 50%)."
@@ -143,7 +146,7 @@ public class FrostNova : Spell
             case Rune.Potency: return "+20% damage, longer chill";
             case Rune.Split: return "+1 follow-up pulse";
             case Rune.Pierce: return "Pushes foes back harder";
-            case Rune.Area: return $"+{AreaPerRune * 100f:0}% radius";
+            case Rune.Area: return $"+{AreaStep * 100f:0}% radius";
             case Rune.Frost: return Tier == 3 ? "Much more frostbite per pulse" : base.RuneEffect(r);
             default: return base.RuneEffect(r);
         }
@@ -169,11 +172,11 @@ public class FrostNova : Spell
         Sfx.Play(Sound.Nova, 0.45f);
         Fx.Ring(at, Color, Radius, 0.4f);
         Fx.Burst(at, new Color(Color.r, Color.g, Color.b, 0.4f), Radius * 2f);
-        float push = 4f + 3f * RuneCount(Rune.Pierce);
-        float frostbite = 0.35f + 0.25f * RuneCount(Rune.Frost);
+        float push = T("push", 4f) + T("pushPerPierce", 3f) * RuneCount(Rune.Pierce);
+        float frostbite = T("frostbite_t3", 0.35f) + T("frostbitePerFrostRune_t3", 0.25f) * RuneCount(Rune.Frost);
         foreach (var e in EnemiesWithin(at, Radius))
         {
-            if (Tier >= 2) e.ApplyChill(1.8f * Potency);
+            if (Tier >= 2) e.ApplyChill(TT("chill", 1.8f) * Potency);
             if (Tier == 3) e.AddFrostbite(frostbite);
             Hit(e, Damage, (e.Position - at).normalized * push);
         }
@@ -189,7 +192,7 @@ public class ChainLightning : Spell
     public override bool CanEvolve => true;
     protected override float BaseDamage => 18f;
     protected override float BaseCooldown => 1.5f;
-    int Jumps => 2 + PierceCount;
+    int Jumps => Mathf.RoundToInt(TT("jumps", 2f)) + PierceCount;
 
     public override string TierDescription(int tier) =>
         tier == 2 ? "Lightning leaps from foe to foe." : "Calls down a heavy bolt on the toughest foe, then chains from there.";
@@ -200,7 +203,7 @@ public class ChainLightning : Spell
         {
             case Rune.Split: return "+1 bolt";
             case Rune.Pierce: return Tier >= 2 ? "Chains to +1 more enemy" : "Bigger splash";
-            case Rune.Area: return $"+{AreaPerRune * 100f:0}% splash and jump distance";
+            case Rune.Area: return $"+{AreaStep * 100f:0}% splash and jump distance";
             default: return base.RuneEffect(r);
         }
     }
@@ -221,8 +224,8 @@ public class ChainLightning : Spell
                 // Heavy bolt from the sky.
                 Fx.Bolt(target.Position + new Vector2(0.5f, 9f), target.Position, Color.white);
                 Fx.Bolt(target.Position + new Vector2(-0.4f, 9f), target.Position, Color);
-                Splash(target.Position, 1.6f * Area, dmg * 1.2f, struck);
-                Hit(target, dmg * 3f);
+                Splash(target.Position, T("strikeSplash_t3", 1.6f) * Area, dmg * T("strikeSplashDamage_t3", 1.2f), struck);
+                Hit(target, dmg * T("strikeMultiplier_t3", 3f));
                 struck.Add(target);
                 from = target.Position;
                 target = Enemy.Nearest(from, 3.5f * Area, struck);
@@ -238,11 +241,11 @@ public class ChainLightning : Spell
             {
                 Fx.Bolt(from, target.Position, Color);
                 struck.Add(target);
-                if (j == 0 && Tier < 3) Splash(target.Position, (1f + 0.25f * (Tier == 1 ? PierceCount : 0)) * Area, dmg * 0.5f, struck);
+                if (j == 0 && Tier < 3) Splash(target.Position, (TT("splash", 1f) + 0.25f * (Tier == 1 ? PierceCount : 0)) * Area, dmg * TT("splashDamage", 0.5f), struck);
                 from = target.Position;
                 Hit(target, dmg);
-                dmg *= 0.9f;
-                target = Enemy.Nearest(from, 3.5f * Area, struck);
+                dmg *= T("chainFalloff", 0.9f);
+                target = Enemy.Nearest(from, T("jumpRange", 3.5f) * Area, struck);
             }
         }
     }
@@ -288,8 +291,8 @@ public class Wisps : Spell
     float quietTimer, hitHealTimer;
 
     int Rings => 1 + Echoes + (Tier >= 2 ? 1 : 0);
-    float OrbitRadius(int ring) => 1.7f * Area * (1f + 0.55f * ring);
-    float OrbRadius => 0.28f * Mathf.Sqrt(Area);
+    float OrbitRadius(int ring) => T("orbit", 1.7f) * Area * (1f + T("ringSpacing", 0.55f) * ring);
+    float OrbRadius => T("wispSize", 0.28f) * Mathf.Sqrt(Area);
 
     public override string TierDescription(int tier) =>
         tier == 2 ? "Starts with two rings. After 3s without striking anything, the wisps heal you 10%."
@@ -302,7 +305,7 @@ public class Wisps : Spell
             case Rune.Split: return "+1 wisp on every ring";
             case Rune.Haste: return "Wisps orbit 15% faster";
             case Rune.Pierce: return "Strikes the same foe more often";
-            case Rune.Area: return $"+{AreaPerRune * 100f:0}% orbit size";
+            case Rune.Area: return $"+{AreaStep * 100f:0}% orbit size";
             case Rune.Echo: return "+1 ring spinning the other way";
             default: return base.RuneEffect(r);
         }
@@ -338,8 +341,8 @@ public class Wisps : Spell
 
     protected override void OnTick(float dt)
     {
-        angle += 200f / Cooldown * dt * Tuning.Pace;
-        float hitEvery = 0.5f / (1f + 0.3f * RuneCount(Rune.Pierce));
+        angle += T("spinSpeed", 200f) / Cooldown * dt * Tuning.Pace;
+        float hitEvery = T("hitEvery", 0.5f) / (1f + 0.3f * RuneCount(Rune.Pierce));
         bool hitSomething = false;
         for (int i = 0; i < orbs.Count; i++)
         {
@@ -367,17 +370,17 @@ public class Wisps : Spell
         if (Tier >= 2)
         {
             quietTimer = hitSomething ? 0f : quietTimer + dt;
-            if (quietTimer >= 3f)
+            if (quietTimer >= T("quietSeconds_t2", 3f))
             {
                 quietTimer = 0f;
-                HealOwner(0.1f);
+                HealOwner(T("quietHeal_t2", 0.1f));
             }
         }
         hitHealTimer -= dt;
         if (Tier == 3 && hitSomething && hitHealTimer <= 0f)
         {
             hitHealTimer = 0.25f;
-            HealOwner(0.01f);
+            HealOwner(T("hitHeal_t3", 0.01f));
         }
     }
 

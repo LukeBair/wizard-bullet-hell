@@ -43,6 +43,7 @@ public class GameManager : MonoBehaviour
         if (FindAnyObjectByType<AudioListener>() == null) cam.gameObject.AddComponent<AudioListener>();
         BuildWorld();
         State = GameState.Title;
+        StartCoroutine(Tune.FetchFromMac());
     }
 
     void SetupCamera()
@@ -110,6 +111,7 @@ public class GameManager : MonoBehaviour
     {
         State = GameState.GameOver;
         gameOverTime = Time.unscaledTime;
+        StartCoroutine(Tune.FetchFromMac());   // pick up tuner edits before the next try
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f))
         {
             PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
@@ -197,6 +199,10 @@ public class GameManager : MonoBehaviour
             Haptics.Selection();
             StartRun();
         }
+        string tuning = Tune.Fetching ? "Tuning: checking Mac..." : $"Tuning: {Tune.Source}";
+        UI.Text(new Rect(col.x, col.y + 600f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
+        if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 650f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
+            StartCoroutine(Tune.FetchFromMac());
         UI.Text(new Rect(col.x, col.y + 380f * s, col.width, 200f * s),
             "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nFill a spell's sockets to evolve it.",
             24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
@@ -273,7 +279,10 @@ public class GameManager : MonoBehaviour
         if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), "Try again", new Color(0.6f, 0.45f, 1f)))
             StartRun();
         if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), "Title screen", new Color(0.6f, 0.6f, 0.7f)))
+        {
             State = GameState.Title;
+            StartCoroutine(Tune.FetchFromMac());
+        }
     }
 
     void DrawToasts()

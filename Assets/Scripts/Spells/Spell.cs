@@ -44,12 +44,18 @@ public abstract class Spell
     public int TotalRunes { get { int n = 0; foreach (var r in runes) n += r; return n; } }
     public int Level => 1 + TotalRunes;
 
-    public float Potency => 1f + PotencyPerRune * RuneCount(Rune.Potency);
-    public float Damage => BaseDamage * Potency;
-    public float Cooldown => BaseCooldown * Tuning.CastRate * Mathf.Pow(0.85f, RuneCount(Rune.Haste));
-    public int Count => BaseCount + RuneCount(Rune.Split);
-    public int PierceCount => BasePierce + RuneCount(Rune.Pierce);
-    public float Area => 1f + AreaPerRune * RuneCount(Rune.Area);
+    // Tuner lookups: spells.<SpellId>.<key>. Tier 2/3 values use "<key>_t2" / "<key>_t3".
+    protected float T(string key, float fallback) => Tune.F($"spells.{Id}.{key}", fallback);
+    protected float TT(string key, float fallback) => T(Tier == 1 ? key : $"{key}_t{Tier}", fallback);
+
+    protected float PotencyStep => TT("potencyPerRune", PotencyPerRune);
+    protected float AreaStep => TT("areaPerRune", AreaPerRune);
+    public float Potency => 1f + PotencyStep * RuneCount(Rune.Potency);
+    public float Damage => TT("damage", BaseDamage) * Potency;
+    public float Cooldown => TT("cooldown", BaseCooldown) * Tuning.CastRate * Mathf.Pow(Tune.F("runes.Haste.cooldownMultiplier", 0.85f), RuneCount(Rune.Haste));
+    public int Count => Mathf.RoundToInt(TT("count", BaseCount)) + RuneCount(Rune.Split);
+    public int PierceCount => Mathf.RoundToInt(TT("pierce", BasePierce)) + RuneCount(Rune.Pierce);
+    public float Area => 1f + AreaStep * RuneCount(Rune.Area);
     public int Echoes => RuneCount(Rune.Echo);
     public virtual float CooldownProgress => 1f - Mathf.Clamp01(timer / Cooldown);
     protected float Range => GameManager.Instance.TargetRange;
@@ -151,11 +157,11 @@ public abstract class Spell
     {
         switch (r)
         {
-            case Rune.Potency: return $"+{PotencyPerRune * 100f:0}% damage";
+            case Rune.Potency: return $"+{PotencyStep * 100f:0}% damage";
             case Rune.Haste: return "Casts 15% faster";
             case Rune.Split: return "+1 projectile";
             case Rune.Pierce: return "Passes through +1 enemy";
-            case Rune.Area: return $"+{AreaPerRune * 100f:0}% size";
+            case Rune.Area: return $"+{AreaStep * 100f:0}% size";
             case Rune.Echo: return "Casts again a moment later";
             case Rune.Ember: return "Sets enemies on fire";
             case Rune.Frost: return "Chills enemies (slows 50%)";
@@ -194,7 +200,7 @@ public abstract class Spell
         damage *= 1f + e.ConsumeCurse();
         if (Element == Element.Storm && e.IsWet)
         {
-            damage *= 1.5f;
+            damage *= Tune.F("combos.conductiveMultiplier", 1.5f);
             Interactions.Trigger(Interaction.Conductive, e.Position);
         }
         if (Element == Element.Frost && e.IsWet)
@@ -205,18 +211,18 @@ public abstract class Spell
         }
 
         int ember = RuneCount(Rune.Ember);
-        if (ember > 0) e.ApplyBurn(Damage * 0.4f * ember, 2.5f);
+        if (ember > 0) e.ApplyBurn(Damage * Tune.F("runes.Ember.burnPerRune", 0.4f) * ember, Tune.F("runes.Ember.duration", 2.5f));
         int frost = RuneCount(Rune.Frost);
-        if (frost > 0) e.ApplyChill(1f + 0.6f * frost);
+        if (frost > 0) e.ApplyChill(Tune.F("runes.Frost.chillBase", 1f) + Tune.F("runes.Frost.chillPerRune", 0.6f) * frost);
         int infest = RuneCount(Rune.Infest);
-        if (infest > 0) e.Infest(Damage * 0.5f * infest, 1f);
+        if (infest > 0) e.Infest(Damage * Tune.F("runes.Infest.burstPerRune", 0.5f) * infest, Tune.F("runes.Infest.duration", 1f));
         int bless = RuneCount(Rune.Bless);
-        if (bless > 0) e.Bless(Mathf.Min(0.8f, 0.15f * bless));
+        if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
 
         e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
 
         int curse = RuneCount(Rune.Curse);
-        if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(5f, 0.5f * curse));
+        if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(Tune.F("runes.Curse.maxBonus", 5f), Tune.F("runes.Curse.bonusPerRune", 0.5f) * curse));
     }
 
     protected Projectile Shoot(Vector2 from, Vector2 dir, float speed, float radius)

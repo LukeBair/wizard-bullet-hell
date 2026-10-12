@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wizard Tuner</title>
+<style>
+  :root {
+    --bg: #14111c; --panel: #1d1928; --panel2: #262136; --line: #352e4a; --text: #ece8f6; --muted: #9a92b3;
+    --accent: #b48cff; --changed: #ffcf5c; --danger: #ff6b7d; --ok: #6be3a0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; color: var(--accent); }
+  input[type=search] { flex: 1; min-width: 160px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--panel2); color: var(--text); border-radius: 8px; padding: 7px 12px; font: inherit; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #1a1326; border-color: var(--accent); font-weight: 600; }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  button.danger { color: var(--danger); }
+  #status { font-size: 12px; color: var(--muted); }
+  #status.dirty { color: var(--changed); }
+  #status.ok { color: var(--ok); }
+  .layout { display: grid; grid-template-columns: 200px 1fr; min-height: calc(100vh - 54px); }
+  nav { border-right: 1px solid var(--line); padding: 10px 0; background: var(--panel); }
+  nav a { display: block; padding: 7px 16px; color: var(--muted); text-decoration: none; cursor: pointer; }
+  nav a.active { color: var(--text); background: var(--panel2); border-left: 3px solid var(--accent); padding-left: 13px; }
+  nav a .count { float: right; color: var(--changed); font-size: 11px; }
+  main { padding: 16px; overflow: auto; }
+  .note { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .card h3 { margin: 0 0 8px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .row { display: grid; grid-template-columns: 1fr 110px 26px; align-items: center; gap: 8px; padding: 3px 0; }
+  .row label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .row label .path { color: var(--muted); font-size: 11px; display: block; }
+  .row.changed label { color: var(--changed); }
+  .row input[type=number], .row input[type=text] { width: 100%; padding: 5px 7px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+  .row.changed input { border-color: var(--changed); }
+  .reset { visibility: hidden; padding: 0 6px; }
+  .row.changed .reset { visibility: visible; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 4px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td input, td select { width: 100%; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+  .addkey { display: flex; gap: 6px; margin-top: 8px; }
+  .addkey input { flex: 1; min-width: 0; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  .tip { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+  .tip b { color: var(--text); }
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { display: flex; overflow-x: auto; padding: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+    nav a { white-space: nowrap; }
+    nav a.active { border-left: 0; border-bottom: 3px solid var(--accent); padding-left: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧙 Wizard Tuner</h1>
+  <input type="search" id="search" placeholder="Search any value (e.g. weight, Fireball, Health)…">
+  <span id="status">Loading…</span>
+  <button id="reload" title="Reload from disk">Reload</button>
+  <button class="primary" id="save" title="Save (⌘S)">Save</button>
+</header>
+<div class="layout">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<script>
+let data = {}, defaults = {}, dirty = false, section = null, info = null;
+
+const $ = (s) => document.querySelector(s);
+const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
+const isNote = (k) => k.startsWith("_");
+const get = (obj, path) => path.reduce((o, k) => (o == null ? undefined : o[k]), obj);
+function set(obj, path, value) {
+  let o = obj;
+  for (let i = 0; i < path.length - 1; i++) o = o[path[i]];
+  o[path[path.length - 1]] = value;
+}
+function label(k) { return k.replace(/_t(\d)$/, " (tier $1)").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()); }
+
+function setDirty(d) {
+  dirty = d;
+  const s = $("#status");
+  s.className = d ? "dirty" : "";
+  s.textContent = d ? "Unsaved changes" : "All changes saved";
+  renderNav();
+}
+
+async function load() {
+  const [t, d] = await Promise.all([fetch("/tuning.json").then((r) => r.json()), fetch("/defaults.json").then((r) => r.json()).catch(() => ({}))]);
+  data = t; defaults = d;
+  info = await fetch("/info").then((r) => r.json()).catch(() => null);
+  if (!section) section = Object.keys(data).find((k) => !isNote(k));
+  setDirty(false);
+  render();
+}
+
+async function save() {
+  const r = await fetch("/tuning.json", { method: "PUT", body: JSON.stringify(data) });
+  const j = await r.json();
+  if (!j.ok) { alert("Save failed: " + j.error); return; }
+  setDirty(false);
+  const s = $("#status");
+  s.className = "ok";
+  s.textContent = "Saved. Start a new run in the game to use it.";
+}
+
+function changedCount(path) {
+  let n = 0;
+  (function walk(v, p) {
+    if (isObj(v)) for (const k of Object.keys(v)) { if (!isNote(k)) walk(v[k], [...p, k]); }
+    else if (!Array.isArray(v)) { const dv = get(defaults, p); if (dv !== undefined && dv !== v) n++; if (dv === undefined) n++; }
+    else if (JSON.stringify(v) !== JSON.stringify(get(defaults, p))) n++;
+  })(get(data, path), path);
+  return n;
+}
+
+function renderNav() {
+  const nav = $("#nav");
+  nav.innerHTML = "";
+  for (const k of Object.keys(data)) {
+    if (isNote(k)) continue;
+    const a = document.createElement("a");
+    a.textContent = label(k);
+    if (k === section && !$("#search").value) a.className = "active";
+    const c = changedCount([k]);
+    if (c) { const s = document.createElement("span"); s.className = "count"; s.textContent = c; a.appendChild(s); }
+    a.onclick = () => { section = k; $("#search").value = ""; render(); };
+    nav.appendChild(a);
+  }
+}
+
+function render() {
+  renderNav();
+  const main = $("#main");
+  main.innerHTML = "";
+  const q = $("#search").value.trim().toLowerCase();
+  if (q) return renderSearch(main, q);
+
+  if (section === Object.keys(data).find((k) => !isNote(k)) && info) {
+    const tip = document.createElement("div");
+    tip.className = "tip";
+    tip.innerHTML = `<b>How it works:</b> edit values, press <b>Save</b>, then start a new run. The game loads the newest values from this Mac at the title screen and after every death (phone on the same Wi‑Fi: ${info.ips.map((i) => i + ":" + info.port).join(", ")}). Changed values are highlighted; ↺ resets one to its original value. Bundled into the next phone build as well.`;
+    main.appendChild(tip);
+  }
+
+  const node = data[section];
+  const notes = Object.keys(node).filter((k) => isNote(k) && !Array.isArray(node[k.slice(1)])).map((k) => node[k]);
+  for (const n of notes) { const p = document.createElement("div"); p.className = "note"; p.textContent = n; main.appendChild(p); }
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  main.appendChild(grid);
+
+  // Loose values first in one card, then one card per nested object / list.
+  const loose = Object.keys(node).filter((k) => !isNote(k) && !isObj(node[k]) && !Array.isArray(node[k]));
+  if (loose.length) grid.appendChild(card(label(section), [section], loose));
+  for (const k of Object.keys(node)) {
+    if (isNote(k)) continue;
+    if (isObj(node[k])) grid.appendChild(card(k, [section, k], Object.keys(node[k]).filter((x) => !isNote(x) && !isObj(node[k][x])), true));
+    else if (Array.isArray(node[k])) grid.appendChild(listCard(k, [section, k], node["_" + k]));
+  }
+}
+
+function card(title, path, keys, removable) {
+  const c = document.createElement("div");
+  c.className = "card";
+  const h = document.createElement("h3");
+  h.textContent = label(title);
+  if (removable && get(defaults, path) === undefined) {
+    const del = document.createElement("button");
+    del.className = "small danger"; del.textContent = "Remove";
+    del.onclick = () => { const parent = get(data, path.slice(0, -1)); delete parent[path[path.length - 1]]; setDirty(true); render(); };
+    h.appendChild(del);
+  }
+  c.appendChild(h);
+  const obj = get(data, path);
+  if (path.length > 1) for (const k of Object.keys(obj).filter(isNote)) { const n = document.createElement("div"); n.className = "note"; n.textContent = obj[k]; c.appendChild(n); }
+  for (const k of keys) c.appendChild(row([...path, k], label(k)));
+
+  // Add a new value to this group.
+  const add = document.createElement("div");
+  add.className = "addkey";
+  add.innerHTML = `<input placeholder="new value name"><input placeholder="value" style="max-width:80px"><button class="small">Add</button>`;
+  const [nameIn, valIn, btn] = add.children;
+  btn.onclick = () => {
+    const name = nameIn.value.trim();
+    if (!name) return;
+    const raw = valIn.value.trim();
+    obj[name] = raw === "true" ? true : raw === "false" ? false : raw !== "" && !isNaN(+raw) ? +raw : raw;
+    setDirty(true); render();
+  };
+  c.appendChild(add);
+  return c;
+}
+
+function row(path, text, showPath) {
+  const r = document.createElement("div");
+  r.className = "row";
+  const value = get(data, path);
+  const dv = get(defaults, path);
+  const l = document.createElement("label");
+  l.textContent = text;
+  l.title = path.join(".");
+  if (showPath) { const p = document.createElement("span"); p.className = "path"; p.textContent = path.slice(0, -1).join(" › "); l.appendChild(p); }
+  let input;
+  if (typeof value === "boolean") {
+    input = document.createElement("input"); input.type = "checkbox"; input.checked = value;
+    input.onchange = () => { set(data, path, input.checked); mark(); };
+  } else if (typeof value === "number") {
+    input = document.createElement("input"); input.type = "number"; input.step = "any"; input.value = value;
+    input.oninput = () => { if (input.value !== "" && !isNaN(+input.value)) { set(data, path, +input.value); mark(); } };
+  } else {
+    input = document.createElement("input"); input.type = "text"; input.value = value ?? "";
+    input.oninput = () => { set(data, path, input.value); mark(); };
+  }
+  const reset = document.createElement("button");
+  reset.className = "small reset"; reset.textContent = "↺"; reset.title = dv === undefined ? "Remove (not in defaults)" : `Reset to ${dv}`;
+  reset.onclick = () => {
+    if (dv === undefined) { const parent = get(data, path.slice(0, -1)); delete parent[path[path.length - 1]]; }
+    else set(data, path, dv);
+    setDirty(true); render();
+  };
+  function mark() { r.classList.toggle("changed", get(data, path) !== dv); if (!dirty) setDirty(true); }
+  if (value !== dv) r.classList.add("changed");
+  r.append(l, input, reset);
+  return r;
+}
+
+function listCard(title, path, note) {
+  const list = get(data, path);
+  const c = document.createElement("div");
+  c.className = "card";
+  c.style.gridColumn = "1 / -1";
+  const h = document.createElement("h3");
+  h.textContent = label(title);
+  c.appendChild(h);
+  if (note) { const n = document.createElement("div"); n.className = "note"; n.textContent = note; c.appendChild(n); }
+  const cols = [...new Set(list.flatMap((o) => Object.keys(o)))];
+  if (!cols.length) cols.push("name");
+  const t = document.createElement("table");
+  t.innerHTML = `<tr>${cols.map((k) => `<th>${label(k)}</th>`).join("")}<th></th></tr>`;
+  list.forEach((item, i) => {
+    const tr = document.createElement("tr");
+    for (const k of cols) {
+      const td = document.createElement("td");
+      const v = item[k];
+      let input;
+      if (k === "tier") {
+        input = document.createElement("select");
+        for (const o of ["Any", "Chaff", "Medium", "Boss"]) { const op = document.createElement("option"); op.value = op.textContent = o; input.appendChild(op); }
+        input.value = v ?? "Any";
+        input.onchange = () => { item[k] = input.value; setDirty(true); };
+      } else {
+        input = document.createElement("input");
+        input.type = typeof v === "number" ? "number" : "text";
+        if (input.type === "number") input.step = "any";
+        input.value = v ?? "";
+        input.oninput = () => { item[k] = input.type === "number" ? +input.value : input.value; setDirty(true); };
+      }
+      td.appendChild(input);
+      tr.appendChild(td);
+    }
+    const td = document.createElement("td");
+    const del = document.createElement("button");
+    del.className = "small danger"; del.textContent = "✕";
+    del.onclick = () => { list.splice(i, 1); setDirty(true); render(); };
+    td.appendChild(del);
+    tr.appendChild(td);
+    t.appendChild(tr);
+  });
+  c.appendChild(t);
+  const add = document.createElement("button");
+  add.className = "small"; add.textContent = "+ Add row"; add.style.marginTop = "8px";
+  add.onclick = () => {
+    const template = list[0] ? Object.fromEntries(Object.entries(list[0]).map(([k, v]) => [k, typeof v === "number" ? 0 : k === "tier" ? "Any" : "New"])) : { name: "New" };
+    list.push(template); setDirty(true); render();
+  };
+  c.appendChild(add);
+  return c;
+}
+
+function renderSearch(main, q) {
+  const grid = document.createElement("div");
+  grid.className = "card";
+  let hits = 0;
+  (function walk(v, p) {
+    if (isObj(v)) { for (const k of Object.keys(v)) if (!isNote(k)) walk(v[k], [...p, k]); return; }
+    if (Array.isArray(v)) return;
+    if (p.join(" ").toLowerCase().includes(q)) { grid.appendChild(row(p, label(p[p.length - 1]), true)); hits++; }
+  })(data, []);
+  if (!hits) grid.textContent = "Nothing matches.";
+  main.appendChild(grid);
+}
+
+$("#search").oninput = render;
+$("#save").onclick = save;
+$("#reload").onclick = () => { if (!dirty || confirm("Discard unsaved changes?")) load(); };
+document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); save(); } });
+window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+load().catch((e) => { $("#status").textContent = "Could not load: " + e.message; });
+</script>
+</body>
+</html>

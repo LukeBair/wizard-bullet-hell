@@ -10,9 +10,11 @@ using UnityEngine;
 // the timers pause until it's dead.
 public class Director : MonoBehaviour
 {
-    const int MaxEnemies = 200;
-    const float BossEvery = 150f;
-    const float SwarmEvery = 45f;
+    // All spawn numbers live in the tuner under spawning.*
+    static int MaxEnemies => Tune.I("spawning.maxEnemies", 200);
+    static float BossEvery => Tune.F("spawning.bossEvery", 150f);
+    static float SwarmEvery => Tune.F("spawning.swarmEvery", 45f);
+    static float T(string key, float fallback) => Tune.F("spawning." + key, fallback);
 
     public float Elapsed { get; private set; }
     public float HealthScale { get; private set; } = 1f;
@@ -33,7 +35,7 @@ public class Director : MonoBehaviour
         Threat = 0;
         BossesDefeated = 0;
         chaffBudget = 0f;
-        mediumTimer = 40f;
+        mediumTimer = T("firstMediumAt", 40f);
         swarmTimer = SwarmEvery;
         bossTimer = BossEvery;
         bossIndex = 0;
@@ -48,11 +50,11 @@ public class Director : MonoBehaviour
         if (e != Boss) return;
         Boss = null;
         BossesDefeated++;
-        HealthScale += 1f;
+        HealthScale += T("healthPerBossKill", 1f);
         XpGem.MagnetAll();
         Sfx.Play(Sound.BossDie, 1f, 0f);
         Haptics.Notification(Haptics.Notify.Success);
-        GameManager.Instance.Player.Heal(30f);
+        GameManager.Instance.Player.Heal(T("bossKillHeal", 30f));
         GameManager.Instance.Toast($"{e.Def.Name} defeated!");
         GameManager.Instance.Toast("The forest grows stronger...");
     }
@@ -66,8 +68,10 @@ public class Director : MonoBehaviour
         if (Boss != null) return;   // boss fight: no other spawns
 
         // Slow climb until the first boss; each boss kill then steps the pressure up sharply.
-        float chaffRate = (0.4f + Elapsed / 240f) * (1f + 0.1f * Threat) * (1f + 1.2f * BossesDefeated);
-        chaffRate = Mathf.Min(chaffRate, 10f);
+        float chaffRate = (T("chaffBase", 0.4f) + Elapsed * T("chaffPerSecond", 1f / 240f))
+                          * (1f + T("chaffPerThreat", 0.1f) * Threat)
+                          * (1f + T("chaffPerBossKill", 1.2f) * BossesDefeated);
+        chaffRate = Mathf.Min(chaffRate, T("chaffMax", 10f));
         chaffBudget += chaffRate * dt;
         while (chaffBudget >= 1f)
         {
@@ -81,20 +85,20 @@ public class Director : MonoBehaviour
             int stage = Stage;
             if (stage == 0)
             {
-                mediumTimer = 14f;
+                mediumTimer = T("mediumEveryStage0", 14f);
                 SpawnAtEdge(PickMedium());
             }
             else if (stage == 1)
             {
-                mediumTimer = 11f;
-                int pack = Random.value < 0.3f ? 2 : 1;
+                mediumTimer = T("mediumEveryStage1", 11f);
+                int pack = Random.value < T("pairChanceStage1", 0.3f) ? 2 : 1;
                 for (int i = 0; i < pack; i++) SpawnAtEdge(PickMedium());
             }
             else
             {
                 // Packs that come from one direction, bigger and more often with each boss killed.
-                mediumTimer = Mathf.Max(2.5f, 6f - (stage - 2));
-                int pack = Mathf.Min(Random.Range(2, stage + 1), 5);
+                mediumTimer = Mathf.Max(T("mediumEveryMin", 2.5f), T("mediumEveryStage2", 6f) - (stage - 2));
+                int pack = Mathf.Min(Random.Range(2, stage + 1), Tune.I("spawning.maxPack", 5));
                 var def = PickMedium();
                 Vector2 at = EdgePoint(def.Radius);
                 for (int i = 0; i < pack && Enemy.All.Count < MaxEnemies; i++)
@@ -110,7 +114,7 @@ public class Director : MonoBehaviour
             Sfx.Play(Sound.Warning, 0.5f, 0f);
             Haptics.Tap(Haptics.Impact.Medium);
             Threat++;
-            HealthScale += 0.25f;
+            HealthScale += T("healthPerSwarm", 0.25f);
         }
 
         bossTimer -= dt;
@@ -128,7 +132,9 @@ public class Director : MonoBehaviour
     void SpawnSwarm(GameManager gm)
     {
         // A closing ring of bats; slimes join from the second swarm, medium escorts after a boss kill.
-        int n = BossesDefeated == 0 ? 14 + 3 * Threat : 16 + 6 * Threat;
+        int n = BossesDefeated == 0
+            ? Mathf.RoundToInt(T("swarmBasePreBoss", 14f) + T("swarmPerThreatPreBoss", 3f) * Threat)
+            : Mathf.RoundToInt(T("swarmBase", 16f) + T("swarmPerThreat", 6f) * Threat);
         var bat = roster.Chaff[Mathf.Min(1, roster.Chaff.Length - 1)];
         for (int i = 0; i < n; i++)
         {
@@ -164,7 +170,7 @@ public class Director : MonoBehaviour
         return pool[pool.Count - 1];
     }
 
-    float Weight(EnemyDef d) => IsCaster(d) && BossesDefeated == 0 ? 0.25f : 1f;
+    float Weight(EnemyDef d) => IsCaster(d) && BossesDefeated == 0 ? T("casterWeightPreBoss", 0.25f) : 1f;
 
     Vector2 EdgePoint(float radius)
     {
@@ -188,7 +194,7 @@ public class Director : MonoBehaviour
         var gm = GameManager.Instance;
         p = gm.Arena.PushOut(p, def.Radius);
         // Bosses already have huge health; they scale at half rate.
-        float scale = def.Tier == EnemyTier.Boss ? 1f + (HealthScale - 1f) * 0.5f : HealthScale;
+        float scale = def.Tier == EnemyTier.Boss ? 1f + (HealthScale - 1f) * T("bossHealthScaleRate", 0.5f) : HealthScale;
         return Enemy.Spawn(def, p, scale);
     }
 }

@@ -27,7 +27,7 @@ public class Rejuvenate : Spell
     {
         if (Owner == null) return;
         // Pierce means nothing for a heal, so it buys max health instead.
-        float bonus = 10f * RuneCount(Rune.Pierce);
+        float bonus = T("maxHealthPerPierce", 10f) * RuneCount(Rune.Pierce);
         Owner.MaxHealth = Player.BaseMaxHealth + bonus;
     }
 
@@ -59,8 +59,8 @@ public class Overgrowth : Spell
     protected override float BaseDamage => 6f;
     protected override float BaseCooldown => 5f;
     protected override float PotencyPerRune => 0.25f;
-    float Radius => 1.8f * Area;
-    float RootTime => 2.2f * Potency;
+    float Radius => T("radius", 1.8f) * Area;
+    float RootTime => T("rootTime", 2.2f) * Potency;
 
     public override string RuneEffect(Rune r)
     {
@@ -163,7 +163,7 @@ public class TidalLance : Spell
         {
             case Rune.Split: return "+1 beam at an angle";
             case Rune.Pierce: return "Beam lasts 30% longer";
-            case Rune.Area: return $"+{AreaPerRune * 100f:0}% beam length and width";
+            case Rune.Area: return $"+{AreaStep * 100f:0}% beam length and width";
             default: return base.RuneEffect(r);
         }
     }
@@ -173,11 +173,11 @@ public class TidalLance : Spell
         var target = Enemy.Nearest(Owner.Position, Range);
         if (target == null) return;
         Sfx.Play(Sound.FireballCast, 0.5f, 0.2f);
-        float duration = 1.2f * (1f + 0.3f * RuneCount(Rune.Pierce));
+        float duration = T("duration", 1.2f) * (1f + 0.3f * RuneCount(Rune.Pierce));
         for (int i = 0; i < Count; i++)
         {
             float offset = (i - (Count - 1) * 0.5f) * 25f;
-            WaterBeam.Create(this, Owner, offset, duration, 6.5f * Area, 0.55f * Area, (e, push) => Hit(e, Damage, push));
+            WaterBeam.Create(this, Owner, offset, duration, T("length", 6.5f) * Area, T("width", 0.55f) * Area, (e, push) => Hit(e, Damage, push));
         }
     }
 }
@@ -198,7 +198,7 @@ public class Cyclone : Spell
             case Rune.Potency: return "+30% damage and pull strength";
             case Rune.Split: return "+1 whirlwind";
             case Rune.Pierce: return "Lasts 30% longer";
-            case Rune.Area: return $"+{AreaPerRune * 100f:0}% pull radius";
+            case Rune.Area: return $"+{AreaStep * 100f:0}% pull radius";
             default: return base.RuneEffect(r);
         }
     }
@@ -211,8 +211,8 @@ public class Cyclone : Spell
         for (int i = 0; i < Count; i++)
         {
             Vector2 d = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 70f) * dir;
-            Vector2 at = GameManager.Instance.Arena.PushOut(Owner.Position + d * 4.5f, 0.5f);
-            Vortex.Create(at, 3f * Area, 2.5f * (1f + 0.3f * RuneCount(Rune.Pierce)), 9f * Potency, Color, e => Hit(e, Damage));
+            Vector2 at = GameManager.Instance.Arena.PushOut(Owner.Position + d * T("distance", 4.5f), 0.5f);
+            Vortex.Create(at, T("radius", 3f) * Area, T("duration", 2.5f) * (1f + 0.3f * RuneCount(Rune.Pierce)), T("pull", 9f) * Potency, Color, e => Hit(e, Damage));
         }
     }
 }

@@ -49,6 +49,16 @@ Each level-up you take a rune stone (Split and Echo are rare) and tap the spell 
 
 \* Only after the first swarm. Pressure builds in stages: before the first swarm (45s) it's a light trickle with a rare basic medium; after it, mediums appear sometimes; after each boss kill they come often and in packs. Swarms grow each time. Enemy health steps up +25% per swarm and +100% per boss killed (bosses scale at half rate). A boss arrives every 2:30; nothing else spawns until it dies. Each run picks a random setting (Whispering Forest, Arcane Academy, Crystal Caves), which decides the first boss. New settings (wizarding school, caves) are a new `Biome` plus an `EnemyRoster`.
 
+## Tuning editor
+
+Every number in the game (spell damage and cooldowns, rune rarity and effects, enemy stats, XP curve, drops, spawn pacing) lives in `Assets/Resources/tuning.json`. Edit it with the tuner page:
+
+```bash
+node tools/tuner/server.js
+```
+
+then open http://localhost:8787 (or double-click `tools/tuner/start.command`). Change values, press Save, and start a new run: the game (editor, or the phone on the same Wi-Fi) loads the newest values from the Mac on the title screen and after each death, so no rebuild is needed. The file is also bundled into every build. Changed values are highlighted with a reset button; you can add values and add rows to lists like `drops.extra` (bonus drops per kill). `tools/tuner/tuning.defaults.json` holds the original values.
+
 ## How it works
 
 | Script | Role |
@@ -61,6 +71,7 @@ Each level-up you take a rune stone (Split and Echo are rare) and tap the spell 
 | `Enemies/Enemy`, `EnemyRoster`, `Director` | Enemy behaviours, the forest roster, and time-based spawning |
 | `Spells/Spell`, `Spells`, `Fusions` | Spell base class with rune modifiers, the five spells, element fusions |
 | `Upgrades/*` | Rune Sockets level-up flow and a small OnGUI card kit |
+| `Tune`, `Tuning` | Reads tuning.json (live from the Mac tuner when reachable) |
 | `Projectile`, `XpGem`, `Fx`, `SpriteFactory` | Bullets and spells, XP drops, effects, placeholder shapes |
 
 For soak testing in the editor, set `GameManager.Autoplay = true` (the wizard kites on its own and upgrades are picked at random), or press **L** during a run for an instant level-up.

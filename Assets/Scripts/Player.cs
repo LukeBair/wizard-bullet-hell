@@ -7,10 +7,10 @@ public class Player : MonoBehaviour
 {
     public const float HitRadius = 0.15f;   // enemy bullets: tiny hitbox, shown as the white dot
     public const float BodyRadius = 0.3f;   // contact with melee enemies and trees
-    const float InvulnTime = 0.6f;
+    static float InvulnTime => Tune.F("player.invulnTime", 0.6f);
 
-    public const float BaseMaxHealth = 100f;
-    public float MaxHealth = BaseMaxHealth;
+    public static float BaseMaxHealth => Tune.F("player.MaxHealth", 100f);
+    public float MaxHealth = 100f;
     public float MoveSpeed = 4.6f;
     public float PickupRadius = 2.2f;
 
@@ -21,8 +21,16 @@ public class Player : MonoBehaviour
 
     public int Level { get; private set; } = 1;
     public int Xp { get; private set; }
-    // Base curve, then x1.25 for every 5 levels.
-    public int XpToNext => Mathf.RoundToInt((3 + Level * 2 + Level * Level / 5) * Mathf.Pow(1.25f, Level / 5));
+    // Base curve (base + perLevel*L + L^2/quadDivisor), then x stepMultiplier for every stepEvery levels.
+    public int XpToNext
+    {
+        get
+        {
+            float raw = Tune.F("xp.base", 3f) + Level * Tune.F("xp.perLevel", 2f) + Level * Level / Mathf.Max(1f, Tune.F("xp.quadDivisor", 5f));
+            int steps = Level / Mathf.Max(1, Tune.I("xp.stepEvery", 5));
+            return Mathf.Max(1, Mathf.RoundToInt(Mathf.Floor(raw) * Mathf.Pow(Tune.F("xp.stepMultiplier", 1.25f), steps)));
+        }
+    }
 
     public readonly List<Spell> Spells = new List<Spell>();
 
@@ -37,6 +45,7 @@ public class Player : MonoBehaviour
         var go = new GameObject("Wizard");
         go.transform.position = position;
         var p = go.AddComponent<Player>();
+        Tune.Apply(p, "player");   // MaxHealth, MoveSpeed, PickupRadius
         p.Health = p.MaxHealth;
         p.BuildVisual();
         return p;

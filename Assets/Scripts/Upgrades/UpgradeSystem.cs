@@ -37,7 +37,7 @@ public abstract class UpgradeSystem
         return list;
     }
 
-    protected const int MaxSpells = 5;
+    protected static int MaxSpells => Tune.I("runes.maxSpells", 5);
 
     protected static void Shuffle<T>(IList<T> list)
     {

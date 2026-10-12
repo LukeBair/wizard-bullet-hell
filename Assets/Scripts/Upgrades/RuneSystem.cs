@@ -10,8 +10,10 @@ public class RuneSystem : UpgradeSystem
 {
     public override string Name => "Rune Sockets";
 
-    const int Sockets = 4;
-    const float CommonWeight = 10f, RareWeight = 2.5f;
+    static int Sockets => Tune.I("runes.sockets", 4);
+
+    // Rarity: runes.<Rune>.weight. Rare runes default to a quarter of the common weight.
+    static float Weight(Rune r) => Tune.F($"runes.{r}.weight", Spell.IsRare(r) ? 2.5f : 10f);
 
     readonly Dictionary<Spell, List<Rune>> sockets = new Dictionary<Spell, List<Rune>>();
     readonly List<Rune> runeOffer = new List<Rune>();
@@ -41,11 +43,11 @@ public class RuneSystem : UpgradeSystem
         while (runeOffer.Count < 3 && pool.Count > 0)
         {
             float total = 0f;
-            foreach (var r in pool) total += Spell.IsRare(r) ? RareWeight : CommonWeight;
+            foreach (var r in pool) total += Weight(r);
             float roll = Random.value * total;
             foreach (var r in pool)
             {
-                roll -= Spell.IsRare(r) ? RareWeight : CommonWeight;
+                roll -= Weight(r);
                 if (roll > 0f) continue;
                 runeOffer.Add(r);
                 pool.Remove(r);
@@ -56,7 +58,7 @@ public class RuneSystem : UpgradeSystem
         var unlearned = UnlearnedSpells();
         bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
         tome = null;
-        if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % 2 == 0 || !anyRoom))
+        if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
             tome = unlearned[Random.Range(0, unlearned.Count)];
 
         var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && SocketsOf(s).Count >= Sockets);
@@ -83,7 +85,7 @@ public class RuneSystem : UpgradeSystem
         var list = SocketsOf(spell);
         list.Add(rune);
         spell.AddRune(rune);
-        if (CountOf(list, rune) == 3)
+        if (CountOf(list, rune) == Tune.I("runes.resonanceCount", 3))
         {
             spell.AddRune(rune);   // resonance: the third matching rune counts double
             GameManager.Instance.Toast($"{spell.Name} resonates with {Spell.RuneName(rune)}!");
@@ -111,7 +113,7 @@ public class RuneSystem : UpgradeSystem
         foreach (var r in runeOffer)
         {
             var rect = new Rect(col.x, y, col.width, h);
-            bool rare = Spell.IsRare(r);
+            bool rare = Weight(r) < 5f;
             if (UI.Card(rect, $"{Spell.RuneName(r)} Rune", RuneSummary(r), Spell.RuneColor(r), rare ? "★ RARE" : "RUNE", anyRoom))
             {
                 held = r;
@@ -168,7 +170,7 @@ public class RuneSystem : UpgradeSystem
         {
             var list = SocketsOf(spell);
             bool room = list.Count < Sockets;
-            bool resonates = room && CountOf(list, rune) == 2;
+            bool resonates = room && CountOf(list, rune) == Tune.I("runes.resonanceCount", 3) - 1;
             string effect = room ? spell.RuneEffect(rune) + (resonates ? "  <color=#ffd966>RESONANCE x2!</color>" : "") : "No empty sockets";
             var rect = new Rect(col.x, y, col.width, h);
             string tag = spell.CanEvolve ? $"TIER {RomanTier(spell.Tier)}" : null;

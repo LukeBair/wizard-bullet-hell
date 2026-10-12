@@ -29,7 +29,9 @@ public class Enemy : MonoBehaviour
     public bool Hidden { get; private set; }   // burrowed: can't be hit or targeted
 
     // Bigger enemies shrug off more frostbite.
-    float FrostResist => Def.Tier == EnemyTier.Chaff ? 1f : Def.Tier == EnemyTier.Medium ? 0.55f : 0.2f;
+    float FrostResist => Def.Tier == EnemyTier.Chaff ? Tune.F("status.frostbiteTakenChaff", 1f)
+                       : Def.Tier == EnemyTier.Medium ? Tune.F("status.frostbiteTakenMedium", 0.55f)
+                       : Tune.F("status.frostbiteTakenBoss", 0.2f);
 
     float fireTimer;
     float stateTimer;
@@ -226,7 +228,7 @@ public class Enemy : MonoBehaviour
         Vector2 toTarget = targetPos - pos;
         float dist = toTarget.magnitude;
         Vector2 dir = dist > 0.001f ? toTarget / dist : Vector2.up;
-        float speed = Def.Speed * (IsChilled ? 0.5f : 1f) * (1f - 0.6f * Mathf.Clamp01(frostbite));
+        float speed = Def.Speed * (IsChilled ? 1f - Tune.F("status.chillSlow", 0.5f) : 1f) * (1f - Tune.F("status.frostbiteMaxSlow", 0.6f) * Mathf.Clamp01(frostbite));
         if (IsRooted) speed = 0f;
 
         Vector2 move = Behave(dir, dist, speed, dt);
@@ -765,7 +767,7 @@ public class Enemy : MonoBehaviour
 
     public void Root(float duration, float vulnerability)
     {
-        rootTimer = Mathf.Max(rootTimer, IsBoss ? duration * 0.25f : duration);
+        rootTimer = Mathf.Max(rootTimer, IsBoss ? duration * Tune.F("status.rootBossFactor", 0.25f) : duration);
         rootVuln = Mathf.Max(rootVuln, vulnerability);
     }
 
@@ -775,7 +777,7 @@ public class Enemy : MonoBehaviour
         frostbite += amount * FrostResist;
         if (frostbite < 1f) return;
         frostbite = 0f;
-        float dmg = Health * (IsBoss ? 0.1f : 0.3f);
+        float dmg = Health * (IsBoss ? Tune.F("status.shatterBoss", 0.1f) : Tune.F("status.shatter", 0.3f));
         Fx.Burst(Position, new Color(0.7f, 0.95f, 1f), Radius * 4f);
         Fx.Ring(Position, Color.white, Radius * 2f);
         Sfx.Play(Sound.Lightning, 0.5f, 0.3f);
@@ -824,7 +826,7 @@ public class Enemy : MonoBehaviour
         if (steamCooldown > 0f) return;
         steamCooldown = 1f;
         Interactions.Trigger(Interaction.Steam, Position);
-        float dmg = Mathf.Min(60f, 10f + MaxHealth * 0.08f);
+        float dmg = Mathf.Min(Tune.F("combos.steamMaxDamage", 60f), Tune.F("combos.steamBaseDamage", 10f) + MaxHealth * Tune.F("combos.steamHealthFraction", 0.08f));
         Fx.Burst(Position, new Color(0.95f, 0.95f, 0.95f, 0.8f), 3f);
         Sfx.Play(Sound.FireballCast, 0.35f, 0.3f);
         foreach (var e in Spell.EnemiesWithin(Position, 1.6f))
@@ -834,7 +836,7 @@ public class Enemy : MonoBehaviour
     void InfestBurst()
     {
         bool fire = IsBurning, hex = curseBonus > 0f;
-        float radius = fire ? 2f : 1.4f;
+        float radius = fire ? Tune.F("combos.firebugsRadius", 2f) : Tune.F("runes.Infest.burstRadius", 1.4f);
         if (fire) Interactions.Trigger(Interaction.Firebugs, Position);
         if (hex) Interactions.Trigger(Interaction.HexSwarm, Position);
         var c = fire ? new Color(1f, 0.6f, 0.2f) : new Color(0.6f, 0.75f, 0.2f);
@@ -850,6 +852,25 @@ public class Enemy : MonoBehaviour
         }
     }
 
+    // drops.extra: a list of bonus drops, each { name, tier: Any|Chaff|Medium|Boss, chance, xp, heal }.
+    void DropExtras()
+    {
+        foreach (var drop in Tune.List("drops.extra"))
+        {
+            string tier = Tune.Str(drop, "tier", "Any");
+            if (tier != "Any" && tier != Def.Tier.ToString()) continue;
+            if (Random.value >= Tune.Num(drop, "chance", 0f)) continue;
+            int xp = Mathf.RoundToInt(Tune.Num(drop, "xp", 0f));
+            if (xp > 0) XpGem.Spawn(Position + Random.insideUnitCircle * 0.4f, xp);
+            float heal = Tune.Num(drop, "heal", 0f);
+            if (heal > 0f)
+            {
+                GameManager.Instance.Player.Heal(heal);
+                DamageText.Spawn(Position, heal, new Color(0.5f, 1f, 0.5f));
+            }
+        }
+    }
+
     void Die()
     {
         if (!enabled) return;
@@ -859,8 +880,11 @@ public class Enemy : MonoBehaviour
         gm.AddScore(Def.Xp * 10);
 
         bool blessed = blessChance > 0f && Random.value < blessChance;
-        XpGem.Spawn(Position, blessed ? Mathf.Max(20, Def.Xp * 4) : Def.Xp);
+        int xp = Mathf.Max(1, Mathf.RoundToInt(Def.Xp * Tune.F("drops.xpMultiplier", 1f)));
+        if (blessed) xp = Mathf.Max(Tune.I("runes.Bless.minGem", 20), Mathf.RoundToInt(xp * Tune.F("runes.Bless.gemMultiplier", 4f)));
+        XpGem.Spawn(Position, xp);
         if (blessed) Fx.Ring(Position, new Color(1f, 0.95f, 0.6f), 1f, 0.4f);
+        DropExtras();
 
         Fx.Burst(Position, Def.Color, Radius * 2.5f);
         if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);

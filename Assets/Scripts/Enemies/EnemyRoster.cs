@@ -57,6 +57,9 @@ public class EnemyRoster
         int i = list.FindIndex(b => b.Name == firstBoss);
         if (i > 0) { var first = list[i]; list.RemoveAt(i); list.Insert(0, first); }
         r.Bosses = list.ToArray();
+        // Numbers come from the tuner: enemies.<Name>.<Field> (Health, Speed, Xp, BulletDamage...).
+        foreach (var group in new[] { r.Chaff, r.Medium, r.Bosses })
+            foreach (var d in group) Tune.Apply(d, "enemies." + d.Name);
         return r;
     }
 

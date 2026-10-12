@@ -49,7 +49,7 @@ public class Sfx : MonoBehaviour
         var src = sources[next];
         next = (next + 1) % Voices;
         src.pitch = 1f + Random.Range(-jitter, jitter);
-        src.PlayOneShot(clips[s], volume);
+        src.PlayOneShot(clips[s], volume * Tune.F("audio.volume", 1f));
     }
 
     static float MinGap(Sound s)
