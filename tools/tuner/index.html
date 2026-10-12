@@ -59,7 +59,17 @@
   .hoverline { stroke: var(--muted); stroke-dasharray: 3 3; }
   .tipbox { fill: var(--panel2); stroke: var(--line); }
   .tiptext { fill: var(--text); font-size: 11px; }
+  .split { display: grid; grid-template-columns: 220px minmax(0, 560px); gap: 12px; align-items: start; }
+  .itemlist { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 0; max-height: calc(100vh - 120px); overflow: auto; position: sticky; top: 66px; }
+  .itemlist a { display: block; padding: 7px 14px; color: var(--muted); cursor: pointer; }
+  .itemlist a:hover { color: var(--text); }
+  .itemlist a.active { color: var(--text); background: var(--panel2); border-left: 3px solid var(--accent); padding-left: 11px; }
+  .itemlist a .count { float: right; color: var(--changed); font-size: 11px; }
+  .split > div > .card + .card { margin-top: 12px; }
   @media (max-width: 700px) {
+    .split { grid-template-columns: 1fr; }
+    .itemlist { position: static; max-height: none; display: flex; overflow-x: auto; padding: 0; }
+    .itemlist a { white-space: nowrap; }
     .layout { grid-template-columns: 1fr; }
     nav { display: flex; overflow-x: auto; padding: 0; border-right: 0; border-bottom: 1px solid var(--line); }
     nav a { white-space: nowrap; }
@@ -81,6 +91,8 @@
 </div>
 <script>
 let data = {}, defaults = {}, dirty = false, section = null, info = null;
+const picked = {};               // selected item per section, for the column view
+const GENERAL = "\u0000general"; // the section's own loose values
 
 const $ = (s) => document.querySelector(s);
 const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
@@ -169,12 +181,43 @@ function render() {
   main.appendChild(charts);
   drawCharts();
 
+  const loose = Object.keys(node).filter((k) => !isNote(k) && !isObj(node[k]) && !Array.isArray(node[k]));
+  const items = Object.keys(node).filter((k) => !isNote(k) && isObj(node[k]));
+
+  // Sections made of many named things (spells, runes, enemies): pick one from a column.
+  if (items.length >= 3) {
+    const choices = [...(loose.length ? [GENERAL] : []), ...items];
+    let pick = picked[section];
+    if (!choices.includes(pick)) pick = picked[section] = choices[0];
+    const wrap = document.createElement("div");
+    wrap.className = "split";
+    const col = document.createElement("div");
+    col.className = "itemlist";
+    for (const k of choices) {
+      const a = document.createElement("a");
+      a.textContent = k === GENERAL ? "General" : label(k);
+      if (k === pick) a.className = "active";
+      const c = k === GENERAL ? loose.filter((x) => node[x] !== get(defaults, [section, x])).length : changedCount([section, k]);
+      if (c) { const s = document.createElement("span"); s.className = "count"; s.textContent = c; a.appendChild(s); }
+      a.onclick = () => { picked[section] = k; render(); };
+      col.appendChild(a);
+    }
+    const detail = document.createElement("div");
+    if (pick === GENERAL) detail.appendChild(card(label(section), [section], loose));
+    else detail.appendChild(card(pick, [section, pick], Object.keys(node[pick]).filter((x) => !isNote(x) && !isObj(node[pick][x])), true));
+    for (const k of Object.keys(node)) if (Array.isArray(node[k])) detail.appendChild(listCard(k, [section, k], node["_" + k]));
+    wrap.append(col, detail);
+    main.appendChild(wrap);
+    charts.style.marginTop = "14px";
+    main.appendChild(charts);   // graphs go below the picker here
+    return;
+  }
+
   const grid = document.createElement("div");
   grid.className = "grid";
   main.appendChild(grid);
 
   // Loose values first in one card, then one card per nested object / list.
-  const loose = Object.keys(node).filter((k) => !isNote(k) && !isObj(node[k]) && !Array.isArray(node[k]));
   if (loose.length) grid.appendChild(card(label(section), [section], loose));
   for (const k of Object.keys(node)) {
     if (isNote(k)) continue;
