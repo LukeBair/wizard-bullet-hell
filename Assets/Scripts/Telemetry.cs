@@ -445,7 +445,7 @@ public static class Telemetry
         public LineBuilder Raw(string k, string json) { Key(k).sb.Append(json); return this; }
         public LineBuilder Strs(string k, List<string> v) => Raw(k, StrList(v));
 
-        public void Write() => pending.Append(sb).Append('\n');
+        public void Write() => pending.Append(sb).Append("}\n");
     }
 
     static string Num(float v) => float.IsNaN(v) || float.IsInfinity(v) ? "0" : Math.Round(v, 2).ToString(CultureInfo.InvariantCulture);

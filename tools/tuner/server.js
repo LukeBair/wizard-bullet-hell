@@ -170,7 +170,9 @@ const server = http.createServer((req, res) => {
         let bad = 0;
         for (const l of body.split("\n")) {
           if (!l.trim()) continue;
-          try { JSON.parse(l); good.push(l.trim()); } catch { bad++; }
+          try { JSON.parse(l); good.push(l.trim()); continue; } catch { /* try the repair below */ }
+          // Builds from before the fix left off each line's closing brace.
+          try { JSON.parse(l + "}"); good.push(l.trim() + "}"); } catch { bad++; }
         }
         fs.mkdirSync(TELEMETRY, { recursive: true });
         if (good.length) fs.appendFileSync(path.join(TELEMETRY, tm[1] + ".jsonl"), good.join("\n") + "\n");
