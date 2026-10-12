@@ -193,7 +193,7 @@
     "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) * chaffScale + chaffAdd, capped at chaffMax. chaffScale and chaffAdd come from the zone's row in zones (defaults 1 and run.zoneRateStep*zones cleared).",
     "zones": [
       { "_name": "Zone 1: stage rules (mediums every mediumEveryStage0/1)" },
-      { "_name": "Zone 2: calm, few chaff, a couple of mediums", "chaffScale": 0.5, "chaffAdd": 0, "mediumEvery": 6, "packMin": 1, "packMax": 2, "casterWeight": 0.5 },
+      { "_name": "Zone 2: calm, few chaff, a couple of mediums", "chaffScale": 0.45, "chaffAdd": 0, "mediumEvery": 6.5, "packMin": 1, "packMax": 2, "casterWeight": 0.5 },
       { "_name": "Zone 3: lots of chaff, medium packs", "chaffAdd": 1.5, "mediumEvery": 7, "packMin": 2, "packMax": 2, "casterWeight": 1 },
       { "_name": "Zone 4", "chaffAdd": 3, "mediumEvery": 6, "packMin": 2, "packMax": 3, "casterWeight": 1 }
     ],
