@@ -93,7 +93,7 @@ tuning = {
                            "homing": 0, "homing_t2": 180, "homing_t3": 420, "followUpRange": 0.6, "potencyPerRune": 0.3, "areaPerRune": 0.2},
         "Fireball": {"damage": 20, "damage_t2": 30, "damage_t3": 30, "cooldown": 2.1, "count": 1, "radius": 1.0, "radius_t2": 1.8, "radius_t3": 1.8,
                       "speed": 7.5, "speed_t2": 6, "speed_t3": 6, "burnFactor": 0.25, "burnDuration": 2, "burnFactor_t2": 0.3, "burnDuration_t2": 2.5,
-                      "burnFactor_t3": 0.3, "burnDuration_t3": 2.5, "shrapnelCount_t3": 6, "shrapnelLifetime_t3": 0.6, "potencyPerRune": 0.25, "areaPerRune": 0.2},
+                      "burnFactor_t3": 0.3, "burnDuration_t3": 2.5, "shrapnelCount_t3": 6, "shrapnelLifetime_t3": 0.6, "shrapnelRadiusScale_t3": 0.5, "potencyPerRune": 0.25, "areaPerRune": 0.2},
         "FrostNova": {"damage": 10, "cooldown": 2.6, "count": 1, "radius": 2.0, "radius_t2": 2.4, "radius_t3": 2.8, "chill_t2": 1.8, "chill_t3": 1.8,
                        "push": 4, "pushPerPierce": 3, "frostbite_t3": 0.35, "frostbitePerFrostRune_t3": 0.25, "potencyPerRune": 0.2, "areaPerRune": 0.15},
         "ChainLightning": {"damage": 18, "cooldown": 1.5, "count": 1, "splash": 1.0, "splash_t2": 1.0, "splashDamage": 0.5, "splashDamage_t2": 0.5,
@@ -103,7 +103,7 @@ tuning = {
                    "quietSeconds_t2": 3, "quietHeal_t2": 0.1, "hitHeal_t3": 0.01, "potencyPerRune": 0.3, "areaPerRune": 0.15},
         "Rejuvenate": {"damage": 0.06, "cooldown": 9, "count": 1, "maxHealthPerPierce": 10, "_damage": "Fraction of max health healed per pulse."},
         "Overgrowth": {"damage": 6, "cooldown": 5, "count": 1, "radius": 1.8, "rootTime": 2.2, "potencyPerRune": 0.25},
-        "Veil": {"damage": 1.5, "cooldown": 12, "potencyPerRune": 0.25, "_damage": "Seconds of invulnerability."},
+        "Veil": {"damage": 1.5, "cooldown": 12, "potencyPerRune": 0.25, "phasePerPotency": 0.05, "_damage": "Seconds of invulnerability."},
         "TidalLance": {"damage": 5, "cooldown": 5.5, "count": 1, "duration": 1.2, "length": 6.5, "width": 0.55, "_damage": "Per tick (about 8 ticks a second)."},
         "Cyclone": {"damage": 4, "cooldown": 6, "count": 1, "radius": 3, "duration": 2.5, "pull": 9, "distance": 4.5, "_damage": "Per tick (4 a second)."},
         "Enthrall": {"damage": 3, "cooldown": 9, "count": 1, "_damage": "Charm duration in seconds."},
@@ -124,6 +124,74 @@ tuning = {
         "Crystal Golem": enemy(3600, 0.9, 1.4, 30, 80, FireInterval=3, Bullets=20, BulletSpeed=3, BulletDamage=14),
     },
 }
+
+# Evolution values for the utility spells.
+EVOLUTIONS = {
+    "Rejuvenate": {
+        "damage_t2": 0.05,
+        "damage_t3": 0.05,
+        "cooldown_t2": 3,
+        "cooldown_t3": 3,
+        "reviveChargeTime_t3": 90,
+        
+        "_reviveChargeTime_t3": "Tier III: seconds to charge the revive (Haste runes shorten it)."
+    },
+    "Overgrowth": {
+        "damage_t2": 6,
+        "damage_t3": 6,
+        "radius_t2": 1.8,
+        "radius_t3": 1.8,
+        "rootTime_t2": 2.2,
+        "rootTime_t3": 2.2,
+        "thornDps_t2": 8,
+        "thornDps_t3": 8,
+        "_thornDps_t2": "Damage per second to trapped foes; foes bumping a trapped foe take this much per bump."
+    },
+    "Veil": {
+        "damage_t2": 3.5,
+        "damage_t3": 3.5,
+        "cooldown_t2": 12,
+        "cooldown_t3": 4,
+        "passDamage_t2": 60,
+        "passDamage_t3": 60
+    },
+    "TidalLance": {
+        "damage_t2": 5,
+        "damage_t3": 5,
+        "duration_t2": 1.2,
+        "duration_t3": 1.2,
+        "length_t2": 6.5,
+        "length_t3": 6.5,
+        "push": 5,
+        "push_t2": 12,
+        "push_t3": 12,
+        "coneAngle_t2": 35,
+        "coneAngle_t3": 35,
+        "pillarEvery_t3": 5,
+        "pillarDuration_t3": 2,
+        "pillarRadius_t3": 1.3,
+        "pillarDamage_t3": 1.5,
+        "_coneAngle_t2": "Half-angle of the spray cone in degrees."
+    },
+    "Cyclone": {
+        "duration_t2": 2.5,
+        "duration_t3": 2.5,
+        "travelSpeed_t2": 2.5,
+        "travelSpeed_t3": 2.5,
+        "tickEvery": 0.25,
+        "tickEvery_t3": 0.125
+    },
+    "Enthrall": {
+        "damage_t2": 3,
+        "burstRadius_t2": 2.5,
+        "burstRadius_t3": 2.5,
+        "maxThralls_t3": 12,
+        "_maxThralls_t3": "Tier III: most permanently charmed foes at once."
+    }
+}
+for spell, values in EVOLUTIONS.items():
+    tuning["spells"][spell].update(values)
+tuning["status"]["thornBumpFactor"] = 1.0
 
 with open(OUT, "w") as f:
     json.dump(tuning, f, indent=2)

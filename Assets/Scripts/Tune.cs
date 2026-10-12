@@ -69,6 +69,8 @@ public static class Tune
         return fallback;
     }
 
+    public static bool Has(string path) => values.ContainsKey(path);
+
     public static int I(string path, int fallback) => Mathf.RoundToInt(F(path, fallback));
 
     public static bool B(string path, bool fallback)

@@ -69,6 +69,9 @@ public class GameManager : MonoBehaviour
         Clear<Fx>();
         Clear<Hazard>();
         Clear<DamageText>();
+        Clear<Vortex>();
+        Clear<WaterBeam>();
+        Clear<WaterPillar>();
         if (Player != null) Destroy(Player.gameObject);
         if (Arena != null) Destroy(Arena.gameObject);
 

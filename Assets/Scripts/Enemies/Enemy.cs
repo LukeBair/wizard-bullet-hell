@@ -44,6 +44,8 @@ public class Enemy : MonoBehaviour
     Vector2 targetPos;     // who we're attacking: the wizard, or another enemy when charmed
     float flash;
     float chillTimer, wetTimer, rootTimer, rootVuln;
+    float thornDps, thornTick;   // evolved Overgrowth: trapped foes bleed, and hurt (or trap) foes that bump them
+    bool thornSpread;
     float burnTimer, burnDps;
     float frostbite;
     float curseBonus;
@@ -244,6 +246,7 @@ public class Enemy : MonoBehaviour
         if (IsRooted) move = Vector2.zero;
 
         // Light separation so crowds spread out instead of stacking into one blob.
+        Enemy thorns = null;
         if (!IsBoss)
         {
             foreach (var other in All)
@@ -253,8 +256,20 @@ public class Enemy : MonoBehaviour
                 float r = (Radius + other.Radius) * 0.9f;
                 float sq = d.sqrMagnitude;
                 if (sq < r * r && sq > 0.0001f)
+                {
                     move += d / Mathf.Sqrt(sq) * 2f;
+                    if (other.thornDps > 0f && other.IsRooted && !IsRooted) thorns = other;
+                }
             }
+        }
+        thornTick -= dt;
+        if (thorns != null && thornTick <= 0f)
+        {
+            // Bumped into a thorn-trapped foe.
+            thornTick = 0.5f;
+            if (thorns.thornSpread) Root(thorns.rootTimer, thorns.rootVuln, thorns.thornDps, true);
+            TakeDamage(thorns.thornDps * Tune.F("status.thornBumpFactor", 1f), default, new Color(0.5f, 0.85f, 0.3f));
+            if (!IsAlive) return;
         }
 
         pos += (move + knockback) * dt * Tuning.Pace;
@@ -711,7 +726,16 @@ public class Enemy : MonoBehaviour
         }
         if (chillTimer > 0f) chillTimer -= dt;
         if (wetTimer > 0f) wetTimer -= dt;
-        if (rootTimer > 0f) rootTimer -= dt;
+        if (rootTimer > 0f)
+        {
+            rootTimer -= dt;
+            if (thornDps > 0f)
+            {
+                Health -= thornDps * dt;
+                if (Health <= 0f) { Die(); return; }
+            }
+            if (rootTimer <= 0f) { thornDps = 0f; thornSpread = false; }
+        }
         if (infestTimer > 0f) infestTimer -= dt;
         if (steamCooldown > 0f) steamCooldown -= dt;
         if (frostbite > 0f) frostbite = Mathf.Max(0f, frostbite - 0.2f * dt);
@@ -778,10 +802,12 @@ public class Enemy : MonoBehaviour
 
     public void ApplyWet(float duration) => wetTimer = Mathf.Max(wetTimer, duration);
 
-    public void Root(float duration, float vulnerability)
+    public void Root(float duration, float vulnerability, float thornsDps = 0f, bool spreads = false)
     {
         rootTimer = Mathf.Max(rootTimer, IsBoss ? duration * Tune.F("status.rootBossFactor", 0.25f) : duration);
         rootVuln = Mathf.Max(rootVuln, vulnerability);
+        thornDps = Mathf.Max(thornDps, thornsDps);
+        thornSpread |= spreads;
     }
 
     // Stacking slow from evolved Frost Nova. At 100% the enemy shatters.

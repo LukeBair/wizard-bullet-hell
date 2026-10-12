@@ -65,9 +65,14 @@ public abstract class Spell
     public int TotalRunes { get { int n = 0; foreach (var r in runes) n += r; return n; } }
     public int Level => 1 + TotalRunes;
 
-    // Tuner lookups: spells.<SpellId>.<key>. Tier 2/3 values use "<key>_t2" / "<key>_t3".
+    // Tuner lookups: spells.<SpellId>.<key>. Tier 2/3 read "<key>_t2" / "<key>_t3"; if that key is
+    // missing they use the code's default for that tier.
     protected float T(string key, float fallback) => Tune.F($"spells.{Id}.{key}", fallback);
-    protected float TT(string key, float fallback) => T(Tier == 1 ? key : $"{key}_t{Tier}", fallback);
+    protected float TT(string key, float fallback)
+    {
+        if (Tier > 1 && Tune.Has($"spells.{Id}.{key}_t{Tier}")) return T($"{key}_t{Tier}", fallback);
+        return Tier == 1 ? T(key, fallback) : fallback;
+    }
 
     protected float PotencyStep => TT("potencyPerRune", PotencyPerRune);
     protected float AreaStep => TT("areaPerRune", AreaPerRune);
@@ -162,6 +167,10 @@ public abstract class Spell
     // What the next tier does, for the evolve card.
     public virtual string TierDescription(int tier) => "";
 
+    // Each evolved form has its own name; tier I is just the spell's name.
+    public virtual string TierName(int tier) => Name;
+    public string Title => Tier == 1 ? Name : TierName(Tier);
+
     public void Tick(float dt)
     {
         OnTick(dt);
@@ -194,21 +203,39 @@ public abstract class Spell
     // What one rune does to this particular spell, for upgrade descriptions.
     public virtual string RuneEffect(Rune r)
     {
+        if (IsStatusRune(r) && !HitsFoes) return "No effect: this spell never hits foes";
         switch (r)
         {
-            case Rune.Potency: return $"+{PotencyStep * 100f:0}% damage";
-            case Rune.Haste: return "Casts 15% faster";
+            case Rune.Potency: return $"+{Pct(PotencyStep)} damage";
+            case Rune.Haste: return $"{Pct(1f - HasteMultiplier)} shorter cooldown";
             case Rune.Split: return "+1 projectile";
             case Rune.Pierce: return "Passes through +1 enemy";
-            case Rune.Area: return $"+{AreaStep * 100f:0}% size";
+            case Rune.Area: return $"+{Pct(AreaStep)} size";
             case Rune.Echo: return "Casts again a moment later";
-            case Rune.Ember: return "Sets enemies on fire";
-            case Rune.Frost: return "Chills enemies (slows 50%)";
-            case Rune.Curse: return "Marks foes: their next hit deals +50% (stacks to 6x)";
-            case Rune.Infest: return "Infests foes for 1s: if they die, bugs burst out";
-            default: return "Kills may drop a big XP gem";
+            default: return StatusRuneEffect(r);
         }
     }
+
+    // Ember, Frost, Curse, Infest and Bless all ride on Hit(), so they only work on spells that hit foes.
+    public static bool IsStatusRune(Rune r) => r == Rune.Ember || r == Rune.Frost || r == Rune.Curse || r == Rune.Infest || r == Rune.Bless;
+    protected virtual bool HitsFoes => true;
+
+    protected static string StatusRuneEffect(Rune r)
+    {
+        switch (r)
+        {
+            case Rune.Ember: return $"Hits burn foes for {Pct(Tune.F("runes.Ember.burnPerRune", 0.4f) * Tune.F("runes.Ember.duration", 2.5f))} of the spell's damage over {Tune.F("runes.Ember.duration", 2.5f):0.#}s";
+            case Rune.Frost: return $"Hits chill foes (slows {Pct(Tune.F("status.chillSlow", 0.5f))})";
+            case Rune.Curse: return $"Foes it hits take +{Pct(Tune.F("runes.Curse.bonusPerRune", 0.5f))} from the next spell that hits them";
+            case Rune.Infest: return $"Foes it hits burst into bugs if they die within {Tune.F("runes.Infest.duration", 1f):0.#}s";
+            default: return $"Foes it hits have a {Pct(Tune.F("runes.Bless.chancePerRune", 0.15f))} chance to drop a big XP gem when they die";
+        }
+    }
+
+    protected static float HasteMultiplier => Tune.F("runes.Haste.cooldownMultiplier", 0.85f);
+    protected static string Pct(float fraction) => $"{fraction * 100f:0}%";
+    // Seconds as the player feels them: cooldowns are scaled by the global cast rate.
+    protected static string Secs(float cooldown) => $"{cooldown * Tuning.CastRate:0.#}s";
 
     public static string RuneName(Rune r) => r.ToString();
 

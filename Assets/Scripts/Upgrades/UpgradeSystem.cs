@@ -50,11 +50,13 @@ public abstract class UpgradeSystem
 
     protected static readonly Rune[] AllRunes = (Rune[])Enum.GetValues(typeof(Rune));
 
-    protected void Header(string title, string subtitle)
+    protected void Header(string title, string subtitle, string note = null)
     {
         UI.Dim();
         var col = UI.Column(0.1f, 0.14f);
         UI.Text(new Rect(col.x, col.y, col.width, 60f * UI.S), title, 48, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.4f));
-        UI.Text(new Rect(col.x, col.y + 64f * UI.S, col.width, 80f * UI.S), subtitle, 26, TextAnchor.UpperCenter, new Color(0.85f, 0.85f, 0.95f), false);
+        UI.Text(new Rect(col.x, col.y + 64f * UI.S, col.width, 36f * UI.S), subtitle, 26, TextAnchor.UpperCenter, new Color(0.85f, 0.85f, 0.95f), false);
+        if (note != null)
+            UI.Text(new Rect(col.x, col.y + 102f * UI.S, col.width, 30f * UI.S), $"<i>{note}</i>", 20, TextAnchor.UpperCenter, new Color(0.7f, 0.7f, 0.8f), false);
     }
 }

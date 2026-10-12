@@ -36,6 +36,7 @@ public class Player : MonoBehaviour
 
     float invulnTimer;
     float phaseTimer;
+    public bool IsPhased => phaseTimer > 0f;
     float[] baseAlpha;
     SpriteRenderer[] renderers;
     Transform visual;
@@ -166,6 +167,14 @@ public class Player : MonoBehaviour
         if (amount > 0f) Particles.Heal(Position, amount);
     }
 
+    // Rejuvenate III: back to full health instead of dying.
+    public void Revive()
+    {
+        Health = MaxHealth;
+        foreach (var r in renderers) r.enabled = true;
+        Phase(2f);
+    }
+
     // Ethereal Veil: no damage for a while.
     public void Phase(float duration)
     {
@@ -185,6 +194,8 @@ public class Player : MonoBehaviour
         GameManager.Instance.Shake(0.2f);
         Sfx.Play(Sound.PlayerHurt, 0.8f);
         Haptics.Tap(Haptics.Impact.Heavy);
+
+        if (!IsAlive && GetSpell<Rejuvenate>() is Rejuvenate rejuv && rejuv.TryRevive()) return;
 
         if (!IsAlive)
         {
