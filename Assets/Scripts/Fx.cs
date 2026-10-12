@@ -1,6 +1,7 @@
 using UnityEngine;
 
 // Short-lived visual effects: bursts, shockwave rings and lightning bolts. Purely cosmetic.
+// Bursts, rings and bolts also throw particles (see Particles).
 public class Fx : MonoBehaviour
 {
     float life, maxLife, startScale, endScale;
@@ -11,10 +12,17 @@ public class Fx : MonoBehaviour
 
     static Material lineMaterial;
 
-    public static void Burst(Vector2 pos, Color c, float size) => Make(pos, SpriteFactory.Glow, c, size * 0.4f, size, 0.3f);
+    public static void Burst(Vector2 pos, Color c, float size, bool particles = true)
+    {
+        Make(pos, SpriteFactory.Glow, c, size * 0.4f, size, 0.3f);
+        if (particles) Particles.Burst(pos, c, size);
+    }
 
-    public static void Ring(Vector2 pos, Color c, float radius, float duration = 0.35f) =>
+    public static void Ring(Vector2 pos, Color c, float radius, float duration = 0.35f)
+    {
         Make(pos, SpriteFactory.Ring, c, radius * 0.5f, radius * 2f, duration);
+        Particles.Ring(pos, c, radius);
+    }
 
     // Warning lane for a charge: a blinking strip from `from` along `dir`.
     public static void Telegraph(Vector2 from, Vector2 dir, float length, float width, Color c, float duration)
@@ -52,6 +60,7 @@ public class Fx : MonoBehaviour
         }
         lr.startColor = lr.endColor = c;
         fx.line = lr;
+        Particles.Zap(b, c);
     }
 
     static void Make(Vector2 pos, Sprite sprite, Color c, float from, float to, float duration)

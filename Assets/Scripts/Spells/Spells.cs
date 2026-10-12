@@ -172,6 +172,7 @@ public class FrostNova : Spell
         Sfx.Play(Sound.Nova, 0.45f);
         Fx.Ring(at, Color, Radius, 0.4f);
         Fx.Burst(at, new Color(Color.r, Color.g, Color.b, 0.4f), Radius * 2f);
+        Particles.Frost(at, Radius);
         float push = T("push", 4f) + T("pushPerPierce", 3f) * RuneCount(Rune.Pierce);
         float frostbite = T("frostbite_t3", 0.35f) + T("frostbitePerFrostRune_t3", 0.25f) * RuneCount(Rune.Frost);
         foreach (var e in EnemiesWithin(at, Radius))
@@ -253,6 +254,7 @@ public class ChainLightning : Spell
     void Splash(Vector2 at, float radius, float dmg, List<Enemy> exclude)
     {
         Fx.Ring(at, Color, radius, 0.25f);
+        Particles.Crackle(at, radius, Color);
         foreach (var e in EnemiesWithin(at, radius))
             if (!exclude.Contains(e)) Hit(e, dmg);
     }

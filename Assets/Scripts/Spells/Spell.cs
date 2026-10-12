@@ -147,6 +147,7 @@ public abstract class Spell
         }
         Reroll();
         OnRunesChanged();
+        Particles.Evolve(Owner.Position, Color);
     }
 
     // "Pierce 1.5 · Potency 0.75" for the UI; empty if nothing was kept.

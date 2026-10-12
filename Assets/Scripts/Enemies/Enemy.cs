@@ -586,6 +586,7 @@ public class Enemy : MonoBehaviour
                 {
                     Ring(Position, Def.Bullets, Def.BulletSpeed, Random.value * 360f);
                     GameManager.Instance.Shake(0.4f);
+                    Particles.Slam(Position, Def.Color, Radius);
                     state = 0; stateTimer = Def.FireInterval * Tuning.CastRate;
                 }
                 return Vector2.zero;
@@ -693,6 +694,7 @@ public class Enemy : MonoBehaviour
             p.Damage = Def.BulletDamage;
         }
         p.Lifetime = 6f;
+        if (IsBoss) Particles.Muzzle(from, v, ArtStyle.EnemyBullet(Def.Accent));
         Sfx.Play(Sound.EnemyShoot, 0.2f, 0.15f);
         return p;
     }
@@ -727,6 +729,7 @@ public class Enemy : MonoBehaviour
             vines.enabled = IsRooted;
             charmAura.enabled = IsCharmed;
             bugs.enabled = IsInfested;
+            Particles.Status(Position, Radius, IsBurning, IsChilled, IsWet, IsInfested, IsRooted, dt);
             if (IsInfested) bugs.transform.Rotate(0f, 0f, 500f * dt);
         }
 
@@ -747,6 +750,7 @@ public class Enemy : MonoBehaviour
         {
             flash = 1f;
             DamageText.Spawn(Position + Vector2.up * Radius, amount, numberColor ?? Color.white);
+            Particles.Hit(Position, numberColor ?? Color.white, push);
             Sfx.Play(Sound.EnemyHit, 0.25f, 0.15f);
         }
         if (!IsBoss && !IsRooted) knockback += push;
@@ -789,6 +793,7 @@ public class Enemy : MonoBehaviour
         float dmg = Health * (IsBoss ? Tune.F("status.shatterBoss", 0.1f) : Tune.F("status.shatter", 0.3f));
         Fx.Burst(Position, new Color(0.7f, 0.95f, 1f), Radius * 4f);
         Fx.Ring(Position, Color.white, Radius * 2f);
+        Particles.Frost(Position, Radius * 2f);
         Sfx.Play(Sound.Lightning, 0.5f, 0.3f);
         TakeDamage(dmg, default, new Color(0.7f, 0.95f, 1f));
     }
@@ -851,6 +856,7 @@ public class Enemy : MonoBehaviour
         var c = fire ? new Color(1f, 0.6f, 0.2f) : new Color(0.6f, 0.75f, 0.2f);
         Fx.Burst(Position, c, radius * 2f);
         Fx.Ring(Position, c, radius, 0.3f);
+        Particles.Ants(Position, radius, fire);
         Sfx.Play(Sound.EnemyDie, 0.5f, 0.3f);
         foreach (var e in Spell.EnemiesWithin(Position, radius))
         {
@@ -895,7 +901,8 @@ public class Enemy : MonoBehaviour
         if (blessed) Fx.Ring(Position, new Color(1f, 0.95f, 0.6f), 1f, 0.4f);
         DropExtras();
 
-        Fx.Burst(Position, Def.Color, Radius * 2.5f);
+        Fx.Burst(Position, Def.Color, Radius * 2.5f, false);   // Particles.Death throws the debris
+        Particles.Death(Position, Def.Look, Radius, Def.Tier);
         if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();
         Died?.Invoke(this);
