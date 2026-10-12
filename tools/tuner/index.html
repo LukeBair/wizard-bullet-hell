@@ -380,12 +380,17 @@ const CHARTS = {
     const be = n("spawning.bossEvery", 150), se = n("spawning.swarmEvery", 45);
     const hp = (s, killBosses) => 1 + n("spawning.healthPerSwarm", 0.25) * Math.floor(s / se) + (killBosses ? n("spawning.healthPerBossKill", 1) * Math.floor(s / be) : 0);
     const swarms = [...Array(12)].map((_, i) => i);
+    // Vertical lines where swarms and bosses arrive.
+    const markers = [];
+    for (let s = se; s <= 600; s += se) markers.push({ at: s, color: "#5cc8ff" });
+    for (let s = be; s <= 600; s += be) markers.push({ at: s, color: "#ff6b7d" });
+    const markerLegend = [{ name: "Swarm", color: "#5cc8ff" }, { name: "Boss", color: "#ff6b7d" }];
     return [
-      { title: "Chaff spawned per second", sub: "Over a run (ignores time paused during boss fights)", x: t, xLabel: fmtTime, series: [
+      { title: "Chaff spawned per second", sub: "Over a run (ignores time paused during boss fights)", x: t, xLabel: fmtTime, markers, markerLegend, series: [
         { name: "Each boss killed when it arrives", y: t.map((s) => chaffRate(s, Math.floor(s / be))) },
         { name: "No bosses killed", y: t.map((s) => chaffRate(s, 0)) },
       ] },
-      { title: "Enemy health multiplier", sub: "+ per swarm and per boss kill", x: t, xLabel: fmtTime, series: [
+      { title: "Enemy health multiplier", sub: "+ per swarm and per boss kill", x: t, xLabel: fmtTime, markers, markerLegend, series: [
         { name: "Each boss killed when it arrives", y: t.map((s) => hp(s, true)) },
         { name: "No bosses killed", y: t.map((s) => hp(s, false)) },
       ] },
@@ -442,13 +447,18 @@ function lineChart(c) {
   }
   const step = Math.ceil(c.x.length / 6);
   c.x.forEach((v, i) => { if (i % step === 0 && (c.x.length - 1 - i >= step * 0.6 || i === c.x.length - 1)) svg += `<text class="tick" x="${xs(i)}" y="${H - 6}" text-anchor="middle">${c.xLabel(v)}</text>`; });
+  const x0 = c.x[0], x1 = c.x[c.x.length - 1];
+  for (const m of c.markers || []) {
+    const mx = L + ((m.at - x0) / (x1 - x0)) * (W - L - R);
+    svg += `<line x1="${mx}" x2="${mx}" y1="${T}" y2="${H - B}" stroke="${m.color}" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>`;
+  }
   c.series.forEach((s, k) => {
     svg += `<polyline fill="none" stroke="${COLORS[k]}" stroke-width="2" points="${s.y.map((v, i) => `${xs(i)},${ys(v)}`).join(" ")}"/>`;
   });
   svg += `<g class="hover" visibility="hidden"><line class="hoverline" y1="${T}" y2="${H - B}"/><rect class="tipbox" rx="4" height="${14 + 14 * c.series.length}"/><text class="tiptext"></text></g>`;
   svg += `<rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/></svg>`;
   el.insertAdjacentHTML("beforeend", svg);
-  el.insertAdjacentHTML("beforeend", `<div class="legend">${c.series.map((s, k) => `<span><i style="background:${COLORS[k]}"></i>${s.name}</span>`).join("")}</div>`);
+  el.insertAdjacentHTML("beforeend", `<div class="legend">${c.series.map((s, k) => `<span><i style="background:${COLORS[k]}"></i>${s.name}</span>`).join("")}${(c.markerLegend || []).map((m) => `<span><i style="background:none;border-top:2px dashed ${m.color};height:0"></i>${m.name}</span>`).join("")}</div>`);
 
   const svgEl = el.querySelector("svg"), hover = svgEl.querySelector(".hover");
   svgEl.addEventListener("mousemove", (e) => {
