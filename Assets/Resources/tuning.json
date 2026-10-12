@@ -228,14 +228,15 @@
     "maxSpells": 5,
     "tomeEveryLevels": 2,
     "resonanceCount": 3,
-    "evolveRetain": 0.75,
+    "evolveRetain": 0.5,
     "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
     "Potency": {
       "weight": 10
     },
     "Haste": {
       "weight": 10,
-      "cooldownMultiplier": 0.85
+      "castSpeedPerRune": 0.15,
+      "_castSpeedPerRune": "Each Haste rune adds this much cast speed (cooldown / (1 + this x runes)), so it doesn't compound."
     },
     "Split": {
       "weight": 2.5
@@ -251,7 +252,7 @@
     },
     "Ember": {
       "weight": 10,
-      "burnPerRune": 0.4,
+      "burnPerRune": 0.2,
       "duration": 2.5
     },
     "Frost": {
@@ -262,7 +263,7 @@
     "Curse": {
       "weight": 2.5,
       "bonusPerRune": 0.5,
-      "maxBonus": 5
+      "maxBonus": 1
     },
     "Infest": {
       "weight": 10,
@@ -277,6 +278,23 @@
       "gemMultiplier": 4,
       "minGem": 20
     },
+    "Overload": {
+      "weight": 7,
+      "every": 4,
+      "bonusPerRune": 1.5,
+      "_about": "Every Nth cast of the spell is overloaded: damage (or healing) x (1 + bonusPerRune x runes) until the next cast."
+    },
+    "Siphon": {
+      "weight": 10,
+      "healPerRune": 0.02,
+      "capPerRune": 2,
+      "_about": "Hits heal healPerRune x damage per rune, at most capPerRune HP a second per rune."
+    },
+    "Ward": {
+      "weight": 10,
+      "cooldown": 3,
+      "_about": "Each cast of the spell grants a ward that blocks one enemy bullet. Max wards = Ward runes across all spells; at most one new ward every cooldown seconds."
+    },
     "_weight": "Relative chance to be offered. Under 5 shows as RARE."
   },
   "status": {
@@ -287,6 +305,7 @@
     "frostbiteTakenBoss": 0.2,
     "shatter": 0.3,
     "shatterBoss": 0.1,
+    "shatterChainDepth": 3,
     "rootBossFactor": 0.25,
     "thornBumpFactor": 1.0
   },
@@ -350,6 +369,9 @@
       "pushPerPierce": 3,
       "frostbite_t3": 0.35,
       "frostbitePerFrostRune_t3": 0.25,
+      "shatterSpread_t3": 0.5,
+      "shatterSpreadRadius_t3": 1.8,
+      "_shatterSpread_t3": "Tier III: frostbite given to foes within shatterSpreadRadius_t3 when a foe shatters (status.shatterChainDepth caps the chain).",
       "potencyPerRune": 0.2,
       "areaPerRune": 0.15
     },
@@ -382,7 +404,9 @@
       "hitEvery": 0.5,
       "quietSeconds_t2": 3,
       "quietHeal_t2": 0.1,
-      "hitHeal_t3": 0.01,
+      "bonusWispLife_t3": 6,
+      "maxBonusWisps_t3": 4,
+      "_bonusWispLife_t3": "Tier III: each kill adds a wisp to the inner ring for this many seconds, up to maxBonusWisps_t3 extra.",
       "potencyPerRune": 0.3,
       "areaPerRune": 0.15
     },
@@ -414,6 +438,8 @@
       "rootTime_t3": 2.2,
       "thornDps_t2": 8,
       "thornDps_t3": 8,
+      "deathBloomScale_t3": 0.75,
+      "_deathBloomScale_t3": "Tier III: size of the vine patch a dying trapped foe sprouts, relative to the normal patch.",
       "_thornDps_t2": "Damage per second to trapped foes; foes bumping a trapped foe take this much per bump."
     },
     "Veil": {
@@ -449,7 +475,9 @@
       "push_t3": 12,
       "coneAngle_t2": 35,
       "coneAngle_t3": 35,
-      "pillarEvery_t3": 5,
+      "pillarEvery_t3": 2.5,
+      "pillarWet_t3": 5,
+      "_pillarWet_t3": "Tier III: seconds a water pillar keeps foes Wet.",
       "pillarDuration_t3": 2,
       "pillarRadius_t3": 1.3,
       "pillarDamage_t3": 1.5,
@@ -481,6 +509,80 @@
       "burstRadius_t3": 2.5,
       "maxThralls_t3": 12,
       "_maxThralls_t3": "Tier III: most permanently charmed foes at once."
+    },
+    "MirrorWard": {
+      "damage": 12,
+      "cooldown": 1,
+      "count": 1,
+      "orbit": 1.4,
+      "ringSpacing": 0.5,
+      "shardSize": 0.32,
+      "spinSpeed": 160,
+      "boltSpeed": 10,
+      "homing_t2": 300,
+      "homing_t3": 300,
+      "splitCount_t3": 3,
+      "splitSpread_t3": 20,
+      "_damage": "Damage per reflected bolt. cooldown only sets spin speed (Haste spins faster)."
+    },
+    "StoneSpikes": {
+      "damage": 14,
+      "cooldown": 3,
+      "count": 1,
+      "spikes": 5,
+      "spikesPerPierce": 2,
+      "spikeRadius": 0.45,
+      "spacing": 0.8,
+      "stagger": 0.05,
+      "fanAngle": 25,
+      "pinTime": 0.3,
+      "spikeTime": 0.4,
+      "wallTime_t2": 3,
+      "wallTime_t3": 3,
+      "potencyPerRune": 0.25,
+      "shards_t3": 4,
+      "shardSpeed_t3": 8,
+      "shardLife_t3": 0.5,
+      "shardDamage_t3": 0.5,
+      "_wallTime_t2": "Seconds an evolved spike stays up as a wall (blocks enemy bullets, holds foes back).",
+      "_shardDamage_t3": "Rockburst shard damage as a share of the spike damage."
+    },
+    "SpectralBlades": {
+      "damage": 10,
+      "cooldown": 2,
+      "count": 2,
+      "reach": 5,
+      "speed": 9,
+      "speedPerPierce": 0.3,
+      "bladeSize": 0.35,
+      "spread": 30,
+      "afterimageDelay_t3": 0.4,
+      "afterimageDamage_t3": 0.5,
+      "_damage": "Damage each time a blade passes through a foe (out and back are separate passes)."
+    },
+    "Sunspots": {
+      "damage": 0.02,
+      "cooldown": 8,
+      "count": 1,
+      "radius": 1.2,
+      "poolTime": 6,
+      "poolTimePerEcho": 0.5,
+      "minDistance": 2,
+      "maxDistance": 3,
+      "potencyPerRune": 0.25,
+      "sunlitTime": 4,
+      "sunlitPerPierce": 1,
+      "moveBuff": 0.2,
+      "castBuff": 0.15,
+      "damageBuff": 0.2,
+      "powerMultiplier_t2": 2,
+      "burnDamage_t2": 8,
+      "burstAfter_t3": 2.5,
+      "burstDamage_t3": 80,
+      "burstRadius_t3": 2,
+      "_damage": "Share of max health healed per second while standing in a pool.",
+      "_moveBuff": "Sunlit bonuses at power 1 (Potency and Solar Flare raise the power); they last sunlitTime seconds after leaving a pool.",
+      "_burnDamage_t2": "Damage every 0.5s to foes inside a pool (tier II+)."
     }
   },
   "enemies": {

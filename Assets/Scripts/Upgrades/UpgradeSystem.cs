@@ -13,7 +13,7 @@ public abstract class UpgradeSystem
 
     // Spells that can open a run: the ones that deal damage on their own.
     static readonly SpellId[] Starters =
-        { SpellId.ArcaneMissile, SpellId.Fireball, SpellId.FrostNova, SpellId.ChainLightning, SpellId.Wisps, SpellId.TidalLance, SpellId.Cyclone };
+        { SpellId.ArcaneMissile, SpellId.Fireball, SpellId.FrostNova, SpellId.ChainLightning, SpellId.Wisps, SpellId.TidalLance, SpellId.Cyclone, SpellId.StoneSpikes, SpellId.SpectralBlades };
 
     readonly List<SpellId> startOffer = new List<SpellId>();
 

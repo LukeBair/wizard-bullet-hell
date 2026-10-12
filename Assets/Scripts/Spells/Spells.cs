@@ -131,7 +131,7 @@ public class Fireball : Spell
     }
 }
 
-// I: small pulse. II: full size and chills. III: bigger, stacks frostbite until foes shatter.
+// I: small pulse. II: full size and chills. III: bigger, stacks frostbite until foes shatter; shatters spread frostbite.
 public class FrostNova : Spell
 {
     public override string Name => "Frost Nova";
@@ -147,7 +147,7 @@ public class FrostNova : Spell
     public override string TierName(int tier) => tier == 2 ? "Glacial Nova" : tier == 3 ? "Shatterstorm" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? $"Bigger, and chills foes (slows {Pct(Tune.F("status.chillSlow", 0.5f))})."
-                  : $"Bigger. Stacks frostbite on every pulse; at 100% the foe shatters for {Pct(Tune.F("status.shatter", 0.3f))} of its remaining health. Bigger foes resist.";
+                  : $"Bigger. Stacks frostbite on every pulse; at 100% the foe shatters for {Pct(Tune.F("status.shatter", 0.3f))} of its remaining health and gives foes near it {Pct(T("shatterSpread_t3", 0.5f))} frostbite, so shatters chain. Bigger foes resist.";
 
     public override string RuneEffect(Rune r)
     {
@@ -188,7 +188,7 @@ public class FrostNova : Spell
         foreach (var e in EnemiesWithin(at, Radius))
         {
             if (Tier >= 2) e.ApplyChill(TT("chill", 1.8f) * Potency);
-            if (Tier == 3) e.AddFrostbite(frostbite);
+            if (Tier == 3) e.AddFrostbite(frostbite, T("shatterSpread_t3", 0.5f), T("shatterSpreadRadius_t3", 1.8f));
             Hit(e, Damage, (e.Position - at).normalized * push);
         }
     }
@@ -284,7 +284,7 @@ public class ChainLightning : Spell
 }
 
 // Spirits orbiting the wizard. Echo adds a counter-rotating outer ring.
-// II: starts with two rings; 3s without a wisp hit heals you 10%. III: also heals a little on each hit.
+// II: starts with two rings; 3s without a wisp hit heals you 10%. III: every kill adds a temporary wisp to the inner ring.
 public class Wisps : Spell
 {
     public override string Name => "Forest Wisps";
@@ -296,12 +296,16 @@ public class Wisps : Spell
     protected override int BaseCount => 2;
     protected override float AreaPerRune => 0.15f;
     protected override bool EchoRecasts => false;
+    protected override bool Overloadable => false;
 
-    readonly List<(Transform orb, int ring)> orbs = new List<(Transform, int)>();
+    readonly List<(Transform orb, int ring, int index, int ringCount)> orbs = new List<(Transform, int, int, int)>();
+    readonly List<float> bonusWisps = new List<float>();   // tier III: time left on each extra wisp
     readonly List<Transform> tracks = new List<Transform>();
     readonly Dictionary<Enemy, float> lastHit = new Dictionary<Enemy, float>();
     float angle;
-    float quietTimer, hitHealTimer;
+    float quietTimer;
+    int MaxBonusWisps => Mathf.RoundToInt(T("maxBonusWisps_t3", 4f));
+    int RingCount(int ring) => Count + (ring == 0 ? bonusWisps.Count : 0);
 
     int Rings => 1 + Echoes + (Tier >= 2 ? 1 : 0);
     float OrbitRadius(int ring) => T("orbit", 1.7f) * Area * (1f + T("ringSpacing", 0.55f) * ring);
@@ -310,17 +314,18 @@ public class Wisps : Spell
     public override string TierName(int tier) => tier == 2 ? "Twin Halo" : tier == 3 ? "Lifebloom Halo" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? $"Starts with two rings. After {T("quietSeconds_t2", 3f):0.#}s without striking anything, the wisps heal you {Pct(T("quietHeal_t2", 0.1f))}."
-                  : $"Two rings, and the wisps also heal you {Pct(T("hitHeal_t3", 0.01f))} when they strike (up to 4 times a second).";
+                  : $"Two rings, and every foe the wisps kill adds a wisp to the inner ring for {T("bonusWispLife_t3", 6f):0.#}s (up to {MaxBonusWisps} extra).";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
             case Rune.Split: return "+1 wisp on every ring";
-            case Rune.Haste: return $"Wisps orbit {Pct(1f / HasteMultiplier - 1f)} faster";
+            case Rune.Haste: return $"Wisps orbit {Pct(HastePerRune)} faster";
             case Rune.Pierce: return "Strikes the same foe more often";
             case Rune.Area: return $"+{Pct(AreaStep)} orbit size";
             case Rune.Echo: return "+1 ring spinning the other way";
+            case Rune.Ward: return "No effect: this spell never casts";
             default: return base.RuneEffect(r);
         }
     }
@@ -341,14 +346,15 @@ public class Wisps : Spell
         for (int ring = 0; ring < Rings; ring++)
         {
             tracks.Add(SpriteFactory.Child(Owner.transform, "WispOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.22f), Vector2.zero, OrbitRadius(ring) * 2f + OrbRadius, 47).transform);
-            for (int i = 0; i < Count; i++)
+            int n = RingCount(ring);
+            for (int i = 0; i < n; i++)
             {
                 var go = new GameObject("Wisp");
                 go.transform.SetParent(Owner.transform, false);
                 SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.5f), Vector2.zero, OrbRadius * 5f, 56);
                 SpriteFactory.Child(go.transform, "Halo", SpriteFactory.Ring, Color, Vector2.zero, OrbRadius * 2.4f, 57);
                 SpriteFactory.Child(go.transform, "Core", SpriteFactory.Diamond, Color.Lerp(Color, Color.white, 0.4f), Vector2.zero, OrbRadius * 1.4f, 58);
-                orbs.Add((go.transform, ring));
+                orbs.Add((go.transform, ring, i, n));
             }
         }
     }
@@ -358,12 +364,12 @@ public class Wisps : Spell
         angle += T("spinSpeed", 200f) / Cooldown * dt * Tuning.Pace;
         float hitEvery = T("hitEvery", 0.5f) / (1f + 0.3f * RuneCount(Rune.Pierce));
         bool hitSomething = false;
+        int kills = 0;
         for (int i = 0; i < orbs.Count; i++)
         {
-            int ring = orbs[i].ring;
-            int index = i % Count;
+            var (_, ring, index, ringCount) = orbs[i];
             float dirSign = ring % 2 == 0 ? 1f : -1f;
-            float a = (angle * dirSign + index * 360f / Count + ring * 30f) * Mathf.Deg2Rad;
+            float a = (angle * dirSign + index * 360f / ringCount + ring * 30f) * Mathf.Deg2Rad;
             Vector2 local = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * OrbitRadius(ring);
             orbs[i].orb.localPosition = local;
             Vector2 world = Owner.Position + local;
@@ -376,6 +382,7 @@ public class Wisps : Spell
                 Sfx.Play(Sound.WispHit, 0.35f, 0.2f);
                 Fx.Ring(world, Color, OrbRadius * 1.5f, 0.2f);
                 Hit(e, Damage, local.normalized * 3f);
+                if (Tier == 3 && !e.IsAlive) kills++;
             }
         }
         if (lastHit.Count > 200) lastHit.Clear();
@@ -390,12 +397,19 @@ public class Wisps : Spell
                 HealOwner(T("quietHeal_t2", 0.1f));
             }
         }
-        hitHealTimer -= dt;
-        if (Tier == 3 && hitSomething && hitHealTimer <= 0f)
+        // Tier III: kills add short-lived wisps to the inner ring.
+        int before = bonusWisps.Count;
+        for (int i = bonusWisps.Count - 1; i >= 0; i--)
         {
-            hitHealTimer = 0.25f;
-            HealOwner(T("hitHeal_t3", 0.01f));
+            bonusWisps[i] -= dt;
+            if (bonusWisps[i] <= 0f) bonusWisps.RemoveAt(i);
         }
+        for (int k = 0; k < kills; k++)
+        {
+            if (bonusWisps.Count < MaxBonusWisps) bonusWisps.Add(T("bonusWispLife_t3", 6f));
+            else { bonusWisps.Sort(); bonusWisps[0] = T("bonusWispLife_t3", 6f); }   // refresh the oldest
+        }
+        if (bonusWisps.Count != before) Rebuild();
     }
 
     void HealOwner(float fraction)

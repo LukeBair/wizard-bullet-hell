@@ -21,7 +21,7 @@ public class Rejuvenate : Spell
         switch (r)
         {
             case Rune.Potency: return $"+{Pct(PotencyStep)} healing";
-            case Rune.Haste: return Tier == 3 ? $"Heals and charges the revive {Pct(1f - HasteMultiplier)} faster" : $"Heals {Pct(1f - HasteMultiplier)} more often";
+            case Rune.Haste: return Tier == 3 ? $"Heals and charges the revive {Pct(HastePerRune)} faster" : $"Heals {Pct(HastePerRune)} more often";
             case Rune.Split: return "+1 extra pulse each cast";
             case Rune.Area: return "Heals more the lower your health";
             case Rune.Pierce: return $"+{T("maxHealthPerPierce", 10f):0} max health";
@@ -33,7 +33,7 @@ public class Rejuvenate : Spell
     protected override bool HitsFoes => false;
 
     float reviveCharge;
-    float ReviveTime => T("reviveChargeTime_t3", 90f) * Mathf.Pow(Tune.F("runes.Haste.cooldownMultiplier", 0.85f), RuneCount(Rune.Haste));
+    float ReviveTime => T("reviveChargeTime_t3", 90f) * HasteFactor;
     public bool ReviveReady => Tier == 3 && reviveCharge >= ReviveTime;
     public override float CooldownProgress => Tier == 3 ? Mathf.Clamp01(reviveCharge / ReviveTime) : base.CooldownProgress;
 
@@ -95,7 +95,7 @@ public class Rejuvenate : Spell
 
 // Vines burst under a group of foes and hold them in place. Rooted foes can still shoot,
 // but can't hurt you by touch. II: thorns bleed trapped foes and hurt foes that bump into them.
-// III: foes that bump into trapped foes get trapped too.
+// III: foes that bump into trapped foes get trapped too, and trapped foes that die sprout fresh vines.
 public class Overgrowth : Spell
 {
     public override string Name => "Overgrowth";
@@ -112,7 +112,7 @@ public class Overgrowth : Spell
     public override string TierName(int tier) => tier == 2 ? "Thornweave" : tier == 3 ? "Strangling Bramble" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Thorns: trapped foes take damage over time, and foes that run into them get hurt."
-                  : "Thorns, and foes that touch a trapped foe get trapped too.";
+                  : "Thorns, foes that touch a trapped foe get trapped too, and trapped foes that die burst into a fresh patch of vines.";
 
     public override string RuneEffect(Rune r)
     {
@@ -134,21 +134,34 @@ public class Overgrowth : Spell
         {
             var target = Enemy.Nearest(Owner.Position, Range, used) ?? Enemy.Nearest(Owner.Position, Range);
             if (target == null) return;
-            Vector2 at = target.Position;
-            Fx.Ring(at, Color, Radius, 0.5f);
-            Fx.Burst(at, new Color(0.2f, 0.6f, 0.15f, 0.6f), Radius * 2f);
-            foreach (var e in EnemiesWithin(at, Radius))
-            {
-                used.Add(e);
-                e.Root(RootTime, 0.15f * RuneCount(Rune.Pierce), ThornDps, Tier == 3);
-                Hit(e, Damage);
-            }
+            foreach (var e in Vines(target.Position, Radius)) used.Add(e);
         }
+    }
+
+    System.Collections.Generic.List<Enemy> Vines(Vector2 at, float radius)
+    {
+        Fx.Ring(at, Color, radius, 0.5f);
+        Fx.Burst(at, new Color(0.2f, 0.6f, 0.15f, 0.6f), radius * 2f);
+        var caught = EnemiesWithin(at, radius);
+        foreach (var e in caught)
+        {
+            e.Root(RootTime, 0.15f * RuneCount(Rune.Pierce), ThornDps, Tier == 3, Tier == 3 ? new System.Action<Vector2>(DeathBloom) : null);
+            Hit(e, Damage);
+        }
+        return caught;
+    }
+
+    // Strangling Bramble: a trapped foe that dies sprouts a smaller patch of vines where it fell.
+    void DeathBloom(Vector2 at)
+    {
+        if (Owner == null) return;
+        Vines(at, Radius * T("deathBloomScale_t3", 0.75f));
     }
 }
 
 // Passive ward: when you'd take a hit while it's ready, you take nothing and turn ethereal.
 // II: phases for 2s longer, and foes you pass through take heavy damage. III: recharges much faster.
+// The recharge starts when the phase ends.
 public class Veil : Spell
 {
     public override string Name => "Ethereal Veil";
@@ -162,14 +175,14 @@ public class Veil : Spell
     public override string TierName(int tier) => tier == 2 ? "Phantom Stride" : tier == 3 ? "Flickerstep" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? $"Phase out for {T("damage_t2", 3.5f):0.#}s, and foes you pass through while phased take {T("passDamage_t2", 60f):0} damage."
-                  : $"Recharges dramatically faster (every {Secs(T("cooldown_t3", 4f))}).";
+                  : $"Recharges dramatically faster ({Secs(T("cooldown_t3", 4f))} after each phase ends).";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
             case Rune.Potency: return Tier >= 2 ? $"+{Pct(PhaseStep)} phase time, +{Pct(PotencyStep)} pass-through damage" : $"+{Pct(PhaseStep)} phase time";
-            case Rune.Haste: return $"Recharges {Pct(1f - HasteMultiplier)} faster";
+            case Rune.Haste: return $"Recharges {Pct(HastePerRune)} faster";
             case Rune.Area: return "Phasing out knocks nearby foes back";
             case Rune.Split: return "Phasing out also fires a ring of 8 arcane bolts";
             case Rune.Pierce: return "Split's arcane bolts pass through +1 enemy";
@@ -190,14 +203,19 @@ public class Veil : Spell
     int MaxCharges => 1 + Echoes;
     readonly System.Collections.Generic.HashSet<Enemy> passed = new System.Collections.Generic.HashSet<Enemy>();
     protected override bool EchoRecasts => false;
+    protected override bool Overloadable => false;
     protected override bool Ready() => charges < MaxCharges;
     protected override void Cast() => charges++;
     public override float CooldownProgress => charges > 0 ? 1f : base.CooldownProgress;
 
-    // Tier II+: anything you pass through while phased takes one big hit per phase.
     protected override void OnTick(float dt)
     {
-        if (Tier < 2 || Owner == null || !Owner.IsPhased) return;
+        if (Owner == null || !Owner.IsPhased) return;
+        // The recharge only starts once the phase ends (otherwise Flickerstep was never hittable).
+        if (charges < MaxCharges) ResetCooldown();
+
+        // Tier II+: anything you pass through while phased takes one big hit per phase.
+        if (Tier < 2) return;
         foreach (var e in EnemiesWithin(Owner.Position, Player.BodyRadius + 0.2f))
         {
             if (!passed.Add(e)) continue;
@@ -245,7 +263,7 @@ public class TidalLance : Spell
     public override string TierName(int tier) => tier == 2 ? "Torrent" : tier == 3 ? "Monsoon" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Sprays a wide cone instead of a beam, pushing foes back hard."
-                  : $"The cone, plus every {Secs(T("pillarEvery_t3", 5f))} pillars of water erupt under foes for {T("pillarDuration_t3", 2f):0.#}s.";
+                  : $"The cone, plus every {Secs(T("pillarEvery_t3", 2.5f))} pillars of water erupt under foes for {T("pillarDuration_t3", 2f):0.#}s, leaving them Wet for {T("pillarWet_t3", 5f):0.#}s.";
 
     public override string RuneEffect(Rune r)
     {
@@ -280,14 +298,14 @@ public class TidalLance : Spell
         if (Tier < 3 || Owner == null) return;
         pillarTimer -= dt;
         if (pillarTimer > 0f) return;
-        pillarTimer = T("pillarEvery_t3", 5f) * Tuning.CastRate;
+        pillarTimer = T("pillarEvery_t3", 2.5f) * Tuning.CastRate;
         var used = new System.Collections.Generic.List<Enemy>();
         for (int i = 0; i < Count; i++)
         {
             var e = Enemy.Nearest(Owner.Position, Range, used);
             if (e == null) return;
             used.Add(e);
-            WaterPillar.Create(e.Position, T("pillarRadius_t3", 1.3f) * Area, T("pillarDuration_t3", 2f), Color, (x, p) => Hit(x, Damage * T("pillarDamage_t3", 1.5f), p));
+            WaterPillar.Create(e.Position, T("pillarRadius_t3", 1.3f) * Area, T("pillarDuration_t3", 2f), Color, (x, p) => Hit(x, Damage * T("pillarDamage_t3", 1.5f), p), T("pillarWet_t3", 5f));
         }
     }
 }
