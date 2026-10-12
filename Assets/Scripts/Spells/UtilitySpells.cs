@@ -168,7 +168,7 @@ public class Veil : Spell
     {
         switch (r)
         {
-            case Rune.Potency: return Tier >= 2 ? "+25% phase time and pass-through damage" : "+25% phase time";
+            case Rune.Potency: return Tier >= 2 ? $"+{Pct(PhaseStep)} phase time, +{Pct(PotencyStep)} pass-through damage" : $"+{Pct(PhaseStep)} phase time";
             case Rune.Haste: return $"Recharges {Pct(1f - HasteMultiplier)} faster";
             case Rune.Area: return "Phasing out knocks nearby foes back";
             case Rune.Split: return "Phasing out also fires a ring of 8 arcane bolts";
@@ -180,6 +180,11 @@ public class Veil : Spell
                 return base.RuneEffect(r);
         }
     }
+
+    // Potency adds only a little phase time (it was far too strong at the general potency rate);
+    // the general rate still scales Phantom Stride's pass-through damage.
+    float PhaseStep => TT("phasePerPotency", 0.05f);
+    float PhaseTime => TT("damage", BaseDamage) * (1f + PhaseStep * RuneCount(Rune.Potency));
 
     int charges = 1;
     int MaxCharges => 1 + Echoes;
@@ -208,7 +213,7 @@ public class Veil : Spell
         charges--;
         ResetCooldown();
         passed.Clear();
-        Owner.Phase(Damage);
+        Owner.Phase(PhaseTime);
         Sfx.Play(Sound.Teleport, 0.7f);
         Fx.Ring(Owner.Position, Color, 1.5f, 0.4f);
         if (RuneCount(Rune.Area) > 0)
@@ -387,7 +392,7 @@ public class Enthrall : Spell
     protected override void Cast()
     {
         var used = new System.Collections.Generic.List<Enemy>();
-        float duration = Tier == 3 ? float.PositiveInfinity : Damage * Potency;
+        float duration = Tier == 3 ? float.PositiveInfinity : Damage;   // Damage already includes Potency
         float power = (1f + 0.25f * RuneCount(Rune.Pierce)) * (Tier == 3 ? Potency : 1f);
         float burst = Tier == 1 && RuneCount(Rune.Area) > 0 ? 25f * Area : 0f;
         for (int i = 0; i < Count; i++)

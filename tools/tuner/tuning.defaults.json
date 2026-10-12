@@ -273,7 +273,9 @@
       "cooldown_t2": 12,
       "cooldown_t3": 4,
       "passDamage_t2": 60,
-      "passDamage_t3": 60
+      "passDamage_t3": 60,
+      "phasePerPotency": 0.05,
+      "_phasePerPotency": "Extra phase time per Potency rune (0.05 = +5%). potencyPerRune still scales pass-through damage."
     },
     "TidalLance": {
       "damage": 5,

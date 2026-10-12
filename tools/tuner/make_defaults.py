@@ -82,7 +82,7 @@ tuning = {
                    "quietSeconds_t2": 3, "quietHeal_t2": 0.1, "hitHeal_t3": 0.01, "potencyPerRune": 0.3, "areaPerRune": 0.15},
         "Rejuvenate": {"damage": 0.06, "cooldown": 9, "count": 1, "maxHealthPerPierce": 10, "_damage": "Fraction of max health healed per pulse."},
         "Overgrowth": {"damage": 6, "cooldown": 5, "count": 1, "radius": 1.8, "rootTime": 2.2, "potencyPerRune": 0.25},
-        "Veil": {"damage": 1.5, "cooldown": 12, "potencyPerRune": 0.25, "_damage": "Seconds of invulnerability."},
+        "Veil": {"damage": 1.5, "cooldown": 12, "potencyPerRune": 0.25, "phasePerPotency": 0.05, "_damage": "Seconds of invulnerability."},
         "TidalLance": {"damage": 5, "cooldown": 5.5, "count": 1, "duration": 1.2, "length": 6.5, "width": 0.55, "_damage": "Per tick (about 8 ticks a second)."},
         "Cyclone": {"damage": 4, "cooldown": 6, "count": 1, "radius": 3, "duration": 2.5, "pull": 9, "distance": 4.5, "_damage": "Per tick (4 a second)."},
         "Enthrall": {"damage": 3, "cooldown": 9, "count": 1, "_damage": "Charm duration in seconds."},
