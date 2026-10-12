@@ -5,7 +5,8 @@ using UnityEngine;
 // While holding a rune, every spell shows what that rune would do to it. Each spell has 4 sockets,
 // and three matching runes in one spell Resonate for a free extra copy.
 // Split and Echo are rare. Spell tomes appear every other level. A spell whose sockets are full
-// can Evolve: its runes are wiped for a stronger base form (up to tier III).
+// can Evolve (every full spell gets its own Evolve card): its sockets empty for a stronger base
+// form (up to tier III), keeping part of the runes' power.
 public class RuneSystem : UpgradeSystem
 {
     public override string Name => "Rune Sockets";
@@ -18,7 +19,8 @@ public class RuneSystem : UpgradeSystem
     readonly Dictionary<Spell, List<Rune>> sockets = new Dictionary<Spell, List<Rune>>();
     readonly List<Rune> runeOffer = new List<Rune>();
     SpellId? tome;           // a new spell offered alongside the runes
-    Spell evolve;            // a full spell that may evolve
+    readonly List<Spell> evolves = new List<Spell>();   // full spells that may evolve (every one is offered)
+    Spell evolve => evolves.Count > 0 ? evolves[0] : null;
     Rune? held;              // chosen rune waiting for a socket
 
     public override void Begin(Player player)
@@ -62,7 +64,8 @@ public class RuneSystem : UpgradeSystem
             tome = unlearned[Random.Range(0, unlearned.Count)];
 
         var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && SocketsOf(s).Count >= Sockets);
-        evolve = ready.Count > 0 ? ready[Random.Range(0, ready.Count)] : null;
+        evolves.Clear();
+        evolves.AddRange(ready);
     }
 
     public override void AutoPick()
@@ -107,7 +110,10 @@ public class RuneSystem : UpgradeSystem
     {
         Header($"Level {Player.Level}", "Take a rune stone", InteractionNote);
         var col = UI.Column(0.24f, 0.72f);
-        float h = 170f * UI.S, gap = 16f * UI.S, y = col.y;
+        // Shrink cards a little if several evolutions plus a tome all need room.
+        int cards = runeOffer.Count + evolves.Count + (tome.HasValue ? 1 : 0);
+        float gap = 16f * UI.S;
+        float h = Mathf.Min(170f * UI.S, (col.height - gap * cards) / Mathf.Max(1, cards)), y = col.y;
         bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
 
         foreach (var r in runeOffer)
@@ -123,14 +129,14 @@ public class RuneSystem : UpgradeSystem
             y += h + gap;
         }
 
-        if (evolve != null)
+        foreach (var spell in evolves)
         {
             var rect = new Rect(col.x, y, col.width, h);
-            int next = evolve.Tier + 1;
+            int next = spell.Tier + 1;
             int keep = Mathf.RoundToInt(Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.75f)) * 100f);
-            if (UI.Card(rect, $"{evolve.Name} → {RomanTier(next)}: {evolve.TierName(next)}", evolve.TierDescription(next) + $" <i>(empties its sockets, keeps {keep}% of their power)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
+            if (UI.Card(rect, $"{spell.Name} → {RomanTier(next)}: {spell.TierName(next)}", spell.TierDescription(next) + $" <i>(empties its sockets, keeps {keep}% of their power)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
             {
-                Evolve(evolve);
+                Evolve(spell);
                 return true;
             }
             y += h + gap;
