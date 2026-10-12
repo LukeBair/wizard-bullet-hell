@@ -86,7 +86,7 @@ public class Fireball : Spell
         for (int i = 0; i < Count; i++)
         {
             Vector2 dir = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 18f) * (target.Position - from);
-            Launch(from, dir, Tier == 3, 2.5f);
+            Launch(from, dir, Tier == 3, 2.5f, false);
         }
     }
 

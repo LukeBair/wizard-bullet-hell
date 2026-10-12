@@ -181,7 +181,8 @@
       "shrapnelCount_t3": 6,
       "shrapnelLifetime_t3": 0.6,
       "potencyPerRune": 0.25,
-      "areaPerRune": 0.2
+      "areaPerRune": 0.2,
+      "shrapnelRadiusScale_t3": 0.5
     },
     "FrostNova": {
       "damage": 10,

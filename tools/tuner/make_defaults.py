@@ -72,7 +72,7 @@ tuning = {
                            "homing": 0, "homing_t2": 180, "homing_t3": 420, "followUpRange": 0.6, "potencyPerRune": 0.3, "areaPerRune": 0.2},
         "Fireball": {"damage": 20, "damage_t2": 30, "damage_t3": 30, "cooldown": 2.1, "count": 1, "radius": 1.0, "radius_t2": 1.8, "radius_t3": 1.8,
                       "speed": 7.5, "speed_t2": 6, "speed_t3": 6, "burnFactor": 0.25, "burnDuration": 2, "burnFactor_t2": 0.3, "burnDuration_t2": 2.5,
-                      "burnFactor_t3": 0.3, "burnDuration_t3": 2.5, "shrapnelCount_t3": 6, "shrapnelLifetime_t3": 0.6, "potencyPerRune": 0.25, "areaPerRune": 0.2},
+                      "burnFactor_t3": 0.3, "burnDuration_t3": 2.5, "shrapnelCount_t3": 6, "shrapnelLifetime_t3": 0.6, "shrapnelRadiusScale_t3": 0.5, "potencyPerRune": 0.25, "areaPerRune": 0.2},
         "FrostNova": {"damage": 10, "cooldown": 2.6, "count": 1, "radius": 2.0, "radius_t2": 2.4, "radius_t3": 2.8, "chill_t2": 1.8, "chill_t3": 1.8,
                        "push": 4, "pushPerPierce": 3, "frostbite_t3": 0.35, "frostbitePerFrostRune_t3": 0.25, "potencyPerRune": 0.2, "areaPerRune": 0.15},
         "ChainLightning": {"damage": 18, "cooldown": 1.5, "count": 1, "splash": 1.0, "splash_t2": 1.0, "splashDamage": 0.5, "splashDamage_t2": 0.5,
