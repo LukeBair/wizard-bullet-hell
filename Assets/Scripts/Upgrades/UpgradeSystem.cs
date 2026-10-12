@@ -3,32 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public enum UpgradeMode { Draft, Runes, Elements }
-
-// One way of turning level-ups into stronger spells. The three implementations share the same spells
-// and runes, so they can be compared head to head; pick one on the title screen.
+// Turns level-ups into stronger spells. Rune Sockets (RuneSystem) is the only one for now; the base
+// class stays so other systems can be tried again later.
 public abstract class UpgradeSystem
 {
-    public abstract UpgradeMode Mode { get; }
     public abstract string Name { get; }
-    public abstract string Pitch { get; }   // one line for the title screen
 
     protected Player Player { get; private set; }
-
-    public static UpgradeSystem Create(UpgradeMode mode)
-    {
-        switch (mode)
-        {
-            case UpgradeMode.Runes: return new RuneSystem();
-            case UpgradeMode.Elements: return new ElementSystem();
-            default: return new DraftSystem();
-        }
-    }
 
     public virtual void Begin(Player player)
     {
         Player = player;
-        Fusions.Reset();
+        Interactions.Reset();
         player.Learn(SpellId.ArcaneMissile);
     }
 
@@ -51,7 +37,7 @@ public abstract class UpgradeSystem
         return list;
     }
 
-    protected const int MaxSpells = 4;
+    protected const int MaxSpells = 5;
 
     protected static void Shuffle<T>(IList<T> list)
     {

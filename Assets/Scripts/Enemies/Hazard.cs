@@ -8,10 +8,11 @@ public class Hazard : MonoBehaviour
     Color color;
     Vector2 from;
     bool lobbed;
+    bool friendly;   // thrown by a charmed enemy: hurts enemies instead of the wizard
     Transform fill, shell;
     SpriteRenderer edge;
 
-    public static Hazard Spawn(Vector2 at, float radius, float delay, float damage, Color color, Vector2? lobFrom = null)
+    public static Hazard Spawn(Vector2 at, float radius, float delay, float damage, Color color, Vector2? lobFrom = null, bool friendly = false)
     {
         var go = new GameObject("Hazard");
         go.transform.position = at;
@@ -20,6 +21,7 @@ public class Hazard : MonoBehaviour
         h.delay = h.timer = delay;
         h.damage = damage;
         h.color = color;
+        h.friendly = friendly;
         h.edge = SpriteFactory.Child(go.transform, "Edge", SpriteFactory.Ring, new Color(color.r, color.g, color.b, 0.8f), Vector2.zero, radius * 2f, 2);
         h.fill = SpriteFactory.Child(go.transform, "Fill", SpriteFactory.Circle, new Color(color.r, color.g, color.b, 0.3f), Vector2.zero, 0.01f, 1).transform;
         if (lobFrom.HasValue)
@@ -56,6 +58,12 @@ public class Hazard : MonoBehaviour
         Fx.Burst(pos, color, radius * 2.4f);
         Sfx.Play(Sound.Explosion, 0.45f);
         Fx.Ring(pos, color, radius);
+        if (friendly)
+        {
+            foreach (var e in Spell.EnemiesWithin(pos, radius)) e.TakeDamage(damage * 2f);
+            Destroy(gameObject);
+            return;
+        }
         var player = gm.Player;
         if (player != null && player.IsAlive)
         {

@@ -11,10 +11,12 @@ public enum EnemyBehavior
     Burrower,   // tunnels underground (can't be hit), then erupts under you
     Splitter,   // slow blob that bursts into smaller slimes when killed
     BossTreant, BossWitch,
+    BossHeadmaster,  // orbiting spellbook turrets, detention grids of AoE, gapped bullet rings
+    BossGolem,       // long telegraphed charges that leave crystal shards, ground slams, spike lines
 }
 
 // What an enemy looks like (all placeholder shapes for now).
-public enum EnemyLook { Blob, Bat, Beast, Goblin, Wizard, Mushroom, Pixie, Mole, Treant, Witch }
+public enum EnemyLook { Blob, Bat, Beast, Goblin, Wizard, Mushroom, Pixie, Mole, Treant, Witch, Headmaster, Golem }
 
 public class EnemyDef
 {
@@ -46,6 +48,17 @@ public class EnemyRoster
     public EnemyDef[] Chaff;
     public EnemyDef[] Medium;
     public EnemyDef[] Bosses;
+
+    // Same enemies everywhere for now; the biome only decides which boss comes first.
+    public static EnemyRoster Standard(string firstBoss)
+    {
+        var r = Forest;
+        var list = new System.Collections.Generic.List<EnemyDef>(r.Bosses);
+        int i = list.FindIndex(b => b.Name == firstBoss);
+        if (i > 0) { var first = list[i]; list.RemoveAt(i); list.Insert(0, first); }
+        r.Bosses = list.ToArray();
+        return r;
+    }
 
     public static EnemyRoster Forest => new EnemyRoster
     {
@@ -97,6 +110,14 @@ public class EnemyRoster
                 Health = 3200, Speed = 1.8f, Radius = 0.9f, ContactDamage = 20, Xp = 80,
                 Color = new Color(0.3f, 0.15f, 0.4f), Accent = new Color(0.5f, 1f, 0.6f),
                 FireInterval = 0.12f, Bullets = 3, BulletSpeed = 3.6f, PreferredRange = 6f },
+            new EnemyDef { Name = "Headmaster Vexley", Tier = EnemyTier.Boss, Behavior = EnemyBehavior.BossHeadmaster, Look = EnemyLook.Headmaster,
+                Health = 2800, Speed = 1.4f, Radius = 0.9f, ContactDamage = 20, Xp = 70,
+                Color = new Color(0.2f, 0.25f, 0.55f), Accent = new Color(1f, 0.8f, 0.3f),
+                FireInterval = 2.4f, Bullets = 36, BulletSpeed = 2.6f, PreferredRange = 6.5f },
+            new EnemyDef { Name = "Crystal Golem", Tier = EnemyTier.Boss, Behavior = EnemyBehavior.BossGolem, Look = EnemyLook.Golem,
+                Health = 3600, Speed = 0.9f, Radius = 1.4f, ContactDamage = 30, Xp = 80,
+                Color = new Color(0.4f, 0.4f, 0.48f), Accent = new Color(0.5f, 0.95f, 1f),
+                FireInterval = 3f, Bullets = 20, BulletSpeed = 3f, BulletDamage = 14 },
         },
     };
 }

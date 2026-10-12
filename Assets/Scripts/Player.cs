@@ -9,7 +9,8 @@ public class Player : MonoBehaviour
     public const float BodyRadius = 0.3f;   // contact with melee enemies and trees
     const float InvulnTime = 0.6f;
 
-    public float MaxHealth = 100f;
+    public const float BaseMaxHealth = 100f;
+    public float MaxHealth = BaseMaxHealth;
     public float MoveSpeed = 4.6f;
     public float PickupRadius = 2.2f;
 
@@ -20,11 +21,14 @@ public class Player : MonoBehaviour
 
     public int Level { get; private set; } = 1;
     public int Xp { get; private set; }
-    public int XpToNext => 3 + Level * 2 + Level * Level / 5;
+    // Base curve, then x1.25 for every 5 levels.
+    public int XpToNext => Mathf.RoundToInt((3 + Level * 2 + Level * Level / 5) * Mathf.Pow(1.25f, Level / 5));
 
     public readonly List<Spell> Spells = new List<Spell>();
 
     float invulnTimer;
+    float phaseTimer;
+    float[] baseAlpha;
     SpriteRenderer[] renderers;
     Transform visual;
 
@@ -52,6 +56,8 @@ public class Player : MonoBehaviour
         SpriteFactory.Child(visual, "Gem", SpriteFactory.Circle, new Color(0.5f, 0.95f, 1f), new Vector2(0.38f, 0.42f), 0.16f, 54);
         SpriteFactory.Child(visual, "Hitbox", SpriteFactory.Circle, Color.white, Vector2.zero, HitRadius * 2f, 55);
         renderers = GetComponentsInChildren<SpriteRenderer>();
+        baseAlpha = new float[renderers.Length];
+        for (int i = 0; i < renderers.Length; i++) baseAlpha[i] = renderers[i].color.a;
     }
 
     void Update()
@@ -71,7 +77,19 @@ public class Player : MonoBehaviour
 
         foreach (var spell in Spells) spell.Tick(dt);
 
-        if (invulnTimer > 0f)
+        if (phaseTimer > 0f)
+        {
+            // Ethereal: see-through and shimmering, no blinking.
+            phaseTimer -= dt;
+            float a = phaseTimer > 0f ? 0.35f + 0.15f * Mathf.Sin(Time.time * 20f) : 1f;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var c = renderers[i].color;
+                c.a = baseAlpha[i] * a;
+                renderers[i].color = c;
+            }
+        }
+        else if (invulnTimer > 0f)
         {
             invulnTimer -= dt;
             bool visible = invulnTimer <= 0f || Mathf.FloorToInt(invulnTimer * 14f) % 2 == 0;
@@ -113,9 +131,19 @@ public class Player : MonoBehaviour
 
     public void Heal(float amount) => Health = Mathf.Min(MaxHealth, Health + amount);
 
+    // Ethereal Veil: no damage for a while.
+    public void Phase(float duration)
+    {
+        phaseTimer = Mathf.Max(phaseTimer, duration);
+        invulnTimer = Mathf.Max(invulnTimer, duration);
+        foreach (var r in renderers) r.enabled = true;
+    }
+
     public void TakeDamage(float amount)
     {
         if (!IsAlive || invulnTimer > 0f) return;
+        var veil = GetSpell<Veil>();
+        if (veil != null && veil.TryAbsorb()) return;
 
         Health -= amount;
         invulnTimer = InvulnTime;

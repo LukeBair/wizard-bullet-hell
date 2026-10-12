@@ -3,13 +3,13 @@ using UnityEngine;
 
 public enum GameState { Title, Playing, LevelUp, GameOver }
 
-// Owns the run: title screen (pick an upgrade system), camera, level-up flow, game over and the HUD.
+// Owns the run: title screen, camera, level-up flow, game over and the HUD.
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
     public static float UiScale => Mathf.Min(Screen.width / 720f, Screen.height / 1280f);
 
-    const string ModeKey = "upgrade_mode";
+    const string BestKey = "best_time_Runes";
     const float CameraSize = 7.5f;
 
     public GameState State { get; private set; }
@@ -20,13 +20,14 @@ public class GameManager : MonoBehaviour
     public int Score { get; private set; }
     public static bool Autoplay;
     public float ViewRadius => cam.orthographicSize * Mathf.Sqrt(1f + cam.aspect * cam.aspect);
+    // How far spells look for targets: about the screen's half-height, a little past the edge.
+    public float TargetRange => cam.orthographicSize + 1f;
 
     Camera cam;
     Vector2 camPos;
     float shake;
     int pendingLevelUps;
     float gameOverTime;
-    UpgradeMode mode;
     readonly List<(string text, float until)> toasts = new List<(string, float)>();
 
     void Awake()
@@ -34,7 +35,6 @@ public class GameManager : MonoBehaviour
         Instance = this;
         Application.targetFrameRate = 60;
         Screen.orientation = ScreenOrientation.Portrait;
-        mode = (UpgradeMode)PlayerPrefs.GetInt(ModeKey, 0);
 
         SetupCamera();
         Director = gameObject.AddComponent<Director>();
@@ -70,7 +70,7 @@ public class GameManager : MonoBehaviour
         if (Player != null) Destroy(Player.gameObject);
         if (Arena != null) Destroy(Arena.gameObject);
 
-        Arena = Arena.Create(Biome.Forest);
+        Arena = Arena.Create(Biome.Random());
         Player = Player.Create(Vector2.zero);
         camPos = Vector2.zero;
     }
@@ -80,16 +80,14 @@ public class GameManager : MonoBehaviour
         foreach (var o in FindObjectsByType<T>()) Destroy(o.gameObject);
     }
 
-    public void StartRun(UpgradeMode m)
+    public void StartRun()
     {
-        mode = m;
-        PlayerPrefs.SetInt(ModeKey, (int)m);
         BuildWorld();
         Score = 0;
         pendingLevelUps = 0;
         toasts.Clear();
         Director.ResetRun(Arena.Biome.Roster);
-        Upgrades = UpgradeSystem.Create(m);
+        Upgrades = new RuneSystem();
         Upgrades.Begin(Player);
         State = GameState.Playing;
         Time.timeScale = 1f;
@@ -112,10 +110,9 @@ public class GameManager : MonoBehaviour
     {
         State = GameState.GameOver;
         gameOverTime = Time.unscaledTime;
-        string key = $"best_time_{mode}";
-        if (Director.Elapsed > PlayerPrefs.GetFloat(key, 0f))
+        if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f))
         {
-            PlayerPrefs.SetFloat(key, Director.Elapsed);
+            PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
             PlayerPrefs.Save();
         }
     }
@@ -188,26 +185,21 @@ public class GameManager : MonoBehaviour
     {
         float s = UiScale;
         UI.Dim(0.55f);
-        var col = UI.Column(0.08f, 0.9f);
+        var col = UI.Column(0.18f, 0.8f);
         UI.Text(new Rect(col.x, col.y, col.width, 90f * s), "Wizard Bullet Hell", 60, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
-        UI.Text(new Rect(col.x, col.y + 90f * s, col.width, 50f * s), "Choose an upgrade system to test", 28, TextAnchor.UpperCenter, new Color(0.85f, 0.85f, 0.95f), false);
+        float best = PlayerPrefs.GetFloat(BestKey, 0f);
+        if (best > 0f)
+            UI.Text(new Rect(col.x, col.y + 90f * s, col.width, 50f * s), $"Best: {FormatTime(best)}", 28, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.4f));
 
-        float y = col.y + 170f * s, h = 200f * s;
-        foreach (UpgradeMode m in System.Enum.GetValues(typeof(UpgradeMode)))
+        if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 220f * s, col.width * 0.7f, 120f * s), "Play", new Color(0.6f, 0.45f, 1f)))
         {
-            var sys = UpgradeSystem.Create(m);
-            float best = PlayerPrefs.GetFloat($"best_time_{m}", 0f);
-            string tag = best > 0f ? $"BEST {FormatTime(best)}" : (m == mode ? "LAST PLAYED" : null);
-            var accent = m == UpgradeMode.Draft ? new Color(0.5f, 0.85f, 1f) : m == UpgradeMode.Runes ? new Color(1f, 0.75f, 0.35f) : new Color(0.6f, 1f, 0.5f);
-            if (UI.Card(new Rect(col.x, y, col.width, h), sys.Name, sys.Pitch, accent, tag))
-            {
-                Sfx.Play(Sound.Select, 0.8f);
-                Haptics.Selection();
-                StartRun(m);
-            }
-            y += h + 24f * s;
+            Sfx.Play(Sound.Select, 0.8f);
+            Haptics.Selection();
+            StartRun();
         }
-        UI.Text(new Rect(col.x, y + 10f * s, col.width, 80f * s), "Drag anywhere to move. Spells cast on their own.", 24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
+        UI.Text(new Rect(col.x, col.y + 380f * s, col.width, 200f * s),
+            "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nFill a spell's sockets to evolve it.",
+            24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
     }
 
     void DrawHud()
@@ -254,7 +246,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Spell icons along the bottom with cooldown sweep
-        float d = 92f * s, gap = 16f * s;
+        float d = 92f * s, gap = 12f * s;
         float total = Player.Spells.Count * d + (Player.Spells.Count - 1) * gap;
         float x = safe.center.x - total * 0.5f, y = Screen.height - safe.yMin - d - 30f * s;
         foreach (var spell in Player.Spells)
@@ -262,7 +254,8 @@ public class GameManager : MonoBehaviour
             UI.Box(new Rect(x, y, d, d), new Color(0f, 0f, 0f, 0.55f));
             UI.Box(new Rect(x, y + d * (1f - spell.CooldownProgress), d, d * spell.CooldownProgress), new Color(spell.Color.r, spell.Color.g, spell.Color.b, 0.45f));
             UI.Text(new Rect(x, y + 6f * s, d, 40f * s), Initials(spell.Name), 30, TextAnchor.UpperCenter, spell.Color);
-            UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"Lv{spell.Level}", 20, TextAnchor.UpperCenter);
+            string tier = spell.CanEvolve ? (spell.Tier == 1 ? "I" : spell.Tier == 2 ? "II" : "III") + " · " : "";
+            UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"{tier}Lv{spell.Level}", 20, TextAnchor.UpperCenter);
             x += d + gap;
         }
     }
@@ -272,14 +265,14 @@ public class GameManager : MonoBehaviour
         float s = UiScale;
         UI.Dim(0.6f);
         var col = UI.Column(0.25f, 0.6f);
-        float best = PlayerPrefs.GetFloat($"best_time_{mode}", 0f);
+        float best = PlayerPrefs.GetFloat(BestKey, 0f);
         UI.Text(new Rect(col.x, col.y, col.width, 300f * s),
-            $"The wizard has fallen\n\n<size={Mathf.RoundToInt(30 * s)}>Survived {FormatTime(Director.Elapsed)}  ·  Level {Player.Level}\nBest with {Upgrades.Name}: {FormatTime(best)}</size>",
+            $"The wizard has fallen\n\n<size={Mathf.RoundToInt(30 * s)}>Survived {FormatTime(Director.Elapsed)}  ·  Level {Player.Level}\nBest: {FormatTime(best)}</size>",
             48, TextAnchor.UpperCenter);
         if (Time.unscaledTime - gameOverTime < 0.8f) return;  // so a finger still dragging doesn't tap a button
-        if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), $"Try again ({Upgrades.Name})", new Color(0.6f, 0.45f, 1f)))
-            StartRun(mode);
-        if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), "Change upgrade system", new Color(0.6f, 0.6f, 0.7f)))
+        if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), "Try again", new Color(0.6f, 0.45f, 1f)))
+            StartRun();
+        if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), "Title screen", new Color(0.6f, 0.6f, 0.7f)))
             State = GameState.Title;
     }
 

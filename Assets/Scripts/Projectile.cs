@@ -21,6 +21,7 @@ public class Projectile : MonoBehaviour
     public float WaveFrequency = 6f;
     public float Knockback = 2f;
     public Action<Projectile, Enemy> OnHit;   // spell-specific effects (explode, burn, chain...)
+    public Action<Projectile> OnExpire;       // runs if it times out without being used up
 
     float age;
     readonly HashSet<Enemy> hit = new HashSet<Enemy>();
@@ -56,7 +57,12 @@ public class Projectile : MonoBehaviour
 
         Lifetime -= dt;
         Vector2 pos = transform.position;
-        if (Lifetime <= 0f || !gm.Arena.Inside(pos, 3f)) { Destroy(gameObject); return; }
+        if (Lifetime <= 0f || !gm.Arena.Inside(pos, 3f))
+        {
+            OnExpire?.Invoke(this);
+            Destroy(gameObject);
+            return;
+        }
 
         age += dt;
         if (Homing > 0f && age < HomingTime)
@@ -91,7 +97,7 @@ public class Projectile : MonoBehaviour
             scratch.AddRange(Enemy.All);
             foreach (var enemy in scratch)
             {
-                if (!enemy.IsAlive || enemy.Hidden || hit.Contains(enemy)) continue;
+                if (!enemy.IsAlive || enemy.Hidden || enemy.IsCharmed || hit.Contains(enemy)) continue;
                 float r = Radius + enemy.Radius;
                 if ((enemy.Position - pos).sqrMagnitude >= r * r) continue;
 

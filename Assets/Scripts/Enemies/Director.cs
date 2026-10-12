@@ -6,6 +6,8 @@ using UnityEngine;
 //   Stage 1 (after the first swarm): mediums show up sometimes, all types possible.
 //   Stage 2+ (each boss killed): mediums come often and in packs; swarms bring escorts.
 // Enemy health steps up +25% per swarm and +100% per boss killed.
+// While a boss is alive nothing else spawns (apart from whatever the boss summons itself), and all
+// the timers pause until it's dead.
 public class Director : MonoBehaviour
 {
     const int MaxEnemies = 200;
@@ -61,9 +63,10 @@ public class Director : MonoBehaviour
         if (gm.State != GameState.Playing || roster == null) return;
         float dt = Time.deltaTime;
         Elapsed += dt;
+        if (Boss != null) return;   // boss fight: no other spawns
 
         float chaffRate = (0.4f + Elapsed / 90f) * (1f + 0.2f * Threat) * (1f + 0.5f * BossesDefeated);
-        chaffRate = Mathf.Min(chaffRate, 10f) * (Boss != null ? 0.4f : 1f);
+        chaffRate = Mathf.Min(chaffRate, 10f);
         chaffBudget += chaffRate * dt;
         while (chaffBudget >= 1f)
         {

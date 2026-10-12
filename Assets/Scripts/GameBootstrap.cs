@@ -10,7 +10,7 @@ static class GameBootstrap
         Projectile.All.Clear();
         Enemy.All.Clear();
         XpGem.All.Clear();
-        Fusions.Reset();
+        Interactions.Reset();
         Joystick.Blocked = false;
         GameManager.Autoplay = false;
     }
