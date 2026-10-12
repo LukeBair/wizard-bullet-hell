@@ -48,6 +48,17 @@
   .addkey input { flex: 1; min-width: 0; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
   .tip { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
   .tip b { color: var(--text); }
+  .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .chart h4 { margin: 0 0 4px; font-size: 13px; }
+  .chart .sub { color: var(--muted); font-size: 11px; margin-bottom: 6px; }
+  .chart svg { width: 100%; height: 190px; display: block; }
+  .chart .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .chart .legend i { display: inline-block; width: 10px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+  .axis { stroke: var(--line); }
+  .tick { fill: var(--muted); font-size: 10px; }
+  .hoverline { stroke: var(--muted); stroke-dasharray: 3 3; }
+  .tipbox { fill: var(--panel2); stroke: var(--line); }
+  .tiptext { fill: var(--text); font-size: 11px; }
   @media (max-width: 700px) {
     .layout { grid-template-columns: 1fr; }
     nav { display: flex; overflow-x: auto; padding: 0; border-right: 0; border-bottom: 1px solid var(--line); }
@@ -152,6 +163,12 @@ function render() {
   const notes = Object.keys(node).filter((k) => isNote(k) && !Array.isArray(node[k.slice(1)])).map((k) => node[k]);
   for (const n of notes) { const p = document.createElement("div"); p.className = "note"; p.textContent = n; main.appendChild(p); }
 
+  const charts = document.createElement("div");
+  charts.className = "charts";
+  charts.id = "charts";
+  main.appendChild(charts);
+  drawCharts();
+
   const grid = document.createElement("div");
   grid.className = "grid";
   main.appendChild(grid);
@@ -225,7 +242,7 @@ function row(path, text, showPath) {
     else set(data, path, dv);
     setDirty(true); render();
   };
-  function mark() { r.classList.toggle("changed", get(data, path) !== dv); if (!dirty) setDirty(true); }
+  function mark() { r.classList.toggle("changed", get(data, path) !== dv); if (!dirty) setDirty(true); drawCharts(); }
   if (value !== dv) r.classList.add("changed");
   r.append(l, input, reset);
   return r;
@@ -282,6 +299,153 @@ function listCard(title, path, note) {
   };
   c.appendChild(add);
   return c;
+}
+
+// ------------------------------------------------------------------ charts
+// Graphs for values that feed a formula. They mirror the game's code and redraw as you type.
+
+const COLORS = ["#b48cff", "#ffcf5c", "#6be3a0", "#ff6b7d", "#5cc8ff", "#ff9f5c"];
+const n = (path, fallback) => { const v = get(data, path.split(".")); return typeof v === "number" ? v : fallback; };
+
+function xpToNext(L) {
+  const raw = n("xp.base", 3) + L * n("xp.perLevel", 2) + (L * L) / Math.max(1, n("xp.quadDivisor", 5));
+  const steps = Math.floor(L / Math.max(1, Math.round(n("xp.stepEvery", 5))));
+  return Math.max(1, Math.round(Math.floor(raw) * Math.pow(n("xp.stepMultiplier", 1.25), steps)));
+}
+
+function chaffRate(t, kills) {
+  const threat = Math.floor(t / n("spawning.swarmEvery", 45));
+  const r = (n("spawning.chaffBase", 0.4) + t * n("spawning.chaffPerSecond", 1 / 240))
+          * (1 + n("spawning.chaffPerThreat", 0.1) * threat) * (1 + n("spawning.chaffPerBossKill", 1.2) * kills);
+  return Math.min(n("spawning.chaffMax", 10), r);
+}
+
+const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+const CHARTS = {
+  xp: () => {
+    const lv = [...Array(40)].map((_, i) => i + 1);
+    let total = 0;
+    const cum = lv.map((L) => (total += xpToNext(L)));
+    return [
+      { title: "XP needed for the next level", sub: "By current level", x: lv, xLabel: (v) => "Lv " + v, series: [{ name: "XP to next level", y: lv.map(xpToNext) }] },
+      { title: "Total XP to reach a level", sub: "Running total from level 1", x: lv, xLabel: (v) => "Lv " + v, series: [{ name: "Total XP", y: cum }] },
+    ];
+  },
+  spawning: () => {
+    const t = [...Array(61)].map((_, i) => i * 10);
+    const be = n("spawning.bossEvery", 150), se = n("spawning.swarmEvery", 45);
+    const hp = (s, killBosses) => 1 + n("spawning.healthPerSwarm", 0.25) * Math.floor(s / se) + (killBosses ? n("spawning.healthPerBossKill", 1) * Math.floor(s / be) : 0);
+    const swarms = [...Array(12)].map((_, i) => i);
+    return [
+      { title: "Chaff spawned per second", sub: "Over a run (ignores time paused during boss fights)", x: t, xLabel: fmtTime, series: [
+        { name: "Each boss killed when it arrives", y: t.map((s) => chaffRate(s, Math.floor(s / be))) },
+        { name: "No bosses killed", y: t.map((s) => chaffRate(s, 0)) },
+      ] },
+      { title: "Enemy health multiplier", sub: "+ per swarm and per boss kill", x: t, xLabel: fmtTime, series: [
+        { name: "Each boss killed when it arrives", y: t.map((s) => hp(s, true)) },
+        { name: "No bosses killed", y: t.map((s) => hp(s, false)) },
+      ] },
+      { title: "Swarm size", sub: "By swarm number", x: swarms.map((s) => s + 1), xLabel: (v) => "#" + v, series: [
+        { name: "Before first boss kill", y: swarms.map((s) => Math.round(n("spawning.swarmBasePreBoss", 14) + n("spawning.swarmPerThreatPreBoss", 3) * s)) },
+        { name: "After a boss kill", y: swarms.map((s) => Math.round(n("spawning.swarmBase", 16) + n("spawning.swarmPerThreat", 6) * s)) },
+      ] },
+    ];
+  },
+  runes: () => {
+    const names = Object.keys(data.runes).filter((k) => isObj(data.runes[k]) && typeof data.runes[k].weight === "number");
+    const total = names.reduce((a, k) => a + data.runes[k].weight, 0) || 1;
+    return [{ title: "Chance each rune is the first offered", sub: "From the rarity weights", bars: names.map((k) => ({ label: k, value: (100 * data.runes[k].weight) / total })), unit: "%" }];
+  },
+  spells: () => {
+    const ids = Object.keys(data.spells);
+    const dps = (s, suffix) => {
+      const d = s["damage" + suffix] ?? s.damage, c = (s["cooldown" + suffix] ?? s.cooldown) * n("global.castRate", 0.85), k = s["count" + suffix] ?? s.count ?? 1;
+      return d && c ? (d * k) / c : 0;
+    };
+    const dmgSpells = ids.filter((k) => !["Rejuvenate", "Veil", "Enthrall"].includes(k));
+    return [{ title: "Base damage per second (no runes, one target)", sub: "damage × count ÷ cooldown; tier I", bars: dmgSpells.map((k) => ({ label: k, value: dps(data.spells[k], "") })), unit: "" }];
+  },
+};
+
+function drawCharts() {
+  const box = document.getElementById("charts");
+  if (!box) return;
+  box.innerHTML = "";
+  const make = CHARTS[section];
+  if (!make) return;
+  for (const c of make()) box.appendChild(c.bars ? barChart(c) : lineChart(c));
+}
+
+function chartShell(c) {
+  const el = document.createElement("div");
+  el.className = "card chart";
+  el.innerHTML = `<h4>${c.title}</h4><div class="sub">${c.sub || ""}</div>`;
+  return el;
+}
+
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); return Math.ceil(v / p * 2) / 2 * p; }
+
+function lineChart(c) {
+  const el = chartShell(c);
+  const W = 360, H = 190, L = 40, R = 10, T = 8, B = 22;
+  const ymax = niceMax(Math.max(...c.series.flatMap((s) => s.y)));
+  const xs = (i) => L + (i / (c.x.length - 1)) * (W - L - R);
+  const ys = (v) => H - B - (v / ymax) * (H - T - B);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
+  for (let g = 0; g <= 4; g++) {
+    const v = (ymax * g) / 4, y = ys(v);
+    svg += `<line class="axis" x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" opacity="${g ? 0.5 : 1}"/><text class="tick" x="${L - 4}" y="${y + 3}" text-anchor="end">${+v.toFixed(2)}</text>`;
+  }
+  const step = Math.ceil(c.x.length / 6);
+  c.x.forEach((v, i) => { if (i % step === 0 && (c.x.length - 1 - i >= step * 0.6 || i === c.x.length - 1)) svg += `<text class="tick" x="${xs(i)}" y="${H - 6}" text-anchor="middle">${c.xLabel(v)}</text>`; });
+  c.series.forEach((s, k) => {
+    svg += `<polyline fill="none" stroke="${COLORS[k]}" stroke-width="2" points="${s.y.map((v, i) => `${xs(i)},${ys(v)}`).join(" ")}"/>`;
+  });
+  svg += `<g class="hover" visibility="hidden"><line class="hoverline" y1="${T}" y2="${H - B}"/><rect class="tipbox" rx="4" height="${14 + 14 * c.series.length}"/><text class="tiptext"></text></g>`;
+  svg += `<rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/></svg>`;
+  el.insertAdjacentHTML("beforeend", svg);
+  el.insertAdjacentHTML("beforeend", `<div class="legend">${c.series.map((s, k) => `<span><i style="background:${COLORS[k]}"></i>${s.name}</span>`).join("")}</div>`);
+
+  const svgEl = el.querySelector("svg"), hover = svgEl.querySelector(".hover");
+  svgEl.addEventListener("mousemove", (e) => {
+    const r = svgEl.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * W;
+    const i = Math.max(0, Math.min(c.x.length - 1, Math.round(((px - L) / (W - L - R)) * (c.x.length - 1))));
+    const x = xs(i);
+    hover.setAttribute("visibility", "visible");
+    hover.querySelector("line").setAttribute("x1", x);
+    hover.querySelector("line").setAttribute("x2", x);
+    const lines = [c.xLabel(c.x[i]), ...c.series.map((s) => `${s.name}: ${+s.y[i].toFixed(2)}`)];
+    const text = hover.querySelector("text");
+    text.innerHTML = lines.map((l, k) => `<tspan x="0" dy="${k ? 14 : 0}">${l}</tspan>`).join("");
+    const bw = Math.max(...lines.map((l) => l.length)) * 5.6 + 12;
+    const bx = x + bw + 8 > W ? x - bw - 6 : x + 6;
+    hover.querySelector("rect").setAttribute("x", bx);
+    hover.querySelector("rect").setAttribute("y", T);
+    hover.querySelector("rect").setAttribute("width", bw);
+    text.setAttribute("transform", `translate(${bx + 6},${T + 14})`);
+    text.querySelectorAll("tspan").forEach((t) => t.setAttribute("x", 0));
+  });
+  svgEl.addEventListener("mouseleave", () => hover.setAttribute("visibility", "hidden"));
+  return el;
+}
+
+function barChart(c) {
+  const el = chartShell(c);
+  const W = 360, rowH = 16, L = 110, R = 40;
+  const H = c.bars.length * rowH + 6;
+  const max = Math.max(...c.bars.map((b) => b.value)) || 1;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="height:${H}px">`;
+  c.bars.forEach((b, i) => {
+    const y = 3 + i * rowH, w = (b.value / max) * (W - L - R);
+    svg += `<text class="tick" x="${L - 6}" y="${y + 11}" text-anchor="end">${b.label}</text>`;
+    svg += `<rect x="${L}" y="${y + 2}" width="${Math.max(1, w)}" height="${rowH - 5}" rx="3" fill="${COLORS[0]}"/>`;
+    svg += `<text class="tick" x="${L + w + 4}" y="${y + 11}">${b.value.toFixed(1)}${c.unit}</text>`;
+  });
+  svg += "</svg>";
+  el.insertAdjacentHTML("beforeend", svg);
+  return el;
 }
 
 function renderSearch(main, q) {
