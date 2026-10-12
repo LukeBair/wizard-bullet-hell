@@ -96,6 +96,19 @@ public static class ArtStyle
     // Dusk keeps every enemy bullet coral so threats always read the same.
     public static Color EnemyBullet(Color c) => Current == ArtStyleId.Dusk ? DuskCoral : c;
 
+    // Particle colours: Dusk snaps every spark to its palette (warm -> coral, bright and icy -> cream,
+    // green and deep blue -> sage); other styles keep the colour as given.
+    public static Color ParticleColor(Color c)
+    {
+        if (Current != ArtStyleId.Dusk) return c;
+        Color.RGBToHSV(c, out float h, out float s, out float v);
+        if (s < 0.3f) return v > 0.45f ? DuskCream : DuskNavy;
+        if (h < 0.11f || h > 0.8f) return DuskCoral;
+        if (h < 0.2f) return DuskCream;
+        if (h < 0.5f) return v > 0.55f ? DuskSage : DuskDeepSage;
+        return s > 0.6f ? DuskSage : DuskCream;
+    }
+
     // Sprites can't be brightened by tint, so hit flashes go warm instead of white.
     public static Color HitFlash => Current == ArtStyleId.Classic ? Color.white : new Color(1f, 0.45f, 0.45f);
 

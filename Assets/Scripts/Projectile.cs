@@ -23,7 +23,8 @@ public class Projectile : MonoBehaviour
     public Action<Projectile, Enemy> OnHit;   // spell-specific effects (explode, burn, chain...)
     public Action<Projectile> OnExpire;       // runs if it times out without being used up
 
-    float age;
+    float age, trailTimer;
+    Color color;
     readonly HashSet<Enemy> hit = new HashSet<Enemy>();
     static readonly List<Enemy> scratch = new List<Enemy>();
 
@@ -35,6 +36,7 @@ public class Projectile : MonoBehaviour
         p.Team = team;
         p.Velocity = velocity;
         p.Radius = radius;
+        p.color = color;
 
         // Enemy bullets look bigger than their hitbox, which is what makes bullet hell feel fair.
         float visual = team == Team.Enemy ? 1.6f : 1.3f;
@@ -94,6 +96,13 @@ public class Projectile : MonoBehaviour
 
         if (Team == Team.Player)
         {
+            trailTimer -= dt;
+            if (trailTimer <= 0f)
+            {
+                trailTimer = 1f / Tune.F("fx.trail.rate", 30f);
+                Particles.Trail(pos, color, Radius);
+            }
+
             scratch.Clear();
             scratch.AddRange(Enemy.All);
             foreach (var enemy in scratch)

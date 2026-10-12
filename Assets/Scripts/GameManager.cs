@@ -129,6 +129,7 @@ public class GameManager : MonoBehaviour
             Joystick.Blocked = true;
             Upgrades.Open();
             Sfx.Play(Sound.LevelUp, 0.8f, 0f);
+            if (Player != null) Particles.LevelUp(Player.Position);
             Haptics.Notification(Haptics.Notify.Success);
         }
 

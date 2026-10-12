@@ -160,7 +160,11 @@ public class Player : MonoBehaviour
         }
     }
 
-    public void Heal(float amount) => Health = Mathf.Min(MaxHealth, Health + amount);
+    public void Heal(float amount)
+    {
+        Health = Mathf.Min(MaxHealth, Health + amount);
+        if (amount > 0f) Particles.Heal(Position, amount);
+    }
 
     // Ethereal Veil: no damage for a while.
     public void Phase(float duration)

@@ -19,6 +19,7 @@ public static class Interactions
     public static void Trigger(Interaction i, Vector2 at)
     {
         if (seen.Add(i)) GameManager.Instance.Toast($"Combo: {Name(i)}!");
+        Particles.Combo(i, at);
     }
 
     public static string Name(Interaction i)
