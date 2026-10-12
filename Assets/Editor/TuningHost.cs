@@ -6,8 +6,9 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 
-// Before each player build, bakes this Mac's LAN address into Resources/tuning_host.txt so the game
-// on a phone can fetch live values from the tuner server (tools/tuner) on the same Wi-Fi.
+// Before each player build, bakes where the tuner server (tools/tuner) lives into
+// Resources/tuning_host.txt: the public URL of a running ngrok tunnel (`ngrok http 8787`), so the phone
+// reaches it from any network, or else this Mac's LAN address for a phone on the same Wi-Fi.
 // Also allows plain-HTTP requests, which the local tuner server needs.
 class TuningHost : IPreprocessBuildWithReport
 {
@@ -18,9 +19,24 @@ class TuningHost : IPreprocessBuildWithReport
     public void OnPreprocessBuild(BuildReport report)
     {
         Directory.CreateDirectory("Assets/Resources");
-        File.WriteAllText(HostFile, LanAddress());
+        File.WriteAllText(HostFile, NgrokUrl() ?? LanAddress());
         AssetDatabase.ImportAsset(HostFile);
         PlayerSettings.insecureHttpOption = InsecureHttpOption.AlwaysAllowed;
+    }
+
+    // Asks ngrok's local API for the tunnel's public URL; null when ngrok isn't running.
+    static string NgrokUrl()
+    {
+        try
+        {
+            using (var web = new WebClient())
+            {
+                string json = web.DownloadString("http://127.0.0.1:4040/api/tunnels");
+                var m = System.Text.RegularExpressions.Regex.Match(json, "\"public_url\":\"(https://[^\"]+)\"");
+                return m.Success ? m.Groups[1].Value : null;
+            }
+        }
+        catch (WebException) { return null; }
     }
 
     static string LanAddress()

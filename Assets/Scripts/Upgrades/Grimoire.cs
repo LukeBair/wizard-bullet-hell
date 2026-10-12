@@ -115,7 +115,8 @@ public static class Grimoire
     {
         using (var req = UnityWebRequest.Get(baseUrl + "/save.json"))
         {
-            req.timeout = 2;
+            req.SetRequestHeader("ngrok-skip-browser-warning", "1");
+            req.timeout = 5;
             yield return req.SendWebRequest();
             if (req.result == UnityWebRequest.Result.Success) TryImport(req.downloadHandler.text);
         }
@@ -124,7 +125,8 @@ public static class Grimoire
             req.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(Export()));
             req.downloadHandler = new DownloadHandlerBuffer();
             req.SetRequestHeader("Content-Type", "application/json");
-            req.timeout = 2;
+            req.SetRequestHeader("ngrok-skip-browser-warning", "1");
+            req.timeout = 5;
             yield return req.SendWebRequest();
         }
     }

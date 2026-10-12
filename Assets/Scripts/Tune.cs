@@ -11,7 +11,8 @@ using UnityEngine.Networking;
 //
 // Sources, in order:
 //   1. The tuner server on Luke's Mac (tools/tuner), fetched at startup and on the title screen,
-//      so edits apply on the next run without rebuilding. The host is baked in at build time.
+//      so edits apply on the next run without rebuilding. The host (ngrok URL or LAN IP) is baked in
+//      at build time.
 //   2. Assets/Resources/tuning.json bundled into the build.
 //   3. The defaults written in code.
 public static class Tune
@@ -119,23 +120,26 @@ public static class Tune
 
     public static IEnumerator FetchFromMac()
     {
+        // tuning_host.txt holds either a full URL (an ngrok tunnel, reachable from any network) or a LAN IP.
         var host = Resources.Load<TextAsset>("tuning_host");
-        string ip = host != null ? host.text.Trim() : "127.0.0.1";
+        string baseUrl = host != null ? host.text.Trim() : "127.0.0.1";
 #if UNITY_EDITOR
-        ip = "127.0.0.1";
+        baseUrl = "127.0.0.1";
 #endif
+        if (!baseUrl.StartsWith("http")) baseUrl = $"http://{baseUrl}:{Port}";
         Fetching = true;
         bool reached = false;
-        using (var req = UnityWebRequest.Get($"http://{ip}:{Port}/tuning.json"))
+        using (var req = UnityWebRequest.Get(baseUrl + "/tuning.json"))
         {
-            req.timeout = 2;
+            req.SetRequestHeader("ngrok-skip-browser-warning", "1");
+            req.timeout = 5;
             yield return req.SendWebRequest();
             reached = req.result == UnityWebRequest.Result.Success;
             if (reached && TryApply(req.downloadHandler.text))
-                Source = $"live from {ip}";
+                Source = $"live from {baseUrl}";
         }
         // Same server: pick up save edits made in the tuner and report this device's progress.
-        if (reached) yield return Grimoire.SyncWithMac($"http://{ip}:{Port}");
+        if (reached) yield return Grimoire.SyncWithMac(baseUrl);
         Fetching = false;
     }
 
