@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum GameState { Title, Grimoire, TomePick, Playing, LevelUp, GameOver, Victory }
+public enum GameState { Title, Grimoire, TomePick, Playing, LevelUp, Paused, GameOver, Victory }
 
 // Owns the run: title screen, camera, starting tome, level-up flow, zone changes, game over, victory
 // and the HUD.
@@ -303,6 +303,7 @@ public class GameManager : MonoBehaviour
                     else { State = GameState.Playing; Time.timeScale = 1f; }
                 }
                 break;
+            case GameState.Paused: DrawHud(); DrawPause(); break;
             case GameState.GameOver: DrawHud(); DrawGameOver(); break;
             case GameState.Victory: DrawHud(); DrawVictory(); break;
         }
@@ -469,11 +470,7 @@ public class GameManager : MonoBehaviour
         UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
         UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
-        {
-            BankGold(false);
-            State = GameState.Title;
-            Time.timeScale = 1f;
-        }
+            Pause();
         top += 52f * s;
 
         // Health bar
@@ -509,6 +506,91 @@ public class GameManager : MonoBehaviour
             UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"{tier}Lv{spell.Level}", 20, TextAnchor.UpperCenter);
             x += d + gap;
         }
+    }
+
+    // ---------------------------------------------------------------- pause menu
+
+    string confirming;   // "Restart" or "Quit" once tapped; a second tap does it
+
+    void Pause()
+    {
+        Sfx.Play(Sound.Select, 0.8f);
+        Haptics.Selection();
+        confirming = null;
+        State = GameState.Paused;
+        Time.timeScale = 0f;
+    }
+
+    void Resume()
+    {
+        Sfx.Play(Sound.Select, 0.8f);
+        Haptics.Selection();
+        State = GameState.Playing;
+        Time.timeScale = 1f;
+        Joystick.Blocked = true;   // released once the tap lifts, so it doesn't start a drag
+    }
+
+    // The run's spells up top, then Resume, the Grimoire, and Restart / Quit (each asks for a second tap).
+    void DrawPause()
+    {
+        float s = UiScale;
+        UI.Dim(0.75f);
+        var col = UI.Column(0.06f, 0.9f);
+        UI.Text(new Rect(col.x, col.y, col.width, 60f * s), "Paused", 52, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
+        UI.Text(new Rect(col.x, col.y + 62f * s, col.width, 36f * s), "Your spells", 26, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
+
+        float y = col.y + 104f * s, h = 124f * s, gap = 10f * s;
+        foreach (var spell in Player.Spells)
+        {
+            DrawPauseSpell(spell, new Rect(col.x, y, col.width, h));
+            y += h + gap;
+        }
+        if (Player.Spells.Count == 0) y += 40f * s;
+
+        y += 14f * s;
+        if (UI.Button(new Rect(col.x + col.width * 0.1f, y, col.width * 0.8f, 110f * s), "Resume", new Color(0.6f, 0.45f, 1f)))
+        {
+            Resume();
+            return;
+        }
+        y += 126f * s;
+        float bw = (col.width - 2f * gap) / 3f, bh = 90f * s;
+        if (UI.Button(new Rect(col.x, y, bw, bh), "Spellbook", GoldColor))
+        {
+            confirming = null;
+            OpenGrimoire();
+        }
+        if (UI.Button(new Rect(col.x + bw + gap, y, bw, bh), confirming == "Restart" ? "Sure?" : "Restart", new Color(1f, 0.55f, 0.4f)))
+        {
+            if (confirming != "Restart") confirming = "Restart";
+            else { BankGold(false); StartRun(); }
+        }
+        if (UI.Button(new Rect(col.x + 2f * (bw + gap), y, bw, bh), confirming == "Quit" ? "Sure?" : "Quit", new Color(0.6f, 0.6f, 0.7f)))
+        {
+            if (confirming != "Quit") confirming = "Quit";
+            else
+            {
+                BankGold(false);
+                State = GameState.Title;
+                Time.timeScale = 1f;
+            }
+        }
+        if (confirming != null)
+            UI.Text(new Rect(col.x, y + bh + 8f * s, col.width, 30f * s), $"Tap again to {confirming.ToLower()}. This run ends and its gold is banked.", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
+    }
+
+    // One spell: name, tier and level, its socketed runes and any power kept from evolving.
+    void DrawPauseSpell(Spell spell, Rect r)
+    {
+        float s = UiScale;
+        var runes = Upgrades.SocketedRunes(spell);
+        var names = new List<string>();
+        foreach (var rune in runes) names.Add($"<color=#{ColorUtility.ToHtmlStringRGB(Spell.RuneColor(rune))}>{Spell.RuneName(rune)}</color>");
+        string body = names.Count > 0 ? string.Join(", ", names) : "No runes yet";
+        string kept = spell.RetainedSummary();
+        if (kept.Length > 0) body += $"\n<size={Mathf.RoundToInt(18 * s)}><color=#ffd966>Kept: {kept}</color></size>";
+        string tier = spell.CanEvolve ? $"TIER {(spell.Tier == 1 ? "I" : spell.Tier == 2 ? "II" : "III")}  ·  " : "";
+        UI.Card(r, spell.Title, body, spell.Color, $"{tier}{runes.Count}/{Upgrades.SocketCount} RUNES");
     }
 
     void DrawGameOver()
