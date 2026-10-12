@@ -308,7 +308,7 @@ public class Wisps : Spell, IOrbiter
     protected override bool Overloadable => false;
 
     readonly List<(Transform orb, int ring, int set, int index, int ringCount)> orbs = new List<(Transform, int, int, int, int)>();
-    readonly List<float> bonusWisps = new List<float>();   // time left on each extra wisp (tier III kills, infested hunts)
+    readonly List<float> bonusWisps = new List<float>();   // tier III: time left on each extra wisp
     readonly List<Transform> tracks = new List<Transform>();
     readonly Dictionary<Enemy, float> lastHit = new Dictionary<Enemy, float>();
     float angle;
@@ -322,7 +322,6 @@ public class Wisps : Spell, IOrbiter
     class WispState { public Mode mode; public Enemy target; public Vector2 pos; public float cool, dead; }
     readonly Dictionary<(int, int, int), WispState> states = new Dictionary<(int, int, int), WispState>();
     readonly List<Enemy> claimed = new List<Enemy>();
-    bool spawned;   // an infested foe split off a wisp this tick
     float HuntEvery => T("huntEvery", 2.5f) * Cooldown;
     float HuntRange => T("huntRange", 4.5f) * (1f + 0.5f * (Area - 1f));
     int RingCount(int ring) => Count + (ring == 0 ? bonusWisps.Count : 0);
@@ -464,7 +463,7 @@ public class Wisps : Spell, IOrbiter
             if (bonusWisps.Count < MaxBonusWisps) bonusWisps.Add(T("bonusWispLife", 6f));
             else { bonusWisps.Sort(); bonusWisps[0] = T("bonusWispLife", 6f); }   // refresh the oldest
         }
-        if (bonusWisps.Count != before || spawned) { spawned = false; Rebuild(); }
+        if (bonusWisps.Count != before) Rebuild();
     }
 
     // Moves a darting or returning wisp. Returns false once it is back in its orbit slot.
@@ -495,7 +494,7 @@ public class Wisps : Spell, IOrbiter
 
     // A darting wisp hits its target. The foe's strongest status picks the reaction:
     // burning: the wisp explodes (big damage around it) and has to re-form; wet: lightning arcs to
-    // other wet foes; chilled: heavy frostbite; infested: the wisp splits off a temporary extra wisp;
+    // other wet foes; chilled: heavy frostbite; infested: a weakened foe is devoured outright (its bugs burst);
     // trapped (rooted): it drains life back to you. Returns true if the wisp was used up.
     bool Strike(Enemy e, Vector2 at, Vector2 dir, ref int kills)
     {
@@ -543,7 +542,13 @@ public class Wisps : Spell, IOrbiter
         }
         if (infested)
         {
-            if (bonusWisps.Count < MaxBonusWisps) { bonusWisps.Add(T("bonusWispLife", 6f)); spawned = true; }
+            // Devour: a weakened infested foe is eaten outright, so its bugs burst on the crowd.
+            if (e.IsAlive && !e.IsBoss && e.Health <= e.MaxHealth * T("devourBelow", 0.35f))
+            {
+                Particles.Ants(at, 0.8f, false);
+                Hit(e, e.Health + 1f, dir * 3f);
+                if (Tier == 3 && !e.IsAlive) kills++;
+            }
             return false;
         }
         if (rooted) HealOwner(T("drainHeal", 0.02f));
