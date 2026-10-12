@@ -125,7 +125,7 @@ public class Projectile : MonoBehaviour
                 float r = Radius + Player.HitRadius;
                 if ((player.Position - pos).sqrMagnitude < r * r)
                 {
-                    player.TakeDamage(Damage);
+                    if (!player.BlockBullet()) player.TakeDamage(Damage);
                     Destroy(gameObject);
                 }
             }

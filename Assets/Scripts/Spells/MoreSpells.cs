@@ -1,0 +1,343 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+// Mirror shards orbit the wizard and throw enemy bullets back as bolts of light.
+// II: reflected bolts home in on foes. III: each reflected bolt splits into three.
+public class MirrorWard : Spell
+{
+    public override string Name => "Mirror Ward";
+    public override Element Element => Element.Light;
+    public override string Blurb => "A mirror shard circles you, reflecting enemy bullets back at foes.";
+    public override bool CanEvolve => true;
+    protected override float BaseDamage => 12f;   // per reflected bolt
+    protected override float BaseCooldown => 1f;  // only sets the spin speed (Haste spins faster)
+    protected override float AreaPerRune => 0.2f;
+    protected override bool EchoRecasts => false;
+    protected override bool Overloadable => false;
+
+    readonly List<(Transform shard, int ring, int index)> shards = new List<(Transform, int, int)>();
+    readonly List<Transform> tracks = new List<Transform>();
+    static readonly List<Projectile> scratch = new List<Projectile>();
+    float angle;
+
+    int Rings => 1 + Echoes;
+    float OrbitRadius(int ring) => T("orbit", 1.4f) * Area * (1f + T("ringSpacing", 0.5f) * ring);
+    float ShardRadius => T("shardSize", 0.32f) * Mathf.Sqrt(Area);
+
+    public override string TierName(int tier) => tier == 2 ? "Prism" : tier == 3 ? "Hall of Mirrors" : Name;
+    public override string TierDescription(int tier) =>
+        tier == 2 ? "Reflected bolts home in on foes." : $"Homing, and each reflected bolt splits into {T("splitCount_t3", 3f):0}.";
+
+    public override string RuneEffect(Rune r)
+    {
+        switch (r)
+        {
+            case Rune.Potency: return $"+{Pct(PotencyStep)} reflected damage";
+            case Rune.Haste: return $"Shards spin {Pct(HastePerRune)} faster";
+            case Rune.Split: return "+1 shard on every ring";
+            case Rune.Pierce: return "Reflected bolts pass through +1 enemy";
+            case Rune.Area: return $"+{Pct(AreaStep)} shard and orbit size";
+            case Rune.Echo: return "+1 ring spinning the other way";
+            case Rune.Ward: return "No effect: this spell never casts";
+            default: return base.RuneEffect(r);
+        }
+    }
+
+    protected override void OnLearned() => Rebuild();
+    protected override void OnRunesChanged() => Rebuild();
+    protected override bool Ready() => false;   // never casts; works in OnTick
+    protected override void Cast() { }
+
+    void Rebuild()
+    {
+        if (Owner == null) return;
+        foreach (var s in shards) if (s.shard != null) Object.Destroy(s.shard.gameObject);
+        foreach (var t in tracks) if (t != null) Object.Destroy(t.gameObject);
+        shards.Clear();
+        tracks.Clear();
+        for (int ring = 0; ring < Rings; ring++)
+        {
+            tracks.Add(SpriteFactory.Child(Owner.transform, "MirrorOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.15f), Vector2.zero, OrbitRadius(ring) * 2f + ShardRadius, 47).transform);
+            for (int i = 0; i < Count; i++)
+            {
+                var go = new GameObject("MirrorShard");
+                go.transform.SetParent(Owner.transform, false);
+                SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.45f), Vector2.zero, ShardRadius * 4f, 56);
+                SpriteFactory.Child(go.transform, "Shard", SpriteFactory.Diamond, Color.Lerp(Color, Color.white, 0.6f), Vector2.zero, ShardRadius * 2f, 58);
+                shards.Add((go.transform, ring, i));
+            }
+        }
+    }
+
+    protected override void OnTick(float dt)
+    {
+        angle += T("spinSpeed", 160f) / Cooldown * dt * Tuning.Pace;
+        scratch.Clear();
+        foreach (var p in Projectile.All) if (p.Team == Team.Enemy && p.enabled) scratch.Add(p);
+
+        foreach (var s in shards)
+        {
+            var shard = s.shard;
+            int ring = s.ring, index = s.index;
+            float dirSign = ring % 2 == 0 ? 1f : -1f;
+            float a = (angle * dirSign + index * 360f / Count + ring * 45f) * Mathf.Deg2Rad;
+            Vector2 local = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * OrbitRadius(ring);
+            shard.localPosition = local;
+            shard.localRotation = Quaternion.Euler(0, 0, a * Mathf.Rad2Deg);
+            Vector2 world = Owner.Position + local;
+
+            foreach (var p in scratch)
+            {
+                if (!p.enabled) continue;
+                Vector2 at = p.transform.position;
+                float r = ShardRadius + p.Radius;
+                if ((at - world).sqrMagnitude > r * r) continue;
+                Reflect(p, at);
+            }
+        }
+    }
+
+    void Reflect(Projectile bullet, Vector2 at)
+    {
+        Vector2 back = -bullet.Velocity;
+        bullet.enabled = false;   // leaves Projectile.All at once, so no other shard takes it
+        Object.Destroy(bullet.gameObject);
+        Fx.Burst(at, Color, 1f);
+        Sfx.Play(Sound.WispHit, 0.3f, 0.3f);
+
+        var target = Enemy.Nearest(at, Range);
+        Vector2 dir = target != null ? target.Position - at : back;
+        int n = Tier == 3 ? Mathf.RoundToInt(T("splitCount_t3", 3f)) : 1;
+        for (int i = 0; i < n; i++)
+        {
+            Vector2 d = Quaternion.Euler(0, 0, (i - (n - 1) * 0.5f) * T("splitSpread_t3", 20f)) * dir;
+            var p = Shoot(at, d, T("boltSpeed", 10f), 0.14f);
+            p.Homing = Tier >= 2 ? TT("homing", 300f) : 0f;
+            p.Lifetime = 1.5f;
+            p.OnHit = (proj, e) => Hit(e, Damage, proj.Velocity.normalized * 2f);
+        }
+    }
+}
+
+// A line of stone spikes erupts toward the nearest foe, pinning what it hits for a moment.
+// II: spikes stay up as a wall that blocks enemy bullets and holds foes back. III: crumbling walls burst into shards.
+public class StoneSpikes : Spell
+{
+    public override string Name => "Stone Spikes";
+    public override Element Element => Element.Earth;
+    public override string Blurb => "A line of spikes erupts toward foes, pinning them in place.";
+    public override bool CanEvolve => true;
+    protected override float BaseDamage => 14f;
+    protected override float BaseCooldown => 3f;
+    protected override float PotencyPerRune => 0.25f;
+
+    int SpikesPerLine => Mathf.RoundToInt(T("spikes", 5f)) + Mathf.RoundToInt(T("spikesPerPierce", 2f)) * PierceCount;
+    float SpikeRadius => T("spikeRadius", 0.45f) * Area;
+
+    public override string TierName(int tier) => tier == 2 ? "Stonewall" : tier == 3 ? "Rockburst" : Name;
+    public override string TierDescription(int tier) =>
+        tier == 2 ? $"Spikes stay up for {T("wallTime_t2", 3f):0.#}s as a wall that blocks enemy bullets and holds foes back."
+                  : $"Walls, and each spike bursts into {T("shards_t3", 4f):0} stone shards when the wall crumbles.";
+
+    public override string RuneEffect(Rune r)
+    {
+        switch (r)
+        {
+            case Rune.Potency: return $"+{Pct(PotencyStep)} damage and pin time";
+            case Rune.Split: return "+1 line of spikes";
+            case Rune.Pierce: return $"+{T("spikesPerPierce", 2f):0} spikes per line";
+            case Rune.Area: return $"+{Pct(AreaStep)} spike size";
+            default: return base.RuneEffect(r);
+        }
+    }
+
+    protected override void Cast()
+    {
+        var target = Enemy.Nearest(Owner.Position, Range);
+        if (target == null) return;
+        Sfx.Play(Sound.Burrow, 0.5f, 0.2f);
+        Vector2 from = Owner.Position;
+        Vector2 dir = (target.Position - from).normalized;
+        int spikes = SpikesPerLine;
+        for (int i = 0; i < Count; i++)
+        {
+            Vector2 d = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * T("fanAngle", 25f)) * dir;
+            Owner.StartCoroutine(Line(from, d, spikes));
+        }
+    }
+
+    System.Collections.IEnumerator Line(Vector2 from, Vector2 dir, int spikes)
+    {
+        float spacing = T("spacing", 0.8f) * Mathf.Sqrt(Area);
+        float wall = Tier >= 2 ? TT("wallTime", 3f) : T("spikeTime", 0.4f);
+        for (int i = 1; i <= spikes; i++)
+        {
+            Vector2 at = from + dir * spacing * i;
+            if (!GameManager.Instance.Arena.Inside(at)) yield break;
+            Spike.Create(at, SpikeRadius, wall, Color, Tier >= 2, Erupt, Tier == 3 ? new System.Action<Vector2>(Crumble) : null);
+            yield return new WaitForSeconds(T("stagger", 0.05f));
+        }
+    }
+
+    void Erupt(Enemy e, Vector2 at)
+    {
+        e.Root(T("pinTime", 0.3f) * Potency, 0f);
+        Hit(e, Damage, (e.Position - at).normalized * 2f);
+    }
+
+    // Rockburst: a crumbling spike throws stone shards in a ring.
+    void Crumble(Vector2 at)
+    {
+        if (Owner == null) return;
+        int n = Mathf.RoundToInt(T("shards_t3", 4f));
+        float offset = Random.value * 360f;
+        for (int i = 0; i < n; i++)
+        {
+            float a = (offset + i * 360f / n) * Mathf.Deg2Rad;
+            var p = Shoot(at, new Vector2(Mathf.Cos(a), Mathf.Sin(a)), T("shardSpeed_t3", 8f), 0.12f);
+            p.Lifetime = T("shardLife_t3", 0.5f);
+            p.OnHit = (proj, e) => Hit(e, Damage * T("shardDamage_t3", 0.5f), proj.Velocity.normalized * 2f);
+        }
+    }
+}
+
+// Spectral blades fly out and boomerang back, cutting every foe they pass, both ways.
+// II: blades fly out a second time. III: an afterimage of each blade follows 0.4s behind for half damage.
+public class SpectralBlades : Spell
+{
+    public override string Name => "Spectral Blades";
+    public override Element Element => Element.Shadow;
+    public override string Blurb => "Throws blades that boomerang back, cutting foes both ways.";
+    public override bool CanEvolve => true;
+    protected override float BaseDamage => 10f;
+    protected override float BaseCooldown => 2f;
+    protected override int BaseCount => 2;
+
+    float Reach => T("reach", 5f) * Area;
+    float Speed => T("speed", 9f) * (1f + T("speedPerPierce", 0.3f) * RuneCount(Rune.Pierce));
+    float BladeSize => T("bladeSize", 0.35f) * Mathf.Sqrt(Area);
+
+    public override string TierName(int tier) => tier == 2 ? "Reaper's Arc" : tier == 3 ? "Thousand Cuts" : Name;
+    public override string TierDescription(int tier) =>
+        tier == 2 ? "Blades fly out a second time after they return."
+                  : $"Two throws, and an afterimage of each blade follows {T("afterimageDelay_t3", 0.4f):0.#}s behind for {Pct(T("afterimageDamage_t3", 0.5f))} damage.";
+
+    public override string RuneEffect(Rune r)
+    {
+        switch (r)
+        {
+            case Rune.Split: return "+1 blade";
+            case Rune.Pierce: return $"Blades fly {Pct(T("speedPerPierce", 0.3f))} faster";
+            case Rune.Area: return $"+{Pct(AreaStep)} reach and blade size";
+            default: return base.RuneEffect(r);
+        }
+    }
+
+    protected override void Cast()
+    {
+        var target = Enemy.Nearest(Owner.Position, Range);
+        if (target == null) return;
+        Sfx.Play(Sound.Teleport, 0.35f, 0.3f);
+        Vector2 dir = (target.Position - Owner.Position).normalized;
+        int trips = Tier >= 2 ? 2 : 1;
+        for (int i = 0; i < Count; i++)
+        {
+            Vector2 d = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * T("spread", 30f)) * dir;
+            Blade.Create(Owner, d, Reach, Speed, BladeSize, trips, Color, 1f, (e, push) => Hit(e, Damage, push));
+            if (Tier == 3) Owner.StartCoroutine(Afterimage(d, trips));
+        }
+    }
+
+    System.Collections.IEnumerator Afterimage(Vector2 dir, int trips)
+    {
+        yield return new WaitForSeconds(T("afterimageDelay_t3", 0.4f));
+        if (Owner == null || !Owner.IsAlive) yield break;
+        float share = T("afterimageDamage_t3", 0.5f);
+        Blade.Create(Owner, dir, Reach, Speed, BladeSize, trips, Color, 0.4f, (e, push) => Hit(e, Damage * share, push));
+    }
+}
+
+// Pools of light appear near the wizard. Standing in one heals and makes you Sunlit:
+// faster, quicker casting and harder hitting for a few seconds after you step out.
+// II: pools also burn foes inside them, and Sunlit is twice as strong.
+// III: after a few seconds inside, the pool erupts in a Sunburst and Sunlit lasts twice as long.
+public class Sunspots : Spell
+{
+    public override string Name => "Sunspots";
+    public override Element Element => Element.Light;
+    public override string Blurb => $"Pools of light appear near you. Stand in one to heal and become Sunlit: +{Pct(Tune.F("spells.Sunspots.moveBuff", 0.2f))} speed, +{Pct(Tune.F("spells.Sunspots.castBuff", 0.15f))} cast speed and +{Pct(Tune.F("spells.Sunspots.damageBuff", 0.2f))} damage.";
+    public override bool CanEvolve => true;
+    protected override float BaseDamage => 0.02f;   // share of max health healed per second in a pool
+    protected override float BaseCooldown => 8f;
+    protected override float PotencyPerRune => 0.25f;
+    protected override bool EchoRecasts => false;
+    protected override bool HitsFoes => Tier >= 2;
+
+    float Radius => T("radius", 1.2f) * Area;
+    float PoolTime => T("poolTime", 6f) * (1f + T("poolTimePerEcho", 0.5f) * RuneCount(Rune.Echo));
+    float SunlitTime => (T("sunlitTime", 4f) + T("sunlitPerPierce", 1f) * RuneCount(Rune.Pierce));
+    float SunlitPower => Potency * (Tier >= 2 ? T("powerMultiplier_t2", 2f) : 1f);
+
+    public override string TierName(int tier) => tier == 2 ? "Solar Flare" : tier == 3 ? "Zenith" : Name;
+    public override string TierDescription(int tier) =>
+        tier == 2 ? $"Pools burn foes inside them, and Sunlit is {T("powerMultiplier_t2", 2f):0.#}x as strong."
+                  : $"Solar Flare, and after {T("burstAfter_t3", 2.5f):0.#}s in a pool it erupts in a Sunburst ({T("burstDamage_t3", 80f):0} damage) and leaves you Sunlit twice as long.";
+
+    public override string RuneEffect(Rune r)
+    {
+        switch (r)
+        {
+            case Rune.Potency: return $"+{Pct(PotencyStep)} healing and Sunlit strength";
+            case Rune.Haste: return $"Pools appear {Pct(HastePerRune)} more often";
+            case Rune.Split: return "+1 pool";
+            case Rune.Pierce: return $"Sunlit lasts {T("sunlitPerPierce", 1f):0.#}s longer";
+            case Rune.Area: return $"+{Pct(AreaStep)} pool size";
+            case Rune.Echo: return $"Pools last {Pct(T("poolTimePerEcho", 0.5f))} longer";
+            case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th pool heals {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} more";
+            default:
+                if (IsStatusRune(r) && Tier < 2) return "No effect until Solar Flare (only its burn hits foes)";
+                return base.RuneEffect(r);
+        }
+    }
+
+    protected override bool Ready() => true;
+
+    protected override void Cast()
+    {
+        var arena = GameManager.Instance.Arena;
+        float baseAngle = Random.value * 360f;
+        float heal = Damage;   // read now, so an Overloaded cast keeps its bonus for the pool's whole life
+        for (int i = 0; i < Count; i++)
+        {
+            float a = (baseAngle + i * 360f / Count) * Mathf.Deg2Rad;
+            float dist = Random.Range(T("minDistance", 2f), T("maxDistance", 3f));
+            Vector2 at = arena.PushOut(Owner.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * dist, Radius);
+            SunPool.Create(this, Owner, at, Radius, PoolTime, heal, Color);
+        }
+        Sfx.Play(Sound.Gem, 0.4f, 0.2f);
+    }
+
+    // Called by a pool every frame the wizard stands in it.
+    public void Bask(float heal, float dt, bool burst)
+    {
+        Owner.Heal(Owner.MaxHealth * heal * dt, false);
+        Owner.Sunlight(SunlitPower, SunlitTime * (burst ? 2f : 1f));
+    }
+
+    public bool BurnsFoes => Tier >= 2;
+    public bool CanBurst => Tier == 3;
+    public float BurstAfter => T("burstAfter_t3", 2.5f);
+
+    public void Burn(Enemy e) => Hit(e, T("burnDamage_t2", 8f) * Potency * (Owner != null ? Owner.DamageMultiplier : 1f));
+
+    public void Sunburst(Vector2 at)
+    {
+        float radius = Radius * T("burstRadius_t3", 2f);
+        Fx.Ring(at, Color, radius, 0.5f);
+        Fx.Burst(at, Color.white, radius * 2f);
+        Sfx.Play(Sound.Explosion, 0.6f, 0.1f);
+        GameManager.Instance.Shake(0.15f);
+        foreach (var e in EnemiesWithin(at, radius))
+            Hit(e, T("burstDamage_t3", 80f) * Potency * (Owner != null ? Owner.DamageMultiplier : 1f), (e.Position - at).normalized * 6f);
+    }
+}

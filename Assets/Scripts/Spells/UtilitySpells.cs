@@ -145,7 +145,7 @@ public class Overgrowth : Spell
         var caught = EnemiesWithin(at, radius);
         foreach (var e in caught)
         {
-            e.Root(RootTime, 0.15f * RuneCount(Rune.Pierce), ThornDps, Tier == 3, Tier == 3 ? DeathBloom : null);
+            e.Root(RootTime, 0.15f * RuneCount(Rune.Pierce), ThornDps, Tier == 3, Tier == 3 ? new System.Action<Vector2>(DeathBloom) : null);
             Hit(e, Damage);
         }
         return caught;
@@ -203,6 +203,7 @@ public class Veil : Spell
     int MaxCharges => 1 + Echoes;
     readonly System.Collections.Generic.HashSet<Enemy> passed = new System.Collections.Generic.HashSet<Enemy>();
     protected override bool EchoRecasts => false;
+    protected override bool Overloadable => false;
     protected override bool Ready() => charges < MaxCharges;
     protected override void Cast() => charges++;
     public override float CooldownProgress => charges > 0 ? 1f : base.CooldownProgress;

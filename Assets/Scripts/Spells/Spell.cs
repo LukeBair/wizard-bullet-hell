@@ -5,12 +5,13 @@ public enum SpellId
 {
     ArcaneMissile, Fireball, FrostNova, ChainLightning, Wisps,
     Rejuvenate, Overgrowth, Veil, TidalLance, Cyclone, Enthrall,
+    MirrorWard, StoneSpikes, SpectralBlades, Sunspots,
 }
 
-public enum Element { Arcane, Fire, Frost, Storm, Nature, Water, Wind, Light, Shadow }
+public enum Element { Arcane, Fire, Frost, Storm, Nature, Water, Wind, Light, Shadow, Earth }
 
 // Modifiers socketed into spells. Split and Echo are rare; the rest are common.
-public enum Rune { Potency, Haste, Split, Pierce, Area, Echo, Ember, Frost, Curse, Infest, Bless }
+public enum Rune { Potency, Haste, Split, Pierce, Area, Echo, Ember, Frost, Curse, Infest, Bless, Overload, Siphon, Ward }
 
 // A spell the wizard casts automatically. Subclasses define the base numbers and what a cast does;
 // runes stack on top and are read through the computed properties below. Some spells can Evolve
@@ -77,8 +78,9 @@ public abstract class Spell
     protected float PotencyStep => TT("potencyPerRune", PotencyPerRune);
     protected float AreaStep => TT("areaPerRune", AreaPerRune);
     public float Potency => 1f + PotencyStep * RuneCount(Rune.Potency);
-    public float Damage => TT("damage", BaseDamage) * Potency;
-    public float Cooldown => TT("cooldown", BaseCooldown) * Tuning.CastRate * HasteFactor;
+    // Sunspots' Sunlit buff and an Overloaded cast both raise it.
+    public float Damage => TT("damage", BaseDamage) * Potency * (Owner != null ? Owner.DamageMultiplier : 1f) * (overloaded ? OverloadMultiplier : 1f);
+    public float Cooldown => TT("cooldown", BaseCooldown) * Tuning.CastRate * HasteFactor / (Owner != null ? Owner.CastSpeedMultiplier : 1f);
     // Haste adds cast speed (+15% per rune by default) rather than multiplying the cooldown, so it doesn't compound.
     public float HasteFactor => 1f / (1f + HastePerRune * RuneCount(Rune.Haste));
     public int Count => Mathf.RoundToInt(TT("count", BaseCount)) + rolledSplit;
@@ -104,6 +106,7 @@ public abstract class Spell
             case Element.Wind: return new Color(0.75f, 0.95f, 0.85f);
             case Element.Light: return new Color(1f, 0.9f, 0.6f);
             case Element.Shadow: return new Color(1f, 0.4f, 0.75f);
+            case Element.Earth: return new Color(0.8f, 0.6f, 0.35f);
             default: return new Color(0.5f, 1f, 0.45f);
         }
     }
@@ -123,6 +126,10 @@ public abstract class Spell
             case SpellId.Veil: s = new Veil(); break;
             case SpellId.TidalLance: s = new TidalLance(); break;
             case SpellId.Cyclone: s = new Cyclone(); break;
+            case SpellId.MirrorWard: s = new MirrorWard(); break;
+            case SpellId.StoneSpikes: s = new StoneSpikes(); break;
+            case SpellId.SpectralBlades: s = new SpectralBlades(); break;
+            case SpellId.Sunspots: s = new Sunspots(); break;
             default: s = new Enthrall(); break;
         }
         s.Id = id;
@@ -175,6 +182,8 @@ public abstract class Spell
 
     public void Tick(float dt)
     {
+        float siphon = RuneCount(Rune.Siphon);
+        if (siphon > 0f) siphonBank = Mathf.Min(SiphonCap, siphonBank + SiphonCap * dt);
         OnTick(dt);
 
         for (int i = echoes.Count - 1; i >= 0; i--)
@@ -185,9 +194,17 @@ public abstract class Spell
 
         timer -= dt;
         if (timer > 0f || !Ready()) return;
+        castCount++;
+        overloaded = Overloadable && RuneCount(Rune.Overload) > 0f && castCount % Mathf.Max(1, Tune.I("runes.Overload.every", 4)) == 0;
         timer = Cooldown;
         Reroll();
+        if (overloaded)
+        {
+            Fx.Ring(Owner.Position, Color.Lerp(Color, Color.white, 0.5f), 1.6f, 0.4f);
+            Sfx.Play(Sound.Lightning, 0.35f, 0.3f);
+        }
         Cast();
+        if (RuneCount(Rune.Ward) > 0f) Owner.GainWard();
         if (EchoRecasts)
             for (int i = 1; i <= Echoes; i++) echoes.Add(0.22f * i);
     }
@@ -196,6 +213,16 @@ public abstract class Spell
     protected bool OffCooldown => timer <= 0f;
 
     protected virtual bool EchoRecasts => true;   // false when Echo means something else (Wisps)
+
+    // Overload: every Nth cast is much stronger until the next cast. Spells that never cast ignore it.
+    int castCount;
+    bool overloaded;
+    protected virtual bool Overloadable => true;
+    float OverloadMultiplier => 1f + Tune.F("runes.Overload.bonusPerRune", 1.5f) * RuneCount(Rune.Overload);
+
+    // Siphon: hits heal a share of their damage, from a bank that refills at the per-second cap.
+    float siphonBank;
+    float SiphonCap => Tune.F("runes.Siphon.capPerRune", 2f) * RuneCount(Rune.Siphon);
     protected virtual void OnLearned() { }
     protected virtual void OnRunesChanged() { }
     protected virtual void OnTick(float dt) { }
@@ -214,12 +241,17 @@ public abstract class Spell
             case Rune.Pierce: return "Passes through +1 enemy";
             case Rune.Area: return $"+{Pct(AreaStep)} size";
             case Rune.Echo: return "Casts again a moment later";
+            case Rune.Overload: return Overloadable ? OverloadEffect : "No effect: this spell never casts";
+            case Rune.Ward: return WardEffect;
             default: return StatusRuneEffect(r);
         }
     }
 
     // Ember, Frost, Curse, Infest and Bless all ride on Hit(), so they only work on spells that hit foes.
-    public static bool IsStatusRune(Rune r) => r == Rune.Ember || r == Rune.Frost || r == Rune.Curse || r == Rune.Infest || r == Rune.Bless;
+    public static bool IsStatusRune(Rune r) => r == Rune.Ember || r == Rune.Frost || r == Rune.Curse || r == Rune.Infest || r == Rune.Bless || r == Rune.Siphon;
+
+    protected static string OverloadEffect => $"Every {Tune.I("runes.Overload.every", 4)}th cast is {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} stronger";
+    protected static string WardEffect => $"Casting grants a ward that blocks one bullet (at most one every {Tune.F("runes.Ward.cooldown", 3f):0.#}s)";
     protected virtual bool HitsFoes => true;
 
     protected static string StatusRuneEffect(Rune r)
@@ -230,6 +262,7 @@ public abstract class Spell
             case Rune.Frost: return $"Hits chill foes (slows {Pct(Tune.F("status.chillSlow", 0.5f))})";
             case Rune.Curse: return $"Foes it hits take +{Pct(Tune.F("runes.Curse.bonusPerRune", 0.5f))} from the next spell that hits them";
             case Rune.Infest: return $"Foes it hits burst into bugs if they die within {Tune.F("runes.Infest.duration", 1f):0.#}s";
+            case Rune.Siphon: return $"Hits heal you {Pct(Tune.F("runes.Siphon.healPerRune", 0.02f))} of their damage (up to {Tune.F("runes.Siphon.capPerRune", 2f):0.#} HP a second)";
             default: return $"Foes it hits have a {Pct(Tune.F("runes.Bless.chancePerRune", 0.15f))} chance to drop a big XP gem when they die";
         }
     }
@@ -255,6 +288,10 @@ public abstract class Spell
             case Rune.Frost: return new Color(0.6f, 0.95f, 1f);
             case Rune.Curse: return new Color(0.65f, 0.3f, 0.85f);
             case Rune.Infest: return new Color(0.6f, 0.75f, 0.2f);
+            case Rune.Overload: return new Color(1f, 0.3f, 0.2f);
+            case Rune.Siphon: return new Color(0.85f, 0.15f, 0.3f);
+            case Rune.Ward: return new Color(0.75f, 0.9f, 1f);
+            case Rune.Bless: return new Color(1f, 0.95f, 0.6f);
             default: return new Color(1f, 0.95f, 0.6f);
         }
     }
@@ -288,6 +325,14 @@ public abstract class Spell
         if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
 
         e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
+
+        float siphon = RuneCount(Rune.Siphon);
+        if (siphon > 0f && siphonBank > 0f && Owner != null)
+        {
+            float heal = Mathf.Min(siphonBank, damage * Tune.F("runes.Siphon.healPerRune", 0.02f) * siphon);
+            siphonBank -= heal;
+            Owner.Heal(heal, false);
+        }
 
         float curse = RuneCount(Rune.Curse);
         if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(Tune.F("runes.Curse.maxBonus", 1f), Tune.F("runes.Curse.bonusPerRune", 0.5f) * curse));

@@ -246,6 +246,9 @@ public class RuneSystem : UpgradeSystem
             case Rune.Frost: return "Hits chill and slow foes.";
             case Rune.Curse: return $"Marks foes it hits: the next spell to hit them deals +{Tune.F("runes.Curse.bonusPerRune", 0.5f) * 100f:0}%.";
             case Rune.Infest: return $"Infests foes for {Tune.F("runes.Infest.duration", 1f):0.#}s. If they die, bugs burst out and hurt others.";
+            case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th cast is overloaded: +{Tune.F("runes.Overload.bonusPerRune", 1.5f) * 100f:0}% damage or effect.";
+            case Rune.Siphon: return "Hits heal you a little, up to a few HP a second.";
+            case Rune.Ward: return "Casting grants a ward that blocks one enemy bullet.";
             default: return "Foes it hits may drop a big XP gem when they die.";
         }
     }

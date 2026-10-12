@@ -278,6 +278,23 @@
       "gemMultiplier": 4,
       "minGem": 20
     },
+    "Overload": {
+      "weight": 7,
+      "every": 4,
+      "bonusPerRune": 1.5,
+      "_about": "Every Nth cast of the spell is overloaded: damage (or healing) x (1 + bonusPerRune x runes) until the next cast."
+    },
+    "Siphon": {
+      "weight": 10,
+      "healPerRune": 0.02,
+      "capPerRune": 2,
+      "_about": "Hits heal healPerRune x damage per rune, at most capPerRune HP a second per rune."
+    },
+    "Ward": {
+      "weight": 10,
+      "cooldown": 3,
+      "_about": "Each cast of the spell grants a ward that blocks one enemy bullet. Max wards = Ward runes across all spells; at most one new ward every cooldown seconds."
+    },
     "_weight": "Relative chance to be offered. Under 5 shows as RARE."
   },
   "status": {
@@ -492,6 +509,80 @@
       "burstRadius_t3": 2.5,
       "maxThralls_t3": 12,
       "_maxThralls_t3": "Tier III: most permanently charmed foes at once."
+    },
+    "MirrorWard": {
+      "damage": 12,
+      "cooldown": 1,
+      "count": 1,
+      "orbit": 1.4,
+      "ringSpacing": 0.5,
+      "shardSize": 0.32,
+      "spinSpeed": 160,
+      "boltSpeed": 10,
+      "homing_t2": 300,
+      "homing_t3": 300,
+      "splitCount_t3": 3,
+      "splitSpread_t3": 20,
+      "_damage": "Damage per reflected bolt. cooldown only sets spin speed (Haste spins faster)."
+    },
+    "StoneSpikes": {
+      "damage": 14,
+      "cooldown": 3,
+      "count": 1,
+      "spikes": 5,
+      "spikesPerPierce": 2,
+      "spikeRadius": 0.45,
+      "spacing": 0.8,
+      "stagger": 0.05,
+      "fanAngle": 25,
+      "pinTime": 0.3,
+      "spikeTime": 0.4,
+      "wallTime_t2": 3,
+      "wallTime_t3": 3,
+      "potencyPerRune": 0.25,
+      "shards_t3": 4,
+      "shardSpeed_t3": 8,
+      "shardLife_t3": 0.5,
+      "shardDamage_t3": 0.5,
+      "_wallTime_t2": "Seconds an evolved spike stays up as a wall (blocks enemy bullets, holds foes back).",
+      "_shardDamage_t3": "Rockburst shard damage as a share of the spike damage."
+    },
+    "SpectralBlades": {
+      "damage": 10,
+      "cooldown": 2,
+      "count": 2,
+      "reach": 5,
+      "speed": 9,
+      "speedPerPierce": 0.3,
+      "bladeSize": 0.35,
+      "spread": 30,
+      "afterimageDelay_t3": 0.4,
+      "afterimageDamage_t3": 0.5,
+      "_damage": "Damage each time a blade passes through a foe (out and back are separate passes)."
+    },
+    "Sunspots": {
+      "damage": 0.02,
+      "cooldown": 8,
+      "count": 1,
+      "radius": 1.2,
+      "poolTime": 6,
+      "poolTimePerEcho": 0.5,
+      "minDistance": 2,
+      "maxDistance": 3,
+      "potencyPerRune": 0.25,
+      "sunlitTime": 4,
+      "sunlitPerPierce": 1,
+      "moveBuff": 0.2,
+      "castBuff": 0.15,
+      "damageBuff": 0.2,
+      "powerMultiplier_t2": 2,
+      "burnDamage_t2": 8,
+      "burstAfter_t3": 2.5,
+      "burstDamage_t3": 80,
+      "burstRadius_t3": 2,
+      "_damage": "Share of max health healed per second while standing in a pool.",
+      "_moveBuff": "Sunlit bonuses at power 1 (Potency and Solar Flare raise the power); they last sunlitTime seconds after leaving a pool.",
+      "_burnDamage_t2": "Damage every 0.5s to foes inside a pool (tier II+)."
     }
   },
   "enemies": {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 // A beam of water attached to the wizard. Turns slowly to follow the nearest foe, damaging and
@@ -198,5 +199,202 @@ public class WaterPillar : MonoBehaviour
             hit(e, (e.Position - c).normalized * 6f);
         }
         if (UnityEngine.Random.value < 0.6f) Fx.Burst(c + UnityEngine.Random.insideUnitCircle * radius * 0.6f, color, 0.8f);
+    }
+}
+
+// One stone spike (Stone Spikes). Erupts once, hurting and pinning foes on top of it. As a wall
+// (Stonewall) it stays up: enemy bullets that touch it break, and foes are held outside it.
+public class Spike : MonoBehaviour
+{
+    float radius, life;
+    bool wall;
+    Action<Vector2> onCrumble;
+    Transform body;
+    static readonly List<Projectile> scratch = new List<Projectile>();
+
+    public static void Create(Vector2 at, float radius, float duration, Color color, bool wall, Action<Enemy, Vector2> onErupt, Action<Vector2> onCrumble)
+    {
+        var go = new GameObject("Spike");
+        go.transform.position = at;
+        var s = go.AddComponent<Spike>();
+        s.radius = radius;
+        s.life = duration;
+        s.wall = wall;
+        s.onCrumble = onCrumble;
+        SpriteFactory.Child(go.transform, "Base", SpriteFactory.Circle, new Color(0.25f, 0.18f, 0.1f, 0.5f), Vector2.zero, radius * 2.2f, 40);
+        s.body = SpriteFactory.Child(go.transform, "Body", SpriteFactory.Triangle, color, new Vector2(0f, radius * 0.4f), radius * 2.2f, 62).transform;
+        SpriteFactory.Child(s.body, "Tip", SpriteFactory.Triangle, Color.Lerp(color, Color.white, 0.4f), new Vector2(0f, 0.15f), 0.45f, 63);
+        Fx.Burst(at, color, radius * 2.5f);
+        foreach (var e in Spell.EnemiesWithin(at, radius)) onErupt(e, at);
+    }
+
+    void Update()
+    {
+        var gm = GameManager.Instance;
+        if (gm.State != GameState.Playing) return;
+        float dt = Time.deltaTime;
+        life -= dt;
+        if (life <= 0f)
+        {
+            Fx.Burst(transform.position, new Color(0.6f, 0.45f, 0.3f), radius * 2f);
+            onCrumble?.Invoke(transform.position);
+            Destroy(gameObject);
+            return;
+        }
+        // Plain spikes sink away as they expire; walls stay at full height.
+        body.localScale = Vector3.one * radius * 2.2f * Mathf.Min(1f, 0.4f + (wall ? 1f : 0f) + life * 4f);
+        if (!wall) return;
+
+        Vector2 c = transform.position;
+        scratch.Clear();
+        foreach (var p in Projectile.All) if (p.Team == Team.Enemy && p.enabled) scratch.Add(p);
+        foreach (var p in scratch)
+        {
+            float r = radius + p.Radius;
+            if (((Vector2)p.transform.position - c).sqrMagnitude > r * r) continue;
+            Fx.Burst(p.transform.position, new Color(0.8f, 0.65f, 0.45f), 0.6f);
+            p.enabled = false;
+            Destroy(p.gameObject);
+        }
+        foreach (var e in Spell.EnemiesWithin(c, radius))
+        {
+            Vector2 away = e.Position - c;
+            float d = Mathf.Max(0.05f, away.magnitude);
+            e.Pull(away / d * Mathf.Max(0f, radius + e.Radius - d) / Mathf.Max(dt, 0.001f), dt);
+        }
+    }
+}
+
+// A boomerang blade (Spectral Blades): flies out from the wizard, then back to wherever the wizard
+// is now, hitting each foe once per pass.
+public class Blade : MonoBehaviour
+{
+    Player owner;
+    Vector2 dir;
+    float reach, speed, size, travelled;
+    int tripsLeft;
+    bool returning;
+    Action<Enemy, Vector2> hit;
+    readonly HashSet<Enemy> struck = new HashSet<Enemy>();
+    Transform spin;
+
+    public static void Create(Player owner, Vector2 dir, float reach, float speed, float size, int trips, Color color, float alpha, Action<Enemy, Vector2> onHit)
+    {
+        var go = new GameObject("Blade");
+        go.transform.position = owner.Position;
+        var b = go.AddComponent<Blade>();
+        b.owner = owner;
+        b.dir = dir.normalized;
+        b.reach = reach;
+        b.speed = speed;
+        b.size = size;
+        b.tripsLeft = trips;
+        b.hit = onHit;
+        SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(color.r, color.g, color.b, 0.4f * alpha), Vector2.zero, size * 4f, 69);
+        b.spin = new GameObject("Spin").transform;
+        b.spin.SetParent(go.transform, false);
+        SpriteFactory.Child(b.spin, "EdgeA", SpriteFactory.Diamond, new Color(color.r, color.g, color.b, alpha), Vector2.zero, size * 2.4f, 71).transform.localScale = new Vector3(size * 0.9f, size * 2.6f, 1f);
+        SpriteFactory.Child(b.spin, "EdgeB", SpriteFactory.Diamond, new Color(1f, 0.85f, 0.95f, alpha), Vector2.zero, size * 2.4f, 72).transform.localScale = new Vector3(size * 2.6f, size * 0.9f, 1f);
+    }
+
+    void Update()
+    {
+        var gm = GameManager.Instance;
+        if (gm.State != GameState.Playing) return;
+        if (owner == null || !owner.IsAlive) { Destroy(gameObject); return; }
+        float dt = Time.deltaTime;
+        spin.Rotate(0f, 0f, 900f * dt);
+        Vector2 pos = transform.position;
+        float step = speed * dt * Tuning.Pace;
+
+        if (!returning)
+        {
+            pos += dir * step;
+            travelled += step;
+            if (travelled >= reach) { returning = true; struck.Clear(); }
+        }
+        else
+        {
+            Vector2 to = owner.Position - pos;
+            if (to.magnitude <= step + 0.2f)
+            {
+                if (--tripsLeft <= 0) { Destroy(gameObject); return; }
+                returning = false;
+                travelled = 0f;
+                struck.Clear();
+                var target = Enemy.Nearest(owner.Position, gm.TargetRange);
+                if (target != null) dir = (target.Position - owner.Position).normalized;
+            }
+            pos += to.normalized * Mathf.Min(step, to.magnitude);
+        }
+        transform.position = pos;
+
+        foreach (var e in Spell.EnemiesWithin(pos, size))
+        {
+            if (!struck.Add(e)) continue;
+            Particles.Hit(e.Position, new Color(1f, 0.5f, 0.8f), dir);
+            hit(e, (returning ? -dir : dir) * 2f);
+        }
+    }
+}
+
+// A pool of light (Sunspots). The wizard standing in it heals and becomes Sunlit. Evolved pools burn
+// foes inside them; at tier III, standing in one long enough makes it erupt in a Sunburst.
+public class SunPool : MonoBehaviour
+{
+    Sunspots spell;
+    Player owner;
+    float radius, life, maxLife, heal, burnTimer, basked;
+    SpriteRenderer fill, edge;
+
+    public static void Create(Sunspots spell, Player owner, Vector2 at, float radius, float duration, float heal, Color color)
+    {
+        var go = new GameObject("SunPool");
+        go.transform.position = at;
+        var p = go.AddComponent<SunPool>();
+        p.spell = spell;
+        p.owner = owner;
+        p.radius = radius;
+        p.life = p.maxLife = duration;
+        p.heal = heal;
+        p.fill = SpriteFactory.Child(go.transform, "Fill", SpriteFactory.Glow, new Color(1f, 0.9f, 0.55f, 0.4f), Vector2.zero, radius * 2.6f, 2);
+        p.edge = SpriteFactory.Child(go.transform, "Edge", SpriteFactory.Ring, new Color(color.r, color.g, color.b, 0.8f), Vector2.zero, radius * 2f, 3);
+        Fx.Ring(at, color, radius, 0.4f);
+    }
+
+    void Update()
+    {
+        var gm = GameManager.Instance;
+        if (gm.State != GameState.Playing) return;
+        if (owner == null || !owner.IsAlive) { Destroy(gameObject); return; }
+        float dt = Time.deltaTime;
+        life -= dt;
+        if (life <= 0f) { Destroy(gameObject); return; }
+
+        Vector2 c = transform.position;
+        float fade = Mathf.Clamp01(life / 0.5f);
+        bool inside = (owner.Position - c).sqrMagnitude < radius * radius;
+        float glow = inside ? 0.6f + 0.1f * Mathf.Sin(Time.time * 8f) : 0.4f;
+        fill.color = new Color(1f, 0.9f, 0.55f, glow * fade);
+        edge.transform.localScale = Vector3.one * radius * 2f * (1f + 0.04f * Mathf.Sin(Time.time * 5f));
+
+        if (inside)
+        {
+            basked += dt;
+            bool burst = spell.CanBurst && basked >= spell.BurstAfter;
+            spell.Bask(heal, dt, burst);
+            if (burst)
+            {
+                spell.Sunburst(c);
+                Destroy(gameObject);
+                return;
+            }
+        }
+
+        if (!spell.BurnsFoes) return;
+        burnTimer -= dt;
+        if (burnTimer > 0f) return;
+        burnTimer = 0.5f;
+        foreach (var e in Spell.EnemiesWithin(c, radius)) spell.Burn(e);
     }
 }

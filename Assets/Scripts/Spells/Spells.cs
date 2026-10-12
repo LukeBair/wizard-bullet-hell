@@ -296,6 +296,7 @@ public class Wisps : Spell
     protected override int BaseCount => 2;
     protected override float AreaPerRune => 0.15f;
     protected override bool EchoRecasts => false;
+    protected override bool Overloadable => false;
 
     readonly List<(Transform orb, int ring, int index, int ringCount)> orbs = new List<(Transform, int, int, int)>();
     readonly List<float> bonusWisps = new List<float>();   // tier III: time left on each extra wisp
@@ -324,6 +325,7 @@ public class Wisps : Spell
             case Rune.Pierce: return "Strikes the same foe more often";
             case Rune.Area: return $"+{Pct(AreaStep)} orbit size";
             case Rune.Echo: return "+1 ring spinning the other way";
+            case Rune.Ward: return "No effect: this spell never casts";
             default: return base.RuneEffect(r);
         }
     }

@@ -36,6 +36,20 @@ public class Player : MonoBehaviour
 
     float invulnTimer;
     float phaseTimer;
+
+    // Sunspots: standing in light makes you Sunlit (faster, quicker casting, harder hitting) for a while.
+    float sunTimer, sunPower;
+    public bool IsSunlit => sunTimer > 0f;
+    float SunlitPower => IsSunlit ? sunPower : 0f;
+    public float MoveMultiplier => 1f + Tune.F("spells.Sunspots.moveBuff", 0.2f) * SunlitPower;
+    public float CastSpeedMultiplier => 1f + Tune.F("spells.Sunspots.castBuff", 0.15f) * SunlitPower;
+    public float DamageMultiplier => 1f + Tune.F("spells.Sunspots.damageBuff", 0.2f) * SunlitPower;
+    SpriteRenderer sunGlow;
+
+    // Ward rune: each charge blocks one enemy bullet. Max charges = Ward runes socketed across all spells.
+    int wards;
+    float wardTimer;
+    SpriteRenderer wardRing;
     public bool IsPhased => phaseTimer > 0f;
     float[] baseAlpha;
     SpriteRenderer[] renderers;
@@ -77,6 +91,10 @@ public class Player : MonoBehaviour
         renderers = GetComponentsInChildren<SpriteRenderer>();
         baseAlpha = new float[renderers.Length];
         for (int i = 0; i < renderers.Length; i++) baseAlpha[i] = renderers[i].color.a;
+
+        // Status visuals, kept out of `renderers` so phasing and blinking leave them alone.
+        sunGlow = SpriteFactory.Child(transform, "Sunlit", SpriteFactory.Glow, new Color(1f, 0.9f, 0.5f, 0f), Vector2.zero, 2.4f, 47);
+        wardRing = SpriteFactory.Child(transform, "Ward", SpriteFactory.Ring, new Color(0.75f, 0.9f, 1f, 0f), Vector2.zero, 1.3f, 60);
     }
 
     void Update()
@@ -89,12 +107,18 @@ public class Player : MonoBehaviour
         if (input.sqrMagnitude > 0.01f)
         {
             Facing = input.normalized;
-            Vector2 pos = Position + input * MoveSpeed * Tuning.Pace * dt;
+            Vector2 pos = Position + input * MoveSpeed * MoveMultiplier * Tuning.Pace * dt;
             transform.position = gm.Arena.PushOut(pos, BodyRadius);
             if (Mathf.Abs(input.x) > 0.1f) visual.localScale = new Vector3(Mathf.Sign(input.x), 1f, 1f);
         }
 
         foreach (var spell in Spells) spell.Tick(dt);
+
+        if (sunTimer > 0f) sunTimer -= dt;
+        if (wardTimer > 0f) wardTimer -= dt;
+        if (wards > MaxWards) wards = MaxWards;
+        sunGlow.color = new Color(1f, 0.9f, 0.5f, IsSunlit ? 0.3f + 0.08f * Mathf.Sin(Time.time * 6f) : 0f);
+        wardRing.color = new Color(0.75f, 0.9f, 1f, wards > 0 ? 0.35f + 0.1f * wards : 0f);
 
         if (phaseTimer > 0f)
         {
@@ -161,10 +185,45 @@ public class Player : MonoBehaviour
         }
     }
 
-    public void Heal(float amount)
+    public void Heal(float amount, bool fx = true)
     {
         Health = Mathf.Min(MaxHealth, Health + amount);
-        if (amount > 0f) Particles.Heal(Position, amount);
+        if (fx && amount > 0f) Particles.Heal(Position, amount);
+    }
+
+    public void Sunlight(float power, float duration)
+    {
+        sunPower = IsSunlit ? Mathf.Max(sunPower, power) : power;
+        sunTimer = Mathf.Max(sunTimer, duration);
+    }
+
+    int MaxWards
+    {
+        get
+        {
+            float n = 0f;
+            foreach (var s in Spells) n += s.RuneCount(Rune.Ward);
+            return Mathf.CeilToInt(n - 0.01f);
+        }
+    }
+
+    // Called by a spell with a Ward rune each time it casts.
+    public void GainWard()
+    {
+        if (wardTimer > 0f || wards >= MaxWards) return;
+        wards++;
+        wardTimer = Tune.F("runes.Ward.cooldown", 3f);
+        Fx.Ring(Position, new Color(0.75f, 0.9f, 1f), 0.7f, 0.3f);
+    }
+
+    // An enemy bullet is about to hit: a ward eats it. Returns true if blocked.
+    public bool BlockBullet()
+    {
+        if (invulnTimer > 0f || wards <= 0) return false;
+        wards--;
+        Fx.Burst(Position, new Color(0.75f, 0.9f, 1f), 1.5f);
+        Sfx.Play(Sound.Select, 0.5f, 0.2f);
+        return true;
     }
 
     // Rejuvenate III: back to full health instead of dying.
