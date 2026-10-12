@@ -112,7 +112,7 @@ public class Director : MonoBehaviour
         while (chaffBudget >= 1f)
         {
             chaffBudget -= 1f;
-            if (Enemy.All.Count < MaxEnemies) SpawnAtEdge(Pick(roster.Chaff));
+            if (Enemy.All.Count < MaxEnemies) SpawnAtEdge(Pick(roster.Chaff), "trickle");
         }
 
         mediumTimer -= dt;
@@ -122,13 +122,13 @@ public class Director : MonoBehaviour
             if (stage == 0)
             {
                 mediumTimer = T("mediumEveryStage0", 14f);
-                SpawnAtEdge(PickMedium());
+                SpawnAtEdge(PickMedium(), "medium");
             }
             else if (stage == 1)
             {
                 mediumTimer = T("mediumEveryStage1", 11f);
                 int pack = Random.value < T("pairChanceStage1", 0.3f) ? 2 : 1;
-                for (int i = 0; i < pack; i++) SpawnAtEdge(PickMedium());
+                for (int i = 0; i < pack; i++) SpawnAtEdge(PickMedium(), "medium");
             }
             else
             {
@@ -138,7 +138,7 @@ public class Director : MonoBehaviour
                 var def = PickMedium();
                 Vector2 at = EdgePoint(def.Radius);
                 for (int i = 0; i < pack && Enemy.All.Count < MaxEnemies; i++)
-                    Spawn(i == 0 ? def : PickMedium(), at + Random.insideUnitCircle * 1.5f);
+                    Spawn(i == 0 ? def : PickMedium(), at + Random.insideUnitCircle * 1.5f, "pack");
             }
         }
 
@@ -159,7 +159,7 @@ public class Director : MonoBehaviour
         {
             bossTimer = BossEvery;
             var def = roster.Bosses[bossIndex++ % roster.Bosses.Length];
-            Boss = SpawnAtEdge(def);
+            Boss = SpawnAtEdge(def, "boss");
             gm.Toast(IsFinalBoss ? $"Final boss: {def.Name}!" : $"{def.Name} approaches!");
             Sfx.Play(Sound.Warning, 0.7f, 0f);
             Haptics.Tap(Haptics.Impact.Heavy);
@@ -177,9 +177,10 @@ public class Director : MonoBehaviour
         {
             float a = i * Mathf.PI * 2f / n;
             var def = Threat > 0 && i % 3 == 0 ? roster.Chaff[0] : bat;
-            Spawn(def, gm.Player.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (10f + (i % 2) * 1.5f));
+            Spawn(def, gm.Player.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (10f + (i % 2) * 1.5f), "swarm");
         }
-        for (int i = 0; i < (Stage - 1) * 2; i++) SpawnAtEdge(PickMedium());
+        for (int i = 0; i < (Stage - 1) * 2; i++) SpawnAtEdge(PickMedium(), "swarm");
+        Telemetry.Swarm(Threat + 1, n + Mathf.Max(0, (Stage - 1) * 2));
         gm.Toast(Threat == 0 ? "A swarm descends!" : $"A bigger swarm descends! (Threat {Threat + 1})");
     }
 
@@ -226,14 +227,15 @@ public class Director : MonoBehaviour
         return p;
     }
 
-    Enemy SpawnAtEdge(EnemyDef def) => Spawn(def, EdgePoint(def.Radius));
+    Enemy SpawnAtEdge(EnemyDef def, string cause) => Spawn(def, EdgePoint(def.Radius), cause);
 
-    Enemy Spawn(EnemyDef def, Vector2 p)
+    // cause is for telemetry: trickle, medium, pack, swarm or boss.
+    Enemy Spawn(EnemyDef def, Vector2 p, string cause)
     {
         var gm = GameManager.Instance;
         p = gm.Arena.PushOut(p, def.Radius);
         // Bosses already have huge health; they scale at half rate.
         float scale = def.Tier == EnemyTier.Boss ? 1f + (HealthScale - 1f) * T("bossHealthScaleRate", 0.5f) : HealthScale;
-        return Enemy.Spawn(def, p, scale);
+        return Enemy.Spawn(def, p, scale, cause);
     }
 }

@@ -127,6 +127,7 @@ public static class Tune
         baseUrl = "127.0.0.1";
 #endif
         if (!baseUrl.StartsWith("http")) baseUrl = $"http://{baseUrl}:{Port}";
+        Telemetry.SetServer(baseUrl);
         Fetching = true;
         bool reached = false;
         using (var req = UnityWebRequest.Get(baseUrl + "/tuning.json"))
@@ -140,6 +141,7 @@ public static class Tune
         }
         // Same server: pick up save edits made in the tuner and report this device's progress.
         if (reached) yield return Grimoire.SyncWithMac(baseUrl);
+        if (reached) yield return Telemetry.Flush();   // runs that couldn't be sent earlier
         Fetching = false;
     }
 

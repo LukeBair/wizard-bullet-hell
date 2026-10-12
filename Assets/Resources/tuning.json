@@ -225,6 +225,13 @@
     "goldWin": 50,
     "_about": "Gold and the Grimoire. Gold per run = kills + bosses + minutes survived (+ goldWin on a win), kept even if you die. Arcane Missile, Fireball and Frost Nova tomes are free; the rest cost tomeCost. Evolution II needs its feat (beat featBossesT2 bosses with the spell in your build), III needs a win with the spell at tier II+."
   },
+  "telemetry": {
+    "enabled": true,
+    "enemyEvents": true,
+    "snapshotEvery": 10,
+    "flushEvery": 30,
+    "_about": "Run logs sent to the tuner (Runs page; files in tools/tuner/telemetry). enabled = record runs at all. enemyEvents = one line per enemy spawn and kill (the summary always has per-enemy totals). snapshotEvery = seconds of play between tick lines (health, level, enemies alive). flushEvery = real seconds between uploads during a run."
+  },
   "runes": {
     "startSockets": 2,
     "socketsPerBoss": 1,

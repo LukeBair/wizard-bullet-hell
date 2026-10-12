@@ -59,6 +59,9 @@ public class GameManager : MonoBehaviour
         StartCoroutine(Tune.FetchFromMac());
     }
 
+    // Going to the background may be the last we see of this run: keep its log on the device.
+    void OnApplicationPause(bool paused) { if (paused) Telemetry.SaveToDevice(); }
+
     void OnEnable() => Enemy.Died += OnEnemyDied;
     void OnDisable() => Enemy.Died -= OnEnemyDied;
 
@@ -137,6 +140,7 @@ public class GameManager : MonoBehaviour
         Director.ResetRun(Arena.Biome);
         Upgrades = new RuneSystem();
         Upgrades.Begin(Player);
+        Telemetry.BeginRun(this, zones);
         State = GameState.TomePick;
         Time.timeScale = 0f;
         Joystick.Blocked = true;   // released once the starting tap lifts
@@ -172,6 +176,7 @@ public class GameManager : MonoBehaviour
         Player.transform.position = Vector3.zero;
         camPos = Vector2.zero;
         Director.EnterZone(next);
+        Telemetry.Zone(zoneIndex + 1, next.Name);
         Director.Holding = false;
         fadeInUntil = Time.time + FadeTime;
         Toast(next.Name);
@@ -184,6 +189,7 @@ public class GameManager : MonoBehaviour
         gameOverTime = Time.unscaledTime;
         Grimoire.RecordWin(Player);
         BankGold(true);
+        Telemetry.EndRun(this, "win", bankedGold);
         PlayerPrefs.SetInt(WinsKey, PlayerPrefs.GetInt(WinsKey, 0) + 1);
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f)) PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
         PlayerPrefs.Save();
@@ -207,6 +213,7 @@ public class GameManager : MonoBehaviour
         State = GameState.GameOver;
         gameOverTime = Time.unscaledTime;
         BankGold(false);
+        Telemetry.EndRun(this, "death", bankedGold);
         StartCoroutine(Tune.FetchFromMac());   // pick up tuner edits before the next try
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f))
         {
@@ -218,6 +225,7 @@ public class GameManager : MonoBehaviour
     void Update()
     {
         if (State == GameState.Playing && shiftAt > 0f && Time.time >= shiftAt) ShiftZone();
+        if (State == GameState.Playing || State == GameState.LevelUp) Telemetry.Update(this);
 
         if (Autoplay && State == GameState.TomePick)
         {
@@ -452,6 +460,7 @@ public class GameManager : MonoBehaviour
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
         {
             BankGold(false);
+            Telemetry.EndRun(this, "quit", bankedGold);
             State = GameState.Title;
             Time.timeScale = 1f;
         }
