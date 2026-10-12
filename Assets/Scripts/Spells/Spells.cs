@@ -90,24 +90,29 @@ public class Fireball : Spell
         }
     }
 
-    void Launch(Vector2 from, Vector2 dir, bool splits, float life)
+    // Shrapnel = the smaller fireballs thrown out by a tier III explosion.
+    float ShrapnelScale => T("shrapnelRadiusScale_t3", 0.5f);
+
+    void Launch(Vector2 from, Vector2 dir, bool splits, float life, bool shrapnel)
     {
-        var p = Shoot(from, dir, Speed, (Tier == 1 ? 0.22f : 0.34f) * Mathf.Sqrt(Area));
+        float scale = shrapnel ? ShrapnelScale : 1f;
+        var p = Shoot(from, dir, Speed, (Tier == 1 ? 0.22f : 0.34f) * Mathf.Sqrt(Area) * scale);
         p.Lifetime = life;
         p.OnHit = (proj, e) =>
         {
             if (Tier == 1) e.ApplyBurn(Damage * T("burnFactor", 0.25f), T("burnDuration", 2f));
-            Explode(proj.transform.position, splits);
+            Explode(proj.transform.position, splits, scale);
         };
-        if (!splits) p.OnExpire = proj => Explode(proj.transform.position, false);   // shrapnel always bursts
+        if (!splits) p.OnExpire = proj => Explode(proj.transform.position, false, scale);   // bursts even on a miss
     }
 
-    void Explode(Vector2 at, bool splits)
+    void Explode(Vector2 at, bool splits, float scale)
     {
-        Fx.Burst(at, Color, Radius * 2.2f);
-        Fx.Ring(at, Color, Radius);
+        float radius = Radius * scale;
+        Fx.Burst(at, Color, radius * 2.2f);
+        Fx.Ring(at, Color, radius);
         Sfx.Play(Sound.Explosion, 0.5f);
-        foreach (var e in EnemiesWithin(at, Radius))
+        foreach (var e in EnemiesWithin(at, radius))
         {
             if (Tier >= 2) e.ApplyBurn(Damage * TT("burnFactor", 0.3f), TT("burnDuration", 2.5f));
             Hit(e, Damage, (e.Position - at).normalized * 4f);
@@ -118,7 +123,7 @@ public class Fireball : Spell
             for (int i = 0; i < n; i++)
             {
                 float a = i * 360f / n * Mathf.Deg2Rad;
-                Launch(at, new Vector2(Mathf.Cos(a), Mathf.Sin(a)), false, T("shrapnelLifetime_t3", 0.6f));
+                Launch(at, new Vector2(Mathf.Cos(a), Mathf.Sin(a)), false, T("shrapnelLifetime_t3", 0.6f), true);
             }
         }
     }
