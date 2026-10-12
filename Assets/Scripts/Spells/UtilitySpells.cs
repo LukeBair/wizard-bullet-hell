@@ -136,7 +136,7 @@ public class Veil : Spell
         if (RuneCount(Rune.Area) > 0)
             foreach (var e in EnemiesWithin(Owner.Position, 2f * Area))
                 e.TakeDamage(0f, (e.Position - Owner.Position).normalized * 10f);
-        int bolts = RuneCount(Rune.Split) * 8;
+        int bolts = Mathf.RoundToInt(RuneCount(Rune.Split) * 8);
         for (int i = 0; i < bolts; i++)
         {
             float a = i * 360f / bolts * Mathf.Deg2Rad;

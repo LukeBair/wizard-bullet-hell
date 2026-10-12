@@ -127,7 +127,8 @@ public class RuneSystem : UpgradeSystem
         {
             var rect = new Rect(col.x, y, col.width, h);
             int next = evolve.Tier + 1;
-            if (UI.Card(rect, $"Evolve {evolve.Name} → {RomanTier(next)}", evolve.TierDescription(next) + " <i>(clears its runes)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
+            int keep = Mathf.RoundToInt(Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.75f)) * 100f);
+            if (UI.Card(rect, $"Evolve {evolve.Name} → {RomanTier(next)}", evolve.TierDescription(next) + $" <i>(empties its sockets, keeps {keep}% of their power)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
             {
                 Evolve(evolve);
                 return true;
@@ -172,6 +173,8 @@ public class RuneSystem : UpgradeSystem
             bool room = list.Count < Sockets;
             bool resonates = room && CountOf(list, rune) == Tune.I("runes.resonanceCount", 3) - 1;
             string effect = room ? spell.RuneEffect(rune) + (resonates ? "  <color=#ffd966>RESONANCE x2!</color>" : "") : "No empty sockets";
+            string kept = spell.RetainedSummary();
+            if (kept.Length > 0) effect += $"\n<size={Mathf.RoundToInt(18 * s)}><color=#ffd966>Kept: {kept}</color></size>";
             var rect = new Rect(col.x, y, col.width, h);
             string tag = spell.CanEvolve ? $"TIER {RomanTier(spell.Tier)}" : null;
             bool tapped = UI.Card(rect, spell.Name, effect, spell.Color, tag, room);
