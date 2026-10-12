@@ -68,12 +68,18 @@ public abstract class Spell
 
     // Tuner lookups: spells.<SpellId>.<key>. Tier 2/3 read "<key>_t2" / "<key>_t3"; if that key is
     // missing they use the code's default for that tier.
-    protected float T(string key, float fallback) => Tune.F($"spells.{Id}.{key}", fallback);
+    protected float T(string key, float fallback) => Tune.F(Tune.Key(TunePrefix, key), fallback);
     protected float TT(string key, float fallback)
     {
-        if (Tier > 1 && Tune.Has($"spells.{Id}.{key}_t{Tier}")) return T($"{key}_t{Tier}", fallback);
-        return Tier == 1 ? T(key, fallback) : fallback;
+        if (Tier > 1)
+        {
+            string tiered = Tune.Key(key, Tier == 2 ? "_t2" : "_t3");
+            return Tune.Has(Tune.Key(TunePrefix, tiered)) ? T(tiered, fallback) : fallback;
+        }
+        return T(key, fallback);
     }
+    string tunePrefix;
+    string TunePrefix => tunePrefix ??= "spells." + Id + ".";
 
     protected float PotencyStep => TT("potencyPerRune", PotencyPerRune);
     protected float AreaStep => TT("areaPerRune", AreaPerRune);
@@ -347,17 +353,20 @@ public abstract class Spell
         return p;
     }
 
+    // A fresh list callers may keep, or a shared empty one (don't add to it) when nothing is in range,
+    // which is most calls from per-frame checks like orbiting wisps and beams.
     public static List<Enemy> EnemiesWithin(Vector2 center, float radius)
     {
-        var list = new List<Enemy>();
+        List<Enemy> list = null;
         foreach (var e in Enemy.All)
         {
             if (!e.IsAlive || e.Hidden || e.IsCharmed) continue;   // charmed foes are allies for now
             float r = radius + e.Radius;
-            if ((e.Position - center).sqrMagnitude < r * r) list.Add(e);
+            if ((e.Position - center).sqrMagnitude < r * r) (list ??= new List<Enemy>()).Add(e);
         }
-        return list;
+        return list ?? NoEnemies;
     }
+    static readonly List<Enemy> NoEnemies = new List<Enemy>();
 
     protected static string Roman(int tier) => tier == 1 ? "I" : tier == 2 ? "II" : "III";
 }

@@ -2,11 +2,14 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-// Import settings for generated art in Assets/Resources/Art/<Style>/: sprites, uncompressed,
+// Import settings for generated art in Assets/Resources/Art/<Style>/: sprites, uncompressed and
 // point-filtered for the pixel styles, and the style's pixels-per-unit.
 class ArtImport : AssetPostprocessor
 {
     const string Root = "Assets/Resources/Art/";
+
+    // Bump when these settings change, so Unity reimports the art with them.
+    public override uint GetVersion() => 1;
 
     void OnPreprocessTexture()
     {
@@ -22,7 +25,9 @@ class ArtImport : AssetPostprocessor
         ti.spritePixelsPerUnit = ArtStyle.PixelsPerUnit(style, file, width);
         ti.mipmapEnabled = false;
         ti.alphaIsTransparency = true;
-        ti.textureCompression = TextureImporterCompression.Uncompressed;
+        // Pixel styles stay uncompressed so every pixel keeps its exact palette colour; the smooth
+        // Vector art compresses (ASTC on iOS) to a quarter of the size with no visible difference.
+        ti.textureCompression = style == "Vector" ? TextureImporterCompression.CompressedHQ : TextureImporterCompression.Uncompressed;
         ti.wrapMode = TextureWrapMode.Clamp;
         ti.filterMode = style == "Vector" ? FilterMode.Bilinear : FilterMode.Point;
     }

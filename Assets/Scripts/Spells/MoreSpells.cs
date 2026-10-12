@@ -121,7 +121,7 @@ public class MirrorWard : Spell, IOrbiter
             foreach (var p in scratch)
             {
                 if (!p.enabled) continue;
-                Vector2 at = p.transform.position;
+                Vector2 at = p.Position;
                 Vector2 d = at - Owner.Position;
                 float dist = d.magnitude;
                 if (Mathf.Abs(dist - radius) > ShardThickness * 0.5f + p.Radius) continue;
@@ -135,8 +135,7 @@ public class MirrorWard : Spell, IOrbiter
     void Reflect(Projectile bullet, Vector2 at)
     {
         Vector2 back = -bullet.Velocity;
-        bullet.enabled = false;   // leaves Projectile.All at once, so no other shard takes it
-        Object.Destroy(bullet.gameObject);
+        bullet.Release();   // leaves Projectile.All at once, so no other shard takes it
         Fx.Burst(at, Color, 1f);
         Sfx.Play(Sound.WispHit, 0.3f, 0.3f);
 

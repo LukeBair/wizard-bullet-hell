@@ -151,7 +151,7 @@ public class Player : MonoBehaviour
     {
         float nearest = float.MaxValue;
         foreach (var p in Projectile.All)
-            if (p.Team == Team.Enemy) nearest = Mathf.Min(nearest, ((Vector2)p.transform.position - Position).sqrMagnitude);
+            if (p.Team == Team.Enemy) nearest = Mathf.Min(nearest, (p.Position - Position).sqrMagnitude);
         float a = Mathf.Clamp01((3f - Mathf.Sqrt(nearest)) / 1.5f);
         var c = hitbox.color;
         c.a = a * (phaseTimer > 0f ? 0.5f : 1f);

@@ -87,13 +87,29 @@ public static class Tune
     public static string S(string path, string fallback) =>
         values.TryGetValue(path, out var v) && v is string s ? s : fallback;
 
-    // A list of objects, e.g. drops.extra. Empty if missing.
+    // prefix + key, built once and reused, so per-frame lookups like spells.<Id>.<key> don't allocate a new string each time.
+    static readonly Dictionary<string, Dictionary<string, string>> joined = new Dictionary<string, Dictionary<string, string>>();
+    public static string Key(string prefix, string key)
+    {
+        if (!joined.TryGetValue(prefix, out var byKey)) joined[prefix] = byKey = new Dictionary<string, string>();
+        if (!byKey.TryGetValue(key, out var path))
+        {
+            path = prefix + key;
+            byKey[key] = path;
+        }
+        return path;
+    }
+
+    // A list of objects, e.g. drops.extra. Empty if missing. Cached until the tuning changes; don't modify it.
+    static readonly Dictionary<string, (int version, List<Dictionary<string, object>> list)> lists = new Dictionary<string, (int, List<Dictionary<string, object>>)>();
     public static List<Dictionary<string, object>> List(string path)
     {
+        if (lists.TryGetValue(path, out var cached) && cached.version == Version) return cached.list;
         var result = new List<Dictionary<string, object>>();
         if (values.TryGetValue(path, out var v) && v is List<object> list)
             foreach (var item in list)
                 if (item is Dictionary<string, object> d) result.Add(d);
+        lists[path] = (Version, result);
         return result;
     }
 

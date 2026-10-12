@@ -25,7 +25,8 @@ public class Enemy : MonoBehaviour
     public bool IsRooted => rootTimer > 0f;
     public bool IsCharmed => charmTimer > 0f;
     public bool IsInfested => infestTimer > 0f;
-    public Vector2 Position => transform.position;
+    // Cached, since crowds read each other's positions thousands of times a frame; MoveTo keeps it in step with the transform.
+    public Vector2 Position { get; private set; }
     public bool Hidden { get; private set; }   // burrowed: can't be hit or targeted
     public int TelemetryId, TelemetryRun;   // set by Telemetry when a run is being logged
     public float BornAt;
@@ -64,7 +65,8 @@ public class Enemy : MonoBehaviour
     SpriteRenderer[] renderers;
     SpriteRenderer curseMark, vines, charmAura, bugs;
     readonly List<Transform> books = new List<Transform>();
-    Color bodyColor;
+    Color bodyColor, shownColor;
+    Enemy[] self;
 
     // cause is for telemetry: what made it appear (the Director passes trickle, swarm, boss...).
     public static Enemy Spawn(EnemyDef def, Vector2 position, float healthScale, string cause = "summon")
@@ -72,6 +74,7 @@ public class Enemy : MonoBehaviour
         var go = new GameObject(def.Name);
         go.transform.position = position;
         var e = go.AddComponent<Enemy>();
+        e.Position = position;
         e.Def = def;
         e.MaxHealth = e.Health = def.Health * healthScale;
         e.phase = Random.value * 10f;
@@ -98,6 +101,12 @@ public class Enemy : MonoBehaviour
     void OnEnable() => All.Add(this);
     void OnDisable() => All.Remove(this);
     void OnDestroy() { if (IsAlive) Telemetry.Despawned(this); }
+
+    void MoveTo(Vector2 p)
+    {
+        Position = p;
+        transform.position = p;
+    }
 
     // ------------------------------------------------------------------ visuals
 
@@ -225,6 +234,34 @@ public class Enemy : MonoBehaviour
 
     // ------------------------------------------------------------------ update
 
+    // Spatial grid for crowd separation, rebuilt once a frame, so 200 foes don't each check all 200 others.
+    // Cells are wider than any two non-boss foes plus a frame of movement, so the 3x3 neighbourhood covers every push.
+    const float GridCell = 2f;
+    static readonly Dictionary<int, List<Enemy>> grid = new Dictionary<int, List<Enemy>>();
+    static readonly Stack<List<Enemy>> spareCells = new Stack<List<Enemy>>();
+    static int gridFrame = -1;
+
+    static int Cell(float v) => Mathf.FloorToInt(v / GridCell);
+    static int CellKey(int x, int y) => (x & 0xFFFF) | (y << 16);
+
+    static void BuildGrid()
+    {
+        if (gridFrame == Time.frameCount) return;
+        gridFrame = Time.frameCount;
+        foreach (var cell in grid.Values)
+        {
+            cell.Clear();
+            spareCells.Push(cell);
+        }
+        grid.Clear();
+        foreach (var e in All)
+        {
+            int key = CellKey(Cell(e.Position.x), Cell(e.Position.y));
+            if (!grid.TryGetValue(key, out var cell)) grid[key] = cell = spareCells.Count > 0 ? spareCells.Pop() : new List<Enemy>();
+            cell.Add(e);
+        }
+    }
+
     void Update()
     {
         var gm = GameManager.Instance;
@@ -240,7 +277,7 @@ public class Enemy : MonoBehaviour
         Enemy prey = null;
         if (IsCharmed)
         {
-            prey = Nearest(pos, 30f, new[] { this });
+            prey = Nearest(pos, 30f, self ??= new[] { this });
             targetPos = prey != null ? prey.Position : pos;
         }
         else targetPos = player.Position;
@@ -258,16 +295,24 @@ public class Enemy : MonoBehaviour
         Enemy thorns = null;
         if (!IsBoss)
         {
-            foreach (var other in All)
+            // Only foes in this and the neighbouring grid cells can be close enough to push.
+            BuildGrid();
+            int cx = Cell(pos.x), cy = Cell(pos.y);
+            for (int gx = cx - 1; gx <= cx + 1; gx++)
+            for (int gy = cy - 1; gy <= cy + 1; gy++)
             {
-                if (other == this) continue;
-                Vector2 d = pos - other.Position;
-                float r = (Radius + other.Radius) * 0.9f;
-                float sq = d.sqrMagnitude;
-                if (sq < r * r && sq > 0.0001f)
+                if (!grid.TryGetValue(CellKey(gx, gy), out var cell)) continue;
+                foreach (var other in cell)
                 {
-                    move += d / Mathf.Sqrt(sq) * 2f;
-                    if (other.thornDps > 0f && other.IsRooted && !IsRooted) thorns = other;
+                    if (other == this) continue;
+                    Vector2 d = pos - other.Position;
+                    float r = (Radius + other.Radius) * 0.9f;
+                    float sq = d.sqrMagnitude;
+                    if (sq < r * r && sq > 0.0001f)
+                    {
+                        move += d / Mathf.Sqrt(sq) * 2f;
+                        if (other.thornDps > 0f && other.IsRooted && !IsRooted) thorns = other;
+                    }
                 }
             }
         }
@@ -284,7 +329,7 @@ public class Enemy : MonoBehaviour
         pos += (move + knockback) * dt * Tuning.Pace;
         knockback = Vector2.MoveTowards(knockback, Vector2.zero, 30f * dt);
         if (Def.Look != EnemyLook.Bat) pos = gm.Arena.PushOut(pos, Radius * 0.8f);
-        transform.position = pos;
+        MoveTo(pos);
 
         UpdateStatus(dt);
         if (!IsAlive) return;
@@ -336,7 +381,7 @@ public class Enemy : MonoBehaviour
                         return dir * speed;
                     case 1:
                         flash = Mathf.Max(flash, 0.5f + 0.5f * Mathf.Sin(Time.time * 40f));
-                        transform.position += (Vector3)(Random.insideUnitCircle * 0.04f);   // shiver
+                        MoveTo(Position + Random.insideUnitCircle * 0.04f);   // shiver
                         if (stateTimer <= 0f) { state = 2; stateTimer = 0.35f; }
                         return Vector2.zero;
                     case 2:
@@ -662,7 +707,7 @@ public class Enemy : MonoBehaviour
         Fx.Burst(Position, Def.Accent, Radius * 3f);
         Fx.Ring(Position, Def.Accent, Radius * 1.5f);
         Sfx.Play(Sound.Teleport, 0.35f);
-        transform.position = p;
+        MoveTo(p);
         Fx.Burst(p, Def.Accent, Radius * 3f);
     }
 
@@ -672,7 +717,7 @@ public class Enemy : MonoBehaviour
         foreach (var p in Projectile.All)
         {
             if (p.Team != Team.Player) continue;
-            Vector2 to = Position - (Vector2)p.transform.position;
+            Vector2 to = Position - p.Position;
             if (to.sqrMagnitude < 2.5f * 2.5f && Vector2.Dot(to, p.Velocity) > 0f) return true;
         }
         return false;
@@ -758,11 +803,11 @@ public class Enemy : MonoBehaviour
 
         if (!Hidden)
         {
-            curseMark.enabled = curseBonus > 0f;
+            Show(curseMark, curseBonus > 0f);
             if (curseBonus > 0f) curseMark.transform.localScale = Vector3.one * (0.25f + 0.05f * curseBonus * 2f);
-            vines.enabled = IsRooted;
-            charmAura.enabled = IsCharmed;
-            bugs.enabled = IsInfested;
+            Show(vines, IsRooted);
+            Show(charmAura, IsCharmed);
+            Show(bugs, IsInfested);
             Particles.Status(Position, Radius, IsBurning, IsChilled, IsWet, IsInfested, IsRooted, dt);
             if (IsInfested) bugs.transform.Rotate(0f, 0f, 500f * dt);
         }
@@ -772,7 +817,14 @@ public class Enemy : MonoBehaviour
         if (IsChilled || frostbite > 0.05f) c = Color.Lerp(c, new Color(0.55f, 0.85f, 1f), Mathf.Max(IsChilled ? 0.55f : 0f, Mathf.Clamp01(frostbite)));
         if (IsBurning) c = Color.Lerp(c, new Color(1f, 0.5f, 0.15f), 0.35f + 0.25f * Mathf.Sin(Time.time * 20f));
         if (IsCharmed) c = Color.Lerp(c, new Color(1f, 0.5f, 0.8f), 0.4f);
-        body.color = Color.Lerp(c, ArtStyle.HitFlash, Mathf.Clamp01(flash));
+        c = Color.Lerp(c, ArtStyle.HitFlash, Mathf.Clamp01(flash));
+        if (c != shownColor) body.color = shownColor = c;
+    }
+
+    // Renderer toggles and tints only cross into the engine when they actually change.
+    static void Show(SpriteRenderer r, bool on)
+    {
+        if (r.enabled != on) r.enabled = on;
     }
 
     public void TakeDamage(float amount, Vector2 push = default, Color? numberColor = null)
@@ -794,7 +846,7 @@ public class Enemy : MonoBehaviour
     public void Pull(Vector2 velocity, float dt)
     {
         if (IsRooted || Hidden) return;
-        transform.position += (Vector3)(velocity * dt * Tuning.Pace);
+        MoveTo(Position + velocity * dt * Tuning.Pace);
     }
 
     public void ApplyBurn(float dps, float duration)

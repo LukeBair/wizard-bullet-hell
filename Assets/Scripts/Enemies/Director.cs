@@ -19,7 +19,7 @@ public class Director : MonoBehaviour
     static int MaxEnemies => Tune.I("spawning.maxEnemies", 200);
     static float BossEvery => Tune.F("spawning.bossEvery", 150f);
     static float SwarmEvery => Tune.F("spawning.swarmEvery", 45f);
-    static float T(string key, float fallback) => Tune.F("spawning." + key, fallback);
+    static float T(string key, float fallback) => Tune.F(Tune.Key("spawning.", key), fallback);
     public static int RunBosses => Tune.I("run.bosses", 4);
 
     public float Elapsed { get; private set; }

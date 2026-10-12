@@ -14,7 +14,7 @@ public static class Particles
     static int hitFrame, hitsThisFrame;
 
     static bool Enabled => ArtStyle.Current == ArtStyleId.Dusk && Tune.B("fx.enabled", true);
-    static float F(string key, float fallback) => Tune.F("fx." + key, fallback);
+    static float F(string key, float fallback) => Tune.F(Tune.Key("fx.", key), fallback);
 
     // ------------------------------------------------------------------ effects
 
