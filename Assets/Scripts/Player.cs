@@ -58,12 +58,18 @@ public class Player : MonoBehaviour
         var robe = new Color(0.45f, 0.25f, 0.85f);
         SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.45f), 0.7f, 48);
         SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, 49);
-        SpriteFactory.Child(visual, "Robe", SpriteFactory.Triangle, robe, new Vector2(0f, -0.1f), 0.8f, 50);
-        SpriteFactory.Child(visual, "Head", SpriteFactory.Circle, new Color(1f, 0.85f, 0.7f), new Vector2(0f, 0.3f), 0.3f, 51);
-        SpriteFactory.Child(visual, "Hat", SpriteFactory.Triangle, robe * 0.7f + new Color(0, 0, 0, 0.3f), new Vector2(0f, 0.6f), 0.5f, 52);
-        SpriteFactory.Child(visual, "Staff", SpriteFactory.Square, new Color(0.6f, 0.4f, 0.2f), new Vector2(0.38f, 0f), 1f, 53).transform.localScale = new Vector3(0.07f, 0.8f, 1f);
-        SpriteFactory.Child(visual, "Gem", SpriteFactory.Circle, new Color(0.5f, 0.95f, 1f), new Vector2(0.38f, 0.42f), 0.16f, 54);
-        SpriteFactory.Child(visual, "Hitbox", SpriteFactory.Circle, Color.white, Vector2.zero, HitRadius * 2f, 55);
+        var art = ArtStyle.Get("player");
+        if (art != null)
+            SpriteFactory.Child(visual, "Sprite", art, Color.white, new Vector2(0f, 0.15f), 1f, 50);
+        else
+        {
+            SpriteFactory.Child(visual, "Robe", SpriteFactory.Triangle, robe, new Vector2(0f, -0.1f), 0.8f, 50);
+            SpriteFactory.Child(visual, "Head", SpriteFactory.Circle, new Color(1f, 0.85f, 0.7f), new Vector2(0f, 0.3f), 0.3f, 51);
+            SpriteFactory.Child(visual, "Hat", SpriteFactory.Triangle, robe * 0.7f + new Color(0, 0, 0, 0.3f), new Vector2(0f, 0.6f), 0.5f, 52);
+            SpriteFactory.Child(visual, "Staff", SpriteFactory.Square, new Color(0.6f, 0.4f, 0.2f), new Vector2(0.38f, 0f), 1f, 53).transform.localScale = new Vector3(0.07f, 0.8f, 1f);
+            SpriteFactory.Child(visual, "Gem", SpriteFactory.Circle, new Color(0.5f, 0.95f, 1f), new Vector2(0.38f, 0.42f), 0.16f, 54);
+        }
+        SpriteFactory.Child(visual, "Hitbox", ArtStyle.Round, Color.white, Vector2.zero, HitRadius * 2f, 55);
         renderers = GetComponentsInChildren<SpriteRenderer>();
         baseAlpha = new float[renderers.Length];
         for (int i = 0; i < renderers.Length; i++) baseAlpha[i] = renderers[i].color.a;

@@ -99,68 +99,77 @@ public class Enemy : MonoBehaviour
         int o = d.Tier == EnemyTier.Boss ? 40 : 20;
         SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, o - 2);
 
-        switch (d.Look)
+        var art = ArtStyle.Enemy(d.Look);
+        if (art != null)
         {
-            case EnemyLook.Bat:
-            case EnemyLook.Pixie:
-                Wing(s, -1, o); Wing(s, 1, o);
-                break;
-            case EnemyLook.Beast:
-                Horn(s, -1, o, 0.32f, 25f, d.Color * 0.8f);
-                Horn(s, 1, o, 0.32f, 25f, d.Color * 0.8f);
-                SpriteFactory.Child(transform, "Spines", SpriteFactory.Triangle, d.Accent, new Vector2(0f, -0.35f) * s, s * 0.4f, o - 1).transform.localRotation = Quaternion.Euler(0, 0, 180f);
-                break;
-            case EnemyLook.Goblin:
-                Horn(s, -1, o, 0.45f, 70f, d.Color);
-                Horn(s, 1, o, 0.45f, 70f, d.Color);
-                break;
-            case EnemyLook.Mole:
-                Horn(s, -1, o, 0.3f, 40f, d.Accent);
-                Horn(s, 1, o, 0.3f, 40f, d.Accent);
-                break;
-            case EnemyLook.Treant:
-                for (int i = 0; i < 5; i++)
-                {
-                    float a = i * 72f * Mathf.Deg2Rad;
-                    SpriteFactory.Child(transform, "Leaf", SpriteFactory.Circle, d.Accent * 0.8f, new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * s * 0.42f, s * 0.5f, o - 1);
-                }
-                break;
-            case EnemyLook.Golem:
-                for (int i = 0; i < 6; i++)
-                {
-                    float a = (i * 60f + 30f) * Mathf.Deg2Rad;
-                    var c = SpriteFactory.Child(transform, "Crystal", SpriteFactory.Diamond, d.Accent, new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * s * 0.45f, s * 0.35f, o - 1);
-                    c.transform.localScale = new Vector3(s * 0.25f, s * 0.45f, 1f);
-                    c.transform.localRotation = Quaternion.Euler(0, 0, i * 60f + 30f - 90f);
-                }
-                break;
+            bodyColor = Color.white;
+            body = SpriteFactory.Child(transform, "Body", art, bodyColor, Vector2.zero, ArtStyle.EnemyScale(d.Look, d.Radius), o);
         }
-
-        body = SpriteFactory.Child(transform, "Body", SpriteFactory.Circle, bodyColor, Vector2.zero, s, o);
-
-        if (d.Look == EnemyLook.Mushroom)
+        else
         {
-            SpriteFactory.Child(transform, "Cap", SpriteFactory.Circle, d.Accent, new Vector2(0f, 0.35f) * s, s, o + 2).transform.localScale = new Vector3(s * 1.3f, s * 0.7f, 1f);
-            for (int i = -1; i <= 1; i++)
-                SpriteFactory.Child(transform, "Spot", SpriteFactory.Circle, Color.white, new Vector2(i * 0.3f, 0.45f + (i == 0 ? 0.1f : 0f)) * s, s * 0.15f, o + 3);
-        }
-        if (d.Look == EnemyLook.Pixie)
-            SpriteFactory.Child(transform, "Sparkle", SpriteFactory.Glow, new Color(d.Accent.r, d.Accent.g, d.Accent.b, 0.6f), Vector2.zero, s * 2.2f, o - 3);
+            switch (d.Look)
+            {
+                case EnemyLook.Bat:
+                case EnemyLook.Pixie:
+                    Wing(s, -1, o); Wing(s, 1, o);
+                    break;
+                case EnemyLook.Beast:
+                    Horn(s, -1, o, 0.32f, 25f, d.Color * 0.8f);
+                    Horn(s, 1, o, 0.32f, 25f, d.Color * 0.8f);
+                    SpriteFactory.Child(transform, "Spines", SpriteFactory.Triangle, d.Accent, new Vector2(0f, -0.35f) * s, s * 0.4f, o - 1).transform.localRotation = Quaternion.Euler(0, 0, 180f);
+                    break;
+                case EnemyLook.Goblin:
+                    Horn(s, -1, o, 0.45f, 70f, d.Color);
+                    Horn(s, 1, o, 0.45f, 70f, d.Color);
+                    break;
+                case EnemyLook.Mole:
+                    Horn(s, -1, o, 0.3f, 40f, d.Accent);
+                    Horn(s, 1, o, 0.3f, 40f, d.Accent);
+                    break;
+                case EnemyLook.Treant:
+                    for (int i = 0; i < 5; i++)
+                    {
+                        float a = i * 72f * Mathf.Deg2Rad;
+                        SpriteFactory.Child(transform, "Leaf", SpriteFactory.Circle, d.Accent * 0.8f, new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * s * 0.42f, s * 0.5f, o - 1);
+                    }
+                    break;
+                case EnemyLook.Golem:
+                    for (int i = 0; i < 6; i++)
+                    {
+                        float a = (i * 60f + 30f) * Mathf.Deg2Rad;
+                        var c = SpriteFactory.Child(transform, "Crystal", SpriteFactory.Diamond, d.Accent, new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * s * 0.45f, s * 0.35f, o - 1);
+                        c.transform.localScale = new Vector3(s * 0.25f, s * 0.45f, 1f);
+                        c.transform.localRotation = Quaternion.Euler(0, 0, i * 60f + 30f - 90f);
+                    }
+                    break;
+            }
 
-        if (d.Look == EnemyLook.Wizard || d.Look == EnemyLook.Witch || d.Look == EnemyLook.Headmaster)
-        {
-            var hat = d.Look == EnemyLook.Headmaster ? d.Color * 0.7f + new Color(0, 0, 0, 0.3f) : d.Accent * 0.6f + new Color(0, 0, 0, 0.4f);
-            SpriteFactory.Child(transform, "Brim", SpriteFactory.Circle, hat, new Vector2(0f, 0.3f) * s, s * 0.85f, o + 2).transform.localScale = new Vector3(s * 1.1f, s * 0.3f, 1f);
-            SpriteFactory.Child(transform, "Hat", SpriteFactory.Triangle, hat, new Vector2(0f, 0.6f) * s, s * 0.7f, o + 3);
-            if (d.Look == EnemyLook.Headmaster)
-                SpriteFactory.Child(transform, "Beard", SpriteFactory.Triangle, new Color(0.9f, 0.9f, 0.95f), new Vector2(0f, -0.3f) * s, s * 0.5f, o + 2).transform.localRotation = Quaternion.Euler(0, 0, 180f);
-        }
+            body = SpriteFactory.Child(transform, "Body", SpriteFactory.Circle, bodyColor, Vector2.zero, s, o);
 
-        Color eye = d.Tier == EnemyTier.Chaff ? Color.white : d.Accent;
-        SpriteFactory.Child(transform, "EyeL", SpriteFactory.Circle, eye, new Vector2(-0.17f, 0.05f) * s, s * 0.17f, o + 1);
-        SpriteFactory.Child(transform, "EyeR", SpriteFactory.Circle, eye, new Vector2(0.17f, 0.05f) * s, s * 0.17f, o + 1);
-        SpriteFactory.Child(transform, "PupilL", SpriteFactory.Circle, Color.black, new Vector2(-0.17f, 0.03f) * s, s * 0.08f, o + 2);
-        SpriteFactory.Child(transform, "PupilR", SpriteFactory.Circle, Color.black, new Vector2(0.17f, 0.03f) * s, s * 0.08f, o + 2);
+            if (d.Look == EnemyLook.Mushroom)
+            {
+                SpriteFactory.Child(transform, "Cap", SpriteFactory.Circle, d.Accent, new Vector2(0f, 0.35f) * s, s, o + 2).transform.localScale = new Vector3(s * 1.3f, s * 0.7f, 1f);
+                for (int i = -1; i <= 1; i++)
+                    SpriteFactory.Child(transform, "Spot", SpriteFactory.Circle, Color.white, new Vector2(i * 0.3f, 0.45f + (i == 0 ? 0.1f : 0f)) * s, s * 0.15f, o + 3);
+            }
+            if (d.Look == EnemyLook.Pixie)
+                SpriteFactory.Child(transform, "Sparkle", SpriteFactory.Glow, new Color(d.Accent.r, d.Accent.g, d.Accent.b, 0.6f), Vector2.zero, s * 2.2f, o - 3);
+
+            if (d.Look == EnemyLook.Wizard || d.Look == EnemyLook.Witch || d.Look == EnemyLook.Headmaster)
+            {
+                var hat = d.Look == EnemyLook.Headmaster ? d.Color * 0.7f + new Color(0, 0, 0, 0.3f) : d.Accent * 0.6f + new Color(0, 0, 0, 0.4f);
+                SpriteFactory.Child(transform, "Brim", SpriteFactory.Circle, hat, new Vector2(0f, 0.3f) * s, s * 0.85f, o + 2).transform.localScale = new Vector3(s * 1.1f, s * 0.3f, 1f);
+                SpriteFactory.Child(transform, "Hat", SpriteFactory.Triangle, hat, new Vector2(0f, 0.6f) * s, s * 0.7f, o + 3);
+                if (d.Look == EnemyLook.Headmaster)
+                    SpriteFactory.Child(transform, "Beard", SpriteFactory.Triangle, new Color(0.9f, 0.9f, 0.95f), new Vector2(0f, -0.3f) * s, s * 0.5f, o + 2).transform.localRotation = Quaternion.Euler(0, 0, 180f);
+            }
+
+            Color eye = d.Tier == EnemyTier.Chaff ? Color.white : d.Accent;
+            SpriteFactory.Child(transform, "EyeL", SpriteFactory.Circle, eye, new Vector2(-0.17f, 0.05f) * s, s * 0.17f, o + 1);
+            SpriteFactory.Child(transform, "EyeR", SpriteFactory.Circle, eye, new Vector2(0.17f, 0.05f) * s, s * 0.17f, o + 1);
+            SpriteFactory.Child(transform, "PupilL", SpriteFactory.Circle, Color.black, new Vector2(-0.17f, 0.03f) * s, s * 0.08f, o + 2);
+            SpriteFactory.Child(transform, "PupilR", SpriteFactory.Circle, Color.black, new Vector2(0.17f, 0.03f) * s, s * 0.08f, o + 2);
+        }
 
         // Status markers, hidden until needed.
         curseMark = SpriteFactory.Child(transform, "Curse", SpriteFactory.Diamond, new Color(0.7f, 0.3f, 0.9f), new Vector2(0f, 0.75f) * s, 0.3f, o + 5);
@@ -726,7 +735,7 @@ public class Enemy : MonoBehaviour
         if (IsChilled || frostbite > 0.05f) c = Color.Lerp(c, new Color(0.55f, 0.85f, 1f), Mathf.Max(IsChilled ? 0.55f : 0f, Mathf.Clamp01(frostbite)));
         if (IsBurning) c = Color.Lerp(c, new Color(1f, 0.5f, 0.15f), 0.35f + 0.25f * Mathf.Sin(Time.time * 20f));
         if (IsCharmed) c = Color.Lerp(c, new Color(1f, 0.5f, 0.8f), 0.4f);
-        body.color = Color.Lerp(c, Color.white, Mathf.Clamp01(flash));
+        body.color = Color.Lerp(c, ArtStyle.HitFlash, Mathf.Clamp01(flash));
     }
 
     public void TakeDamage(float amount, Vector2 push = default, Color? numberColor = null)

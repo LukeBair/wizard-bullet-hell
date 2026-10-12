@@ -16,6 +16,7 @@ public class Arena : MonoBehaviour
     public static Arena Create(Biome biome)
     {
         var a = new GameObject("Arena").AddComponent<Arena>();
+        ArtStyle.Restyle(biome);
         a.Biome = biome;
         a.Build();
         return a;
@@ -29,7 +30,7 @@ public class Arena : MonoBehaviour
         for (int i = 0; i < 500; i++)
         {
             var p = new Vector2(Random.Range(-HalfSize, HalfSize), Random.Range(-HalfSize, HalfSize));
-            SpriteFactory.Child(transform, "Speck", SpriteFactory.Circle, b.GroundSpeck, p, Random.Range(0.08f, 0.35f), -99);
+            SpriteFactory.Child(transform, "Speck", ArtStyle.Round, b.GroundSpeck, p, Random.Range(0.08f, 0.35f), -99);
         }
         if (b.Style == ObstacleStyle.Pillar) BuildFloorTiles();
         for (int i = 0; i < 90; i++)
@@ -55,7 +56,7 @@ public class Arena : MonoBehaviour
                     SpriteFactory.Child(transform, "Flame", SpriteFactory.Circle, c, p + new Vector2(0f, 0.17f), 0.1f, -93);
                     break;
                 default:
-                    SpriteFactory.Child(transform, "Flower", SpriteFactory.Circle, c, p, Random.Range(0.08f, 0.14f), -98);
+                    SpriteFactory.Child(transform, "Flower", ArtStyle.Round, c, p, Random.Range(0.08f, 0.14f), -98);
                     break;
             }
         }
@@ -101,6 +102,15 @@ public class Arena : MonoBehaviour
     void AddTree(Vector2 p, float r, bool solid)
     {
         var b = Biome;
+        var art = ArtStyle.Get(ArtStyle.ObstacleSprite(b.Style));
+        if (art != null)
+        {
+            SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.3f), p + new Vector2(0.25f, -0.3f), r * 2.1f, -45);
+            var sr = SpriteFactory.Child(transform, "Obstacle", art, Color.white, p, r, -40);
+            sr.flipX = Random.value < 0.5f;
+            if (solid) obstacles.Add(new Vector3(p.x, p.y, r * (b.Style == ObstacleStyle.Tree ? 0.75f : 0.8f)));
+            return;
+        }
         if (b.Style == ObstacleStyle.Pillar) { AddPillar(p, r, solid); return; }
         if (b.Style == ObstacleStyle.Rock) { AddRock(p, r, solid); return; }
         SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.3f), p + new Vector2(0.25f, -0.3f), r * 2.1f, -45);

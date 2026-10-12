@@ -39,10 +39,11 @@ public class Projectile : MonoBehaviour
         // Enemy bullets look bigger than their hitbox, which is what makes bullet hell feel fair.
         float visual = team == Team.Enemy ? 1.6f : 1.3f;
         go.transform.localScale = Vector3.one * radius * 2f * visual;
-        SpriteFactory.Add(go, SpriteFactory.Circle, color, team == Team.Enemy ? 81 : 71);
+        if (team == Team.Enemy) color = ArtStyle.EnemyBullet(color);
+        SpriteFactory.Add(go, ArtStyle.Round, color, team == Team.Enemy ? 81 : 71);
         SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(color.r, color.g, color.b, 0.6f), Vector2.zero, 2.4f, team == Team.Enemy ? 80 : 70);
         // Enemy bullets get a hot white core so they never read as your own spells.
-        if (team == Team.Enemy) SpriteFactory.Child(go.transform, "Core", SpriteFactory.Circle, Color.white, Vector2.zero, 0.5f, 82);
+        if (team == Team.Enemy) SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, Color.white, Vector2.zero, 0.5f, 82);
         return p;
     }
 
