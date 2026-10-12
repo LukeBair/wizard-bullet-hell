@@ -7,7 +7,7 @@ using UnityEngine;
 // Everything is emitted into two shared ParticleSystems (one on game time, one on unscaled time
 // for effects that play while the level-up screen pauses the game), so a burst costs no
 // GameObjects. Particles are square pixels snapped to Dusk's palette that shrink in steps instead
-// of fading. Counts, speeds, sizes and lifetimes are in tuning.json under fx.*.
+// of fading; spell trails keep the spell's tint, and level-up and pickup glints are gold and white. Counts, speeds, sizes and lifetimes are in tuning.json under fx.*.
 public static class Particles
 {
     static ParticleSystem world, unscaled;
@@ -58,11 +58,12 @@ public static class Particles
     public static void Zap(Vector2 pos, Color c) =>
         Spray(pos, c, (int)F("bolt.count", 4f), F("bolt.speed", 5f), F("bolt.size", 0.08f), F("bolt.life", 0.18f));
 
-    // One trail mote behind a moving spell.
+    // One trail mote behind a moving spell, in the spell's own tint so it matches the projectile.
     public static void Trail(Vector2 pos, Color c, float radius)
     {
         var v = Random.insideUnitCircle * F("trail.speed", 0.6f);
-        Emit(pos + Random.insideUnitCircle * radius * 0.5f, v, Pick(c), radius * F("trail.size", 0.9f), F("trail.life", 0.25f));
+        var tint = Random.value < F("highlightShare", 0.25f) ? Color.Lerp(c, Color.white, 0.5f) : c;
+        Emit(pos + Random.insideUnitCircle * radius * 0.5f, v, tint, radius * F("trail.size", 0.9f), F("trail.life", 0.25f));
     }
 
     // Body debris when an enemy dies: its body colour plus accent chips, much bigger for bosses.
@@ -81,13 +82,22 @@ public static class Particles
         if (tier == EnemyTier.Boss) Fountain(pos, accent, (int)F("death.bossMotes", 40f), radius, false);
     }
 
-    // Glints when the wizard swallows an XP gem.
-    public static void Pickup(Vector2 pos, Color c) =>
-        Spray(pos, c, (int)F("pickup.count", 4f), F("pickup.speed", 2.5f), F("pickup.size", 0.08f), F("pickup.life", 0.3f));
+    // White glints, with a few in the gem's own colour, when the wizard swallows an XP gem.
+    public static void Pickup(Vector2 pos, Color c)
+    {
+        int n = (int)F("pickup.count", 4f);
+        for (int i = 0; i < n; i++)
+        {
+            var dir = Random.insideUnitCircle.normalized;
+            Emit(pos, dir * F("pickup.speed", 2.5f) * Random.Range(0.3f, 1f), i % 2 == 0 ? Color.white : c, F("pickup.size", 0.08f), F("pickup.life", 0.3f) * Random.Range(0.7f, 1.2f));
+        }
+    }
 
-    // A ring of motes rising around the wizard. Plays on unscaled time behind the level-up cards.
+    // Gold and white motes rising around the wizard. Plays on unscaled time behind the level-up cards.
     public static void LevelUp(Vector2 pos) =>
-        Fountain(pos, new Color(1f, 0.9f, 0.55f), (int)F("levelUp.count", 36f), 0.6f, true);
+        Fountain(pos, Gold, (int)F("levelUp.count", 36f), 0.6f, true, true);
+
+    static readonly Color Gold = new Color(1f, 0.8f, 0.25f);
 
     // Evolving a spell: a spiral of its colour. Plays on unscaled time behind the cards.
     public static void Evolve(Vector2 pos, Color c)
@@ -225,7 +235,8 @@ public static class Particles
         }
     }
 
-    static void Fountain(Vector2 pos, Color c, int n, float radius, bool paused)
+    // exact: use the colour and pure white as given instead of snapping them to the palette.
+    static void Fountain(Vector2 pos, Color c, int n, float radius, bool paused, bool exact = false)
     {
         float speed = F("levelUp.speed", 5f);
         for (int i = 0; i < n; i++)
@@ -233,7 +244,7 @@ public static class Particles
             float a = (i + Random.value) / n * Mathf.PI * 2f;
             var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
             var v = dir * speed * 0.35f + Vector2.up * speed * Random.Range(0.4f, 1f);
-            Emit(pos + dir * radius, v, i % 3 == 0 ? Style(Color.white) : Style(c), F("levelUp.size", 0.14f), F("levelUp.life", 0.9f) * Random.Range(0.8f, 1.2f), paused);
+            Emit(pos + dir * radius, v, exact ? (i % 3 == 0 ? Color.white : c) : (i % 3 == 0 ? Style(Color.white) : Style(c)), F("levelUp.size", 0.14f), F("levelUp.life", 0.9f) * Random.Range(0.8f, 1.2f), paused);
         }
     }
 
