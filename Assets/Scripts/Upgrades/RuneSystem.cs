@@ -32,6 +32,9 @@ public class RuneSystem : UpgradeSystem
         sockets.Clear();
     }
 
+    public override IReadOnlyList<Rune> SocketedRunes(Spell spell) => SocketsOf(spell);
+    public override int SocketCount => Sockets;
+
     List<Rune> SocketsOf(Spell s)
     {
         if (!sockets.TryGetValue(s, out var list)) sockets[s] = list = new List<Rune>();
