@@ -3,7 +3,7 @@ using UnityEngine;
 
 // Mirror shards orbit the wizard and throw enemy bullets back as bolts of light.
 // II: reflected bolts home in on foes. III: each reflected bolt splits into three.
-public class MirrorWard : Spell
+public class MirrorWard : Spell, IOrbiter
 {
     public override string Name => "Mirror Ward";
     public override Element Element => Element.Light;
@@ -15,14 +15,15 @@ public class MirrorWard : Spell
     protected override bool EchoRecasts => false;
     protected override bool Overloadable => false;
 
-    readonly List<(Transform shard, int ring, int index)> shards = new List<(Transform, int, int)>();
-    readonly List<Transform> tracks = new List<Transform>();
+    readonly List<(Transform shard, int set, int index)> shards = new List<(Transform, int, int)>();
+    Transform track;
     static readonly List<Projectile> scratch = new List<Projectile>();
     float angle;
 
-    int Rings => 1 + Echoes;
-    float OrbitRadius(int ring) => T("orbit", 1.4f) * Area * (1f + T("ringSpacing", 0.5f) * ring);
-    float ShardRadius => T("shardSize", 0.32f) * Mathf.Sqrt(Area);
+    public int OrbitRings => 1;
+    int Sets => 1 + Echoes;
+    float OrbitRadius => Orbits.Radius(this, 0);
+    float ShardRadius => T("shardSize", 0.32f) * Area;
 
     public override string TierName(int tier) => tier == 2 ? "Prism" : tier == 3 ? "Hall of Mirrors" : Name;
     public override string TierDescription(int tier) =>
@@ -34,10 +35,10 @@ public class MirrorWard : Spell
         {
             case Rune.Potency: return $"+{Pct(PotencyStep)} reflected damage";
             case Rune.Haste: return $"Shards spin {Pct(HastePerRune)} faster";
-            case Rune.Split: return "+1 shard on every ring";
+            case Rune.Split: return "+1 shard in every set";
             case Rune.Pierce: return "Reflected bolts pass through +1 enemy";
-            case Rune.Area: return $"+{Pct(AreaStep)} shard and orbit size";
-            case Rune.Echo: return "+1 ring spinning the other way";
+            case Rune.Area: return $"+{Pct(AreaStep)} shard size";
+            case Rune.Echo: return "+1 set of shards spinning the other way";
             case Rune.Ward: return "No effect: this spell never casts";
             default: return base.RuneEffect(r);
         }
@@ -52,19 +53,18 @@ public class MirrorWard : Spell
     {
         if (Owner == null) return;
         foreach (var s in shards) if (s.shard != null) Object.Destroy(s.shard.gameObject);
-        foreach (var t in tracks) if (t != null) Object.Destroy(t.gameObject);
+        if (track != null) Object.Destroy(track.gameObject);
         shards.Clear();
-        tracks.Clear();
-        for (int ring = 0; ring < Rings; ring++)
+        track = SpriteFactory.Child(Owner.transform, "MirrorOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.15f), Vector2.zero, OrbitRadius * 2f + ShardRadius, 47).transform;
+        for (int set = 0; set < Sets; set++)
         {
-            tracks.Add(SpriteFactory.Child(Owner.transform, "MirrorOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.15f), Vector2.zero, OrbitRadius(ring) * 2f + ShardRadius, 47).transform);
             for (int i = 0; i < Count; i++)
             {
                 var go = new GameObject("MirrorShard");
                 go.transform.SetParent(Owner.transform, false);
                 SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.45f), Vector2.zero, ShardRadius * 4f, 56);
                 SpriteFactory.Child(go.transform, "Shard", SpriteFactory.Diamond, Color.Lerp(Color, Color.white, 0.6f), Vector2.zero, ShardRadius * 2f, 58);
-                shards.Add((go.transform, ring, i));
+                shards.Add((go.transform, set, i));
             }
         }
     }
@@ -72,16 +72,17 @@ public class MirrorWard : Spell
     protected override void OnTick(float dt)
     {
         angle += T("spinSpeed", 160f) / Cooldown * dt * Tuning.Pace;
+        // The ring shifts outward when another orbiting spell is learned first, so keep the track in step.
+        float radius = OrbitRadius;
+        if (track != null) track.localScale = Vector3.one * (radius * 2f + ShardRadius);
         scratch.Clear();
         foreach (var p in Projectile.All) if (p.Team == Team.Enemy && p.enabled) scratch.Add(p);
 
         foreach (var s in shards)
         {
             var shard = s.shard;
-            int ring = s.ring, index = s.index;
-            float dirSign = ring % 2 == 0 ? 1f : -1f;
-            float a = (angle * dirSign + index * 360f / Count + ring * 45f) * Mathf.Deg2Rad;
-            Vector2 local = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * OrbitRadius(ring);
+            float a = Orbits.Angle(angle, 0, s.set, Sets, s.index, Count) * Mathf.Deg2Rad;
+            Vector2 local = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * radius;
             shard.localPosition = local;
             shard.localRotation = Quaternion.Euler(0, 0, a * Mathf.Rad2Deg);
             Vector2 world = Owner.Position + local;

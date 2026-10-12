@@ -241,7 +241,7 @@ public class RuneSystem : UpgradeSystem
             case Rune.Split: return "More projectiles, bolts, pulses, wisps or beams.";
             case Rune.Pierce: return "Pass through, chain further, push harder or last longer. Varies by spell.";
             case Rune.Area: return "Bigger explosions, auras and orbits.";
-            case Rune.Echo: return "The spell casts a second time. A few spells get an extra ring or charge instead.";
+            case Rune.Echo: return "The spell casts a second time. A few spells get a counter-spinning set of orbiters or an extra charge instead.";
             case Rune.Ember: return "Hits set foes on fire.";
             case Rune.Frost: return "Hits chill and slow foes.";
             case Rune.Curse: return $"Marks foes it hits: the next spell to hit them deals +{Tune.F("runes.Curse.bonusPerRune", 0.5f) * 100f:0}%.";
