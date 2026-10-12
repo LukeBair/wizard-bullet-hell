@@ -28,6 +28,18 @@ public static class SpriteFactory
         return Mathf.Abs(x - 0.5f) <= halfWidth ? 1f : 0f;
     });
 
+    // Thin circle outline, used for shockwaves and range indicators.
+    public static Sprite Ring => Get("ring", (x, y) =>
+    {
+        float d = Vector2.Distance(new Vector2(x, y), new Vector2(0.5f, 0.5f));
+        return Mathf.Clamp01((0.5f - d) * Size) * Mathf.Clamp01((d - 0.42f) * Size);
+    });
+
+    public static Sprite Diamond => Get("diamond", (x, y) =>
+        Mathf.Abs(x - 0.5f) + Mathf.Abs(y - 0.5f) <= 0.5f ? 1f : 0f);
+
+    public static Sprite Square => Get("square", (x, y) => 1f);
+
     public static SpriteRenderer Add(GameObject go, Sprite sprite, Color color, int order)
     {
         var sr = go.AddComponent<SpriteRenderer>();

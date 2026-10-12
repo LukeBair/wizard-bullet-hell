@@ -1,0 +1,84 @@
+using UnityEngine;
+
+// Tiny immediate-mode UI kit on top of OnGUI: panels, cards and text, all scaled for portrait phones.
+public static class UI
+{
+    static GUIStyle label;
+    static Texture2D white;
+
+    public static float S => GameManager.UiScale;
+
+    static GUIStyle Style(int size, TextAnchor anchor, Color color, bool bold = true)
+    {
+        if (label == null)
+            label = new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, clipping = TextClipping.Overflow };
+        label.fontSize = Mathf.Max(8, Mathf.RoundToInt(size * S));
+        label.alignment = anchor;
+        label.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+        label.normal.textColor = color;
+        return label;
+    }
+
+    public static void Text(Rect r, string text, int size, TextAnchor anchor = TextAnchor.UpperLeft, Color? color = null, bool bold = true)
+    {
+        var c = color ?? Color.white;
+        // Cheap drop shadow for readability over the busy playfield.
+        GUI.Label(new Rect(r.x + 2f * S, r.y + 2f * S, r.width, r.height), text, Style(size, anchor, new Color(0f, 0f, 0f, 0.7f * c.a), bold));
+        GUI.Label(r, text, Style(size, anchor, c, bold));
+    }
+
+    public static void Box(Rect r, Color c)
+    {
+        if (white == null) white = Texture2D.whiteTexture;
+        var old = GUI.color;
+        GUI.color = c;
+        GUI.DrawTexture(r, white);
+        GUI.color = old;
+    }
+
+    public static void Dim(float alpha = 0.65f) => Box(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, alpha));
+
+    public static void Circle(Vector2 center, float radius, Color c)
+    {
+        var old = GUI.color;
+        GUI.color = c;
+        GUI.DrawTexture(new Rect(center.x - radius, center.y - radius, radius * 2f, radius * 2f), SpriteFactory.Circle.texture);
+        GUI.color = old;
+    }
+
+    // A tappable card with a coloured edge. Returns true on tap.
+    public static bool Card(Rect r, string title, string body, Color accent, string tag = null, bool enabled = true)
+    {
+        bool hover = enabled && r.Contains(Event.current.mousePosition);
+        Box(r, new Color(0.08f, 0.06f, 0.14f, enabled ? 0.95f : 0.6f));
+        Box(new Rect(r.x, r.y, 10f * S, r.height), enabled ? accent : accent * 0.4f);
+        if (hover) Box(r, new Color(1f, 1f, 1f, 0.06f));
+
+        float pad = 22f * S;
+        var inner = new Rect(r.x + pad, r.y + 14f * S, r.width - pad * 1.5f, r.height - 20f * S);
+        if (tag != null)
+            Text(new Rect(inner.x, inner.y, inner.width, 30f * S), tag, 20, TextAnchor.UpperRight, new Color(accent.r, accent.g, accent.b, 0.9f));
+        Text(new Rect(inner.x, inner.y, inner.width, 44f * S), title, 32, TextAnchor.UpperLeft, enabled ? accent : Color.gray);
+        Text(new Rect(inner.x, inner.y + 46f * S, inner.width, inner.height - 46f * S), body, 24, TextAnchor.UpperLeft, enabled ? new Color(0.9f, 0.9f, 0.95f) : Color.gray, false);
+
+        return enabled && GUI.Button(r, GUIContent.none, GUIStyle.none);
+    }
+
+    public static bool Button(Rect r, string text, Color accent)
+    {
+        Box(r, new Color(accent.r * 0.3f, accent.g * 0.3f, accent.b * 0.3f, 0.95f));
+        Box(new Rect(r.x, r.yMax - 6f * S, r.width, 6f * S), accent);
+        Text(r, text, 30, TextAnchor.MiddleCenter, Color.white);
+        return GUI.Button(r, GUIContent.none, GUIStyle.none);
+    }
+
+    // Layout helper: a centred column of the safe area.
+    public static Rect Column(float topFraction, float heightFraction)
+    {
+        Rect safe = Screen.safeArea;
+        float w = Mathf.Min(safe.width - 40f * S, 680f * S);
+        float x = safe.x + (safe.width - w) * 0.5f;
+        float top = Screen.height - safe.yMax;
+        return new Rect(x, top + safe.height * topFraction, w, safe.height * heightFraction);
+    }
+}

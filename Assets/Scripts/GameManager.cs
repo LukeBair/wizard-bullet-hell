@@ -1,39 +1,46 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Owns the camera, the run (score, game over, restart) and the HUD.
+public enum GameState { Title, Playing, LevelUp, GameOver }
+
+// Owns the run: title screen (pick an upgrade system), camera, level-up flow, game over and the HUD.
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
+    public static float UiScale => Mathf.Min(Screen.width / 720f, Screen.height / 1280f);
 
-    const string BestScoreKey = "best_score";
-    static readonly Color Background = new Color(0.06f, 0.04f, 0.12f);
+    const string ModeKey = "upgrade_mode";
+    const float CameraSize = 7.5f;
 
+    public GameState State { get; private set; }
     public Player Player { get; private set; }
+    public Arena Arena { get; private set; }
+    public Director Director { get; private set; }
+    public UpgradeSystem Upgrades { get; private set; }
     public int Score { get; private set; }
-    public int BestScore { get; private set; }
-    public bool IsGameOver { get; private set; }
-    public int Wave => spawner != null ? spawner.Wave : 0;
-    public Rect Bounds { get; private set; }  // visible world area
+    public static bool Autoplay;
+    public float ViewRadius => cam.orthographicSize * Mathf.Sqrt(1f + cam.aspect * cam.aspect);
 
     Camera cam;
-    WaveSpawner spawner;
-    float gameOverTime;
+    Vector2 camPos;
     float shake;
-    GUIStyle style;
+    int pendingLevelUps;
+    float gameOverTime;
+    UpgradeMode mode;
+    readonly List<(string text, float until)> toasts = new List<(string, float)>();
 
     void Awake()
     {
         Instance = this;
         Application.targetFrameRate = 60;
         Screen.orientation = ScreenOrientation.Portrait;
-        BestScore = PlayerPrefs.GetInt(BestScoreKey, 0);
+        mode = (UpgradeMode)PlayerPrefs.GetInt(ModeKey, 0);
 
         SetupCamera();
-        UpdateBounds();
-        CreateStarfield();
-        spawner = gameObject.AddComponent<WaveSpawner>();
-        StartRun();
+        Director = gameObject.AddComponent<Director>();
+        gameObject.AddComponent<Joystick>();
+        BuildWorld();
+        State = GameState.Title;
     }
 
     void SetupCamera()
@@ -45,121 +52,241 @@ public class GameManager : MonoBehaviour
             cam = go.AddComponent<Camera>();
         }
         cam.orthographic = true;
-        cam.orthographicSize = 8f;
-        cam.transform.position = new Vector3(0f, 0f, -10f);
+        cam.orthographicSize = CameraSize;
         cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.backgroundColor = Background;
+        cam.backgroundColor = Color.black;
     }
 
-    void UpdateBounds()
+    void BuildWorld()
     {
-        float h = cam.orthographicSize;
-        float w = h * cam.aspect;
-        Bounds = new Rect(-w, -h, w * 2f, h * 2f);
-    }
-
-    void CreateStarfield()
-    {
-        var root = new GameObject("Stars").transform;
-        for (int i = 0; i < 60; i++)
-        {
-            var pos = new Vector2(Random.Range(-6f, 6f), Random.Range(-9f, 9f));
-            float a = Random.Range(0.15f, 0.6f);
-            SpriteFactory.Child(root, "Star", SpriteFactory.Circle, new Color(0.8f, 0.8f, 1f, a), pos, Random.Range(0.04f, 0.1f), -10);
-        }
-    }
-
-    public void StartRun()
-    {
-        foreach (var p in new List<Projectile>(Projectile.All)) Destroy(p.gameObject);
-        foreach (var e in new List<Enemy>(Enemy.All)) Destroy(e.gameObject);
+        Clear<Projectile>();
+        Clear<Enemy>();
+        Clear<XpGem>();
+        Clear<Fx>();
         if (Player != null) Destroy(Player.gameObject);
+        if (Arena != null) Destroy(Arena.gameObject);
 
+        Arena = Arena.Create(Biome.Forest);
+        Player = Player.Create(Vector2.zero);
+        camPos = Vector2.zero;
+    }
+
+    static void Clear<T>() where T : MonoBehaviour
+    {
+        foreach (var o in FindObjectsByType<T>()) Destroy(o.gameObject);
+    }
+
+    public void StartRun(UpgradeMode m)
+    {
+        mode = m;
+        PlayerPrefs.SetInt(ModeKey, (int)m);
+        BuildWorld();
         Score = 0;
-        IsGameOver = false;
-        Player = Player.Create(new Vector2(0f, Bounds.yMin + 2.5f));
-        spawner.ResetWaves();
+        pendingLevelUps = 0;
+        toasts.Clear();
+        Director.ResetRun(Arena.Biome.Roster);
+        Upgrades = UpgradeSystem.Create(m);
+        Upgrades.Begin(Player);
+        State = GameState.Playing;
+        Time.timeScale = 1f;
+        Joystick.Blocked = true;   // released once the starting tap lifts
+        Toast(Arena.Biome.Name);
     }
 
     public void AddScore(int points)
     {
-        if (!IsGameOver) Score += points;
+        if (State == GameState.Playing) Score += points;
     }
+
+    public void QueueLevelUp() => pendingLevelUps++;
+
+    public void Toast(string text) => toasts.Add((text, Time.unscaledTime + 2.5f));
+
+    public void Shake(float amount) => shake = Mathf.Max(shake, amount);
 
     public void GameOver()
     {
-        IsGameOver = true;
-        gameOverTime = Time.time;
-        if (Score > BestScore)
+        State = GameState.GameOver;
+        gameOverTime = Time.unscaledTime;
+        string key = $"best_time_{mode}";
+        if (Director.Elapsed > PlayerPrefs.GetFloat(key, 0f))
         {
-            BestScore = Score;
-            PlayerPrefs.SetInt(BestScoreKey, BestScore);
+            PlayerPrefs.SetFloat(key, Director.Elapsed);
             PlayerPrefs.Save();
         }
     }
 
-    public void Shake(float amount) => shake = Mathf.Max(shake, amount);
-
     void Update()
     {
-        UpdateBounds();
+        if (State == GameState.Playing && pendingLevelUps > 0)
+        {
+            State = GameState.LevelUp;
+            Time.timeScale = 0f;
+            Joystick.Blocked = true;
+            Upgrades.Open();
+        }
 
+        // Autoplay soak test: random upgrade picks, the wizard kites on its own.
+        if (Autoplay && State == GameState.LevelUp)
+        {
+            Upgrades.AutoPick();
+            if (--pendingLevelUps > 0) Upgrades.Open();
+            else { State = GameState.Playing; Time.timeScale = 1f; }
+        }
+
+        if (Joystick.Blocked && State == GameState.Playing && !Input.GetMouseButton(0) && Input.touchCount == 0)
+            Joystick.Blocked = false;
+
+        if (Player != null)
+            camPos = Vector2.Lerp(camPos, Player.Position, 1f - Mathf.Exp(-8f * Time.unscaledDeltaTime));
+        float h = cam.orthographicSize, w = h * cam.aspect, lim = Arena.HalfSize + 1f;
+        Vector2 p = new Vector2(Mathf.Clamp(camPos.x, -lim + w, lim - w), Mathf.Clamp(camPos.y, -lim + h, lim - h));
         if (shake > 0f)
         {
-            shake = Mathf.Max(0f, shake - Time.deltaTime);
-            Vector2 offset = Random.insideUnitCircle * shake * 0.6f;
-            cam.transform.position = new Vector3(offset.x, offset.y, -10f);
+            shake = Mathf.Max(0f, shake - Time.unscaledDeltaTime);
+            p += Random.insideUnitCircle * shake * 0.6f;
         }
-        else
-        {
-            cam.transform.position = new Vector3(0f, 0f, -10f);
-        }
+        cam.transform.position = new Vector3(p.x, p.y, -10f);
 
-        // Short delay so a finger still dragging when you die doesn't restart instantly.
-        bool tapped = Input.GetMouseButtonDown(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began);
-        if (IsGameOver && tapped && Time.time - gameOverTime > 0.8f)
-            StartRun();
+#if UNITY_EDITOR
+        if (State == GameState.Playing && Input.GetKeyDown(KeyCode.L)) QueueLevelUp();
+#endif
     }
+
+    // ---------------------------------------------------------------- HUD and menus
 
     void OnGUI()
     {
-        float scale = Mathf.Min(Screen.width / 720f, Screen.height / 1280f);
-        if (style == null)
-            style = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
-        style.fontSize = Mathf.RoundToInt(40 * scale);
-        style.normal.textColor = Color.white;
-
-        Rect safe = Screen.safeArea;
-        float top = Screen.height - safe.yMax + 16f * scale;  // GUI y runs top-down, safeArea bottom-up
-        float left = safe.xMin + 20f * scale;
-        float right = safe.xMax - 20f * scale;
-        float lineH = 52f * scale;
-
-        style.alignment = TextAnchor.UpperLeft;
-        GUI.Label(new Rect(left, top, 500f * scale, lineH), $"Score {Score}", style);
-        style.alignment = TextAnchor.UpperRight;
-        GUI.Label(new Rect(right - 500f * scale, top, 500f * scale, lineH), $"Wave {Wave}", style);
-
-        // Health pips
-        if (Player != null)
+        GUI.depth = 0;
+        switch (State)
         {
-            float pip = 26f * scale, gap = 10f * scale;
-            for (int i = 0; i < Player.MaxHealth; i++)
-            {
-                GUI.color = i < Player.Health ? new Color(1f, 0.35f, 0.5f) : new Color(1f, 1f, 1f, 0.2f);
-                GUI.DrawTexture(new Rect(left + i * (pip + gap), top + lineH + 6f * scale, pip, pip), Texture2D.whiteTexture);
-            }
-            GUI.color = Color.white;
+            case GameState.Title: DrawTitle(); break;
+            case GameState.Playing: DrawHud(); break;
+            case GameState.LevelUp:
+                DrawHud();
+                if (Upgrades.Draw())
+                {
+                    pendingLevelUps--;
+                    if (pendingLevelUps > 0) Upgrades.Open();
+                    else { State = GameState.Playing; Time.timeScale = 1f; }
+                }
+                break;
+            case GameState.GameOver: DrawHud(); DrawGameOver(); break;
+        }
+        DrawToasts();
+    }
+
+    void DrawTitle()
+    {
+        float s = UiScale;
+        UI.Dim(0.55f);
+        var col = UI.Column(0.08f, 0.9f);
+        UI.Text(new Rect(col.x, col.y, col.width, 90f * s), "Wizard Bullet Hell", 60, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
+        UI.Text(new Rect(col.x, col.y + 90f * s, col.width, 50f * s), "Choose an upgrade system to test", 28, TextAnchor.UpperCenter, new Color(0.85f, 0.85f, 0.95f), false);
+
+        float y = col.y + 170f * s, h = 200f * s;
+        foreach (UpgradeMode m in System.Enum.GetValues(typeof(UpgradeMode)))
+        {
+            var sys = UpgradeSystem.Create(m);
+            float best = PlayerPrefs.GetFloat($"best_time_{m}", 0f);
+            string tag = best > 0f ? $"BEST {FormatTime(best)}" : (m == mode ? "LAST PLAYED" : null);
+            var accent = m == UpgradeMode.Draft ? new Color(0.5f, 0.85f, 1f) : m == UpgradeMode.Runes ? new Color(1f, 0.75f, 0.35f) : new Color(0.6f, 1f, 0.5f);
+            if (UI.Card(new Rect(col.x, y, col.width, h), sys.Name, sys.Pitch, accent, tag))
+                StartRun(m);
+            y += h + 24f * s;
+        }
+        UI.Text(new Rect(col.x, y + 10f * s, col.width, 80f * s), "Drag anywhere to move. Spells cast on their own.", 24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
+    }
+
+    void DrawHud()
+    {
+        if (Player == null || Upgrades == null) return;
+        float s = UiScale;
+        Rect safe = Screen.safeArea;
+        float top = Screen.height - safe.yMax;
+        float left = safe.xMin + 20f * s, right = safe.xMax - 20f * s;
+
+        // XP bar across the top
+        float frac = Player.Xp / (float)Player.XpToNext;
+        UI.Box(new Rect(safe.xMin, top, safe.width, 16f * s), new Color(0f, 0f, 0f, 0.6f));
+        UI.Box(new Rect(safe.xMin, top, safe.width * frac, 16f * s), new Color(0.45f, 0.75f, 1f));
+        top += 22f * s;
+
+        UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
+        UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
+        if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
+        {
+            State = GameState.Title;
+            Time.timeScale = 1f;
+        }
+        top += 52f * s;
+
+        // Health bar
+        float hpW = 260f * s;
+        UI.Box(new Rect(left, top, hpW, 20f * s), new Color(0f, 0f, 0f, 0.6f));
+        UI.Box(new Rect(left, top, hpW * Mathf.Clamp01(Player.Health / Player.MaxHealth), 20f * s), new Color(1f, 0.35f, 0.45f));
+        UI.Text(new Rect(left + hpW + 10f * s, top - 6f * s, 200f * s, 30f * s), Mathf.CeilToInt(Mathf.Max(0f, Player.Health)).ToString(), 22);
+        top += 32f * s;
+
+        Upgrades.DrawHud(new Rect(left, top, 400f * s, 200f * s));
+
+        // Boss bar
+        var boss = Director.Boss;
+        if (boss != null)
+        {
+            float bw = safe.width * 0.8f, bx = safe.center.x - bw * 0.5f, by = top + 70f * s;
+            UI.Text(new Rect(bx, by, bw, 34f * s), boss.Def.Name, 26, TextAnchor.UpperCenter, boss.Def.Accent);
+            UI.Box(new Rect(bx, by + 36f * s, bw, 16f * s), new Color(0f, 0f, 0f, 0.6f));
+            UI.Box(new Rect(bx, by + 36f * s, bw * Mathf.Clamp01(boss.Health / boss.MaxHealth), 16f * s), boss.Def.Accent);
         }
 
-        if (IsGameOver)
+        // Spell icons along the bottom with cooldown sweep
+        float d = 92f * s, gap = 16f * s;
+        float total = Player.Spells.Count * d + (Player.Spells.Count - 1) * gap;
+        float x = safe.center.x - total * 0.5f, y = Screen.height - safe.yMin - d - 30f * s;
+        foreach (var spell in Player.Spells)
         {
-            GUI.color = new Color(0f, 0f, 0f, 0.6f);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            style.alignment = TextAnchor.MiddleCenter;
-            GUI.Label(new Rect(0, Screen.height * 0.3f, Screen.width, Screen.height * 0.4f),
-                $"The wizard has fallen\n\nScore {Score}\nBest {BestScore}\nWave {Wave}\n\nTap to try again", style);
+            UI.Box(new Rect(x, y, d, d), new Color(0f, 0f, 0f, 0.55f));
+            UI.Box(new Rect(x, y + d * (1f - spell.CooldownProgress), d, d * spell.CooldownProgress), new Color(spell.Color.r, spell.Color.g, spell.Color.b, 0.45f));
+            UI.Text(new Rect(x, y + 6f * s, d, 40f * s), Initials(spell.Name), 30, TextAnchor.UpperCenter, spell.Color);
+            UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"Lv{spell.Level}", 20, TextAnchor.UpperCenter);
+            x += d + gap;
         }
     }
+
+    void DrawGameOver()
+    {
+        float s = UiScale;
+        UI.Dim(0.6f);
+        var col = UI.Column(0.25f, 0.6f);
+        float best = PlayerPrefs.GetFloat($"best_time_{mode}", 0f);
+        UI.Text(new Rect(col.x, col.y, col.width, 300f * s),
+            $"The wizard has fallen\n\n<size={Mathf.RoundToInt(30 * s)}>Survived {FormatTime(Director.Elapsed)}  ·  Level {Player.Level}\nBest with {Upgrades.Name}: {FormatTime(best)}</size>",
+            48, TextAnchor.UpperCenter);
+        if (Time.unscaledTime - gameOverTime < 0.8f) return;  // so a finger still dragging doesn't tap a button
+        if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), $"Try again ({Upgrades.Name})", new Color(0.6f, 0.45f, 1f)))
+            StartRun(mode);
+        if (UI.Button(new Rect(col.x, col.y + 450f * s, col.width, 100f * s), "Change upgrade system", new Color(0.6f, 0.6f, 0.7f)))
+            State = GameState.Title;
+    }
+
+    void DrawToasts()
+    {
+        toasts.RemoveAll(t => Time.unscaledTime > t.until);
+        float s = UiScale;
+        var col = UI.Column(0.3f, 0.2f);
+        for (int i = 0; i < toasts.Count; i++)
+        {
+            float a = Mathf.Clamp01(toasts[i].until - Time.unscaledTime);
+            UI.Text(new Rect(col.x, col.y + i * 48f * s, col.width, 48f * s), toasts[i].text, 34, TextAnchor.UpperCenter, new Color(1f, 0.9f, 0.5f, a));
+        }
+    }
+
+    static string Initials(string name)
+    {
+        var parts = name.Split(' ');
+        return parts.Length > 1 ? $"{parts[0][0]}{parts[1][0]}" : name.Substring(0, 2);
+    }
+
+    static string FormatTime(float t) => $"{(int)t / 60}:{(int)t % 60:00}";
 }

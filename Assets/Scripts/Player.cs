@@ -1,127 +1,131 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-// The wizard. Drag anywhere on screen to move (relative drag, so your finger never covers him). Fires automatically.
+// The wizard. Moves freely with the floating joystick (or WASD), casts every spell it knows
+// automatically off cooldown, and levels up from XP gems.
 public class Player : MonoBehaviour
 {
-    public const float HitRadius = 0.15f;   // tiny hitbox, shown as the white dot
-    public const int MaxHealth = 5;
+    public const float HitRadius = 0.15f;   // enemy bullets: tiny hitbox, shown as the white dot
+    public const float BodyRadius = 0.3f;   // contact with melee enemies and trees
+    const float InvulnTime = 0.6f;
 
-    const float FireInterval = 0.11f;
-    const float SpellSpeed = 18f;
-    const float InvulnTime = 1.5f;
-    const float EdgeMargin = 0.4f;
+    public float MaxHealth = 100f;
+    public float MoveSpeed = 4.6f;
+    public float PickupRadius = 2.2f;
 
-    static readonly Color SpellColor = new Color(0.45f, 0.9f, 1f);
+    public float Health { get; private set; }
+    public bool IsAlive => Health > 0f;
+    public Vector2 Position => transform.position;
+    public Vector2 Facing { get; private set; } = Vector2.up;
 
-    public int Health { get; private set; }
-    public bool IsAlive => Health > 0;
+    public int Level { get; private set; } = 1;
+    public int Xp { get; private set; }
+    public int XpToNext => 3 + Level * 2 + Level * Level / 5;
 
-    float fireTimer;
+    public readonly List<Spell> Spells = new List<Spell>();
+
     float invulnTimer;
-    bool dragging;
-    Vector2 dragOffset;
     SpriteRenderer[] renderers;
+    Transform visual;
 
     public static Player Create(Vector2 position)
     {
         var go = new GameObject("Wizard");
         go.transform.position = position;
         var p = go.AddComponent<Player>();
-        p.Health = MaxHealth;
+        p.Health = p.MaxHealth;
         p.BuildVisual();
         return p;
     }
 
     void BuildVisual()
     {
+        visual = new GameObject("Visual").transform;
+        visual.SetParent(transform, false);
         var robe = new Color(0.45f, 0.25f, 0.85f);
-        SpriteFactory.Child(transform, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, 9);
-        SpriteFactory.Child(transform, "Robe", SpriteFactory.Triangle, robe, new Vector2(0f, -0.1f), 0.8f, 10);
-        SpriteFactory.Child(transform, "Head", SpriteFactory.Circle, new Color(1f, 0.85f, 0.7f), new Vector2(0f, 0.3f), 0.3f, 11);
-        SpriteFactory.Child(transform, "Hat", SpriteFactory.Triangle, robe * 0.7f + new Color(0, 0, 0, 0.3f), new Vector2(0f, 0.6f), 0.5f, 12);
-        SpriteFactory.Child(transform, "Hitbox", SpriteFactory.Circle, Color.white, Vector2.zero, HitRadius * 2f, 13);
+        SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.45f), 0.7f, 48);
+        SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, 49);
+        SpriteFactory.Child(visual, "Robe", SpriteFactory.Triangle, robe, new Vector2(0f, -0.1f), 0.8f, 50);
+        SpriteFactory.Child(visual, "Head", SpriteFactory.Circle, new Color(1f, 0.85f, 0.7f), new Vector2(0f, 0.3f), 0.3f, 51);
+        SpriteFactory.Child(visual, "Hat", SpriteFactory.Triangle, robe * 0.7f + new Color(0, 0, 0, 0.3f), new Vector2(0f, 0.6f), 0.5f, 52);
+        SpriteFactory.Child(visual, "Staff", SpriteFactory.Square, new Color(0.6f, 0.4f, 0.2f), new Vector2(0.38f, 0f), 1f, 53).transform.localScale = new Vector3(0.07f, 0.8f, 1f);
+        SpriteFactory.Child(visual, "Gem", SpriteFactory.Circle, new Color(0.5f, 0.95f, 1f), new Vector2(0.38f, 0.42f), 0.16f, 54);
+        SpriteFactory.Child(visual, "Hitbox", SpriteFactory.Circle, Color.white, Vector2.zero, HitRadius * 2f, 55);
         renderers = GetComponentsInChildren<SpriteRenderer>();
     }
 
     void Update()
     {
-        if (!IsAlive || GameManager.Instance.IsGameOver) return;
+        var gm = GameManager.Instance;
+        if (!IsAlive || gm.State != GameState.Playing) return;
+        float dt = Time.deltaTime;
 
-        HandleInput();
-
-        fireTimer -= Time.deltaTime;
-        if (fireTimer <= 0f)
+        Vector2 input = Joystick.Direction;
+        if (input.sqrMagnitude > 0.01f)
         {
-            fireTimer = FireInterval;
-            Fire();
+            Facing = input.normalized;
+            Vector2 pos = Position + input * MoveSpeed * dt;
+            transform.position = gm.Arena.PushOut(pos, BodyRadius);
+            if (Mathf.Abs(input.x) > 0.1f) visual.localScale = new Vector3(Mathf.Sign(input.x), 1f, 1f);
         }
+
+        foreach (var spell in Spells) spell.Tick(dt);
 
         if (invulnTimer > 0f)
         {
-            invulnTimer -= Time.deltaTime;
-            bool visible = invulnTimer <= 0f || Mathf.FloorToInt(invulnTimer * 12f) % 2 == 0;
+            invulnTimer -= dt;
+            bool visible = invulnTimer <= 0f || Mathf.FloorToInt(invulnTimer * 14f) % 2 == 0;
             foreach (var r in renderers) r.enabled = visible;
         }
     }
 
-    void HandleInput()
+    public T GetSpell<T>() where T : Spell
     {
-        Vector2 screenPos;
-        bool began;
-
-        if (Input.touchCount > 0)
-        {
-            var t = Input.GetTouch(0);
-            if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled) { dragging = false; return; }
-            screenPos = t.position;
-            began = t.phase == TouchPhase.Began;
-        }
-        else if (Input.GetMouseButton(0))
-        {
-            screenPos = Input.mousePosition;
-            began = Input.GetMouseButtonDown(0);
-        }
-        else
-        {
-            dragging = false;
-            return;
-        }
-
-        Vector2 world = Camera.main.ScreenToWorldPoint(screenPos);
-        if (began || !dragging)
-        {
-            dragging = true;
-            dragOffset = (Vector2)transform.position - world;
-        }
-
-        var b = GameManager.Instance.Bounds;
-        Vector2 target = world + dragOffset;
-        target.x = Mathf.Clamp(target.x, b.xMin + EdgeMargin, b.xMax - EdgeMargin);
-        target.y = Mathf.Clamp(target.y, b.yMin + EdgeMargin, b.yMax - EdgeMargin);
-        transform.position = target;
+        foreach (var s in Spells) if (s is T t) return t;
+        return null;
     }
 
-    void Fire()
+    public Spell GetSpell(SpellId id)
     {
-        Vector2 origin = (Vector2)transform.position + new Vector2(0f, 0.6f);
-        Projectile.Spawn(origin + new Vector2(-0.15f, 0f), new Vector2(-1f, SpellSpeed), Team.Player, SpellColor, 0.12f);
-        Projectile.Spawn(origin + new Vector2(0.15f, 0f), new Vector2(1f, SpellSpeed), Team.Player, SpellColor, 0.12f);
+        foreach (var s in Spells) if (s.Id == id) return s;
+        return null;
     }
 
-    // Returns true if the hit landed (false while invulnerable).
-    public bool TakeHit()
+    public Spell Learn(SpellId id)
     {
-        if (!IsAlive || invulnTimer > 0f) return false;
+        var existing = GetSpell(id);
+        if (existing != null) return existing;
+        var s = Spell.Create(id, this);
+        Spells.Add(s);
+        return s;
+    }
 
-        Health--;
+    public void AddXp(int amount)
+    {
+        Xp += amount;
+        while (Xp >= XpToNext)
+        {
+            Xp -= XpToNext;
+            Level++;
+            GameManager.Instance.QueueLevelUp();
+        }
+    }
+
+    public void Heal(float amount) => Health = Mathf.Min(MaxHealth, Health + amount);
+
+    public void TakeDamage(float amount)
+    {
+        if (!IsAlive || invulnTimer > 0f) return;
+
+        Health -= amount;
         invulnTimer = InvulnTime;
-        GameManager.Instance.Shake(0.25f);
+        GameManager.Instance.Shake(0.2f);
 
         if (!IsAlive)
         {
             foreach (var r in renderers) r.enabled = false;
+            Fx.Burst(Position, new Color(0.6f, 0.4f, 1f), 3f);
             GameManager.Instance.GameOver();
         }
-        return true;
     }
 }
