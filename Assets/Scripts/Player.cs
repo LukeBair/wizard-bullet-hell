@@ -80,7 +80,7 @@ public class Player : MonoBehaviour
         var sheet = SpriteSheet.Load("player_sheet");
         var art = ArtStyle.Get("player");
         if (sheet != null && sheet["idle"] != null)
-            anim = WizardAnimator.Attach(SpriteFactory.Child(visual, "Sprite", sheet["idle"].Frames[0], Color.white, new Vector2(0f, 0.2f), 1f, 50), sheet);
+            anim = WizardAnimator.Attach(SpriteFactory.Child(visual, "Sprite", sheet["idle"].Frames[0], Color.white, new Vector2(0f, 0.1f), 0.85f, 50), sheet);
         else if (art != null)
             SpriteFactory.Child(visual, "Sprite", art, Color.white, new Vector2(0f, 0.15f), 1f, 50);
         else
