@@ -15,10 +15,14 @@ public class Projectile : MonoBehaviour
     public float Damage = 10f;
     public float Lifetime = 3f;
     public int Pierce;               // extra enemies it can pass through
-    public float Homing;             // degrees per second it can turn toward the nearest enemy
+    public float Homing;             // degrees per second it can turn toward its target (nearest enemy, or the wizard)
+    public float HomingTime = 99f;   // stops steering after this long, so enemy homing shots can be dodged
+    public float WaveAmplitude;      // sideways weave, for wavy enemy shots
+    public float WaveFrequency = 6f;
     public float Knockback = 2f;
     public Action<Projectile, Enemy> OnHit;   // spell-specific effects (explode, burn, chain...)
 
+    float age;
     readonly HashSet<Enemy> hit = new HashSet<Enemy>();
     static readonly List<Enemy> scratch = new List<Enemy>();
 
@@ -54,18 +58,31 @@ public class Projectile : MonoBehaviour
         Vector2 pos = transform.position;
         if (Lifetime <= 0f || !gm.Arena.Inside(pos, 3f)) { Destroy(gameObject); return; }
 
-        if (Homing > 0f)
+        age += dt;
+        if (Homing > 0f && age < HomingTime)
         {
-            var target = Enemy.Nearest(pos, 8f, hit);
-            if (target != null)
+            Vector2? target = null;
+            if (Team == Team.Player)
+            {
+                var e = Enemy.Nearest(pos, 8f, hit);
+                if (e != null) target = e.Position;
+            }
+            else if (gm.Player != null) target = gm.Player.Position;
+
+            if (target.HasValue)
             {
                 float speed = Velocity.magnitude;
-                Vector3 want = (target.Position - pos).normalized * speed;
+                Vector3 want = (target.Value - pos).normalized * speed;
                 Velocity = Vector3.RotateTowards(Velocity, want, Homing * Mathf.Deg2Rad * dt, 0f);
             }
         }
 
         pos += Velocity * dt;
+        if (WaveAmplitude > 0f)
+        {
+            Vector2 side = new Vector2(-Velocity.y, Velocity.x).normalized;
+            pos += side * WaveAmplitude * WaveFrequency * Mathf.Cos(age * WaveFrequency) * dt;
+        }
         transform.position = pos;
 
         if (Team == Team.Player)
@@ -74,7 +91,7 @@ public class Projectile : MonoBehaviour
             scratch.AddRange(Enemy.All);
             foreach (var enemy in scratch)
             {
-                if (!enemy.IsAlive || hit.Contains(enemy)) continue;
+                if (!enemy.IsAlive || enemy.Hidden || hit.Contains(enemy)) continue;
                 float r = Radius + enemy.Radius;
                 if ((enemy.Position - pos).sqrMagnitude >= r * r) continue;
 

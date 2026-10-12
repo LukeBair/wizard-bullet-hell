@@ -4,6 +4,7 @@ using UnityEngine;
 public class Fx : MonoBehaviour
 {
     float life, maxLife, startScale, endScale;
+    bool pulse;   // telegraphs: blink in place instead of growing and fading
     SpriteRenderer sr;
     LineRenderer line;
     Color color;
@@ -14,6 +15,20 @@ public class Fx : MonoBehaviour
 
     public static void Ring(Vector2 pos, Color c, float radius, float duration = 0.35f) =>
         Make(pos, SpriteFactory.Ring, c, radius * 0.5f, radius * 2f, duration);
+
+    // Warning lane for a charge: a blinking strip from `from` along `dir`.
+    public static void Telegraph(Vector2 from, Vector2 dir, float length, float width, Color c, float duration)
+    {
+        var go = new GameObject("Telegraph");
+        go.transform.position = from + dir.normalized * length * 0.5f;
+        go.transform.up = dir;
+        go.transform.localScale = new Vector3(width, length, 1f);
+        var fx = go.AddComponent<Fx>();
+        fx.sr = SpriteFactory.Add(go, SpriteFactory.Square, c, 3);
+        fx.color = c;
+        fx.life = fx.maxLife = duration;
+        fx.pulse = true;
+    }
 
     public static void Bolt(Vector2 a, Vector2 b, Color c)
     {
@@ -59,7 +74,13 @@ public class Fx : MonoBehaviour
         float t = 1f - life / maxLife;
         var c = color;
         c.a *= 1f - t;
-        if (sr != null)
+        if (sr != null && pulse)
+        {
+            c = color;
+            c.a *= 0.5f + 0.5f * Mathf.Sin(t * 30f);
+            sr.color = c;
+        }
+        else if (sr != null)
         {
             sr.color = c;
             transform.localScale = Vector3.one * Mathf.Lerp(startScale, endScale, 1f - (1f - t) * (1f - t));

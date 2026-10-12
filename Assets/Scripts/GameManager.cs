@@ -63,6 +63,8 @@ public class GameManager : MonoBehaviour
         Clear<Enemy>();
         Clear<XpGem>();
         Clear<Fx>();
+        Clear<Hazard>();
+        Clear<DamageText>();
         if (Player != null) Destroy(Player.gameObject);
         if (Arena != null) Destroy(Arena.gameObject);
 
@@ -214,6 +216,7 @@ public class GameManager : MonoBehaviour
 
         UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
         UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
+        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Threat {Director.Threat + 1}  ·  Foes x{Director.HealthScale:0.##}", 20, TextAnchor.UpperCenter, new Color(1f, 0.6f, 0.5f));
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
         {
             State = GameState.Title;

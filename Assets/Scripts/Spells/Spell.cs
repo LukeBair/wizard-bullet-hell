@@ -151,7 +151,7 @@ public abstract class Spell
         int frost = RuneCount(Rune.Frost);
         if (frost > 0) e.ApplyChill(1f + 0.6f * frost);
 
-        e.TakeDamage(damage, push);
+        e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
 
         if (Fusions.Has(Fusion.Conduit) && Element == Element.Arcane && Random.value < 0.35f)
         {
@@ -177,7 +177,7 @@ public abstract class Spell
         var list = new List<Enemy>();
         foreach (var e in Enemy.All)
         {
-            if (!e.IsAlive) continue;
+            if (!e.IsAlive || e.Hidden) continue;
             float r = radius + e.Radius;
             if ((e.Position - center).sqrMagnitude < r * r) list.Add(e);
         }

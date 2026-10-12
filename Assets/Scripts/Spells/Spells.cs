@@ -174,6 +174,7 @@ public class Wisps : Spell
     protected override int BaseCount => 2;
 
     readonly List<Transform> orbs = new List<Transform>();
+    Transform track;   // faint ring showing the orbit, so it's clear where the wisps strike
     readonly Dictionary<Enemy, float> lastHit = new Dictionary<Enemy, float>();
     float angle;
 
@@ -204,6 +205,8 @@ public class Wisps : Spell
         if (Owner == null) return;
         foreach (var o in orbs) if (o != null) Object.Destroy(o.gameObject);
         orbs.Clear();
+        if (track != null) Object.Destroy(track.gameObject);
+        track = SpriteFactory.Child(Owner.transform, "WispOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.22f), Vector2.zero, OrbitRadius * 2f + OrbRadius, 47).transform;
         for (int i = 0; i < OrbCount; i++)
         {
             var go = new GameObject("Wisp");
@@ -229,6 +232,8 @@ public class Wisps : Spell
             {
                 if (lastHit.TryGetValue(e, out float t) && Time.time - t < hitEvery) continue;
                 lastHit[e] = Time.time;
+                Fx.Burst(e.Position, Color, 1f);
+                Fx.Ring(world, Color, OrbRadius * 1.5f, 0.2f);
                 Hit(e, Damage, local.normalized * 3f);
             }
         }

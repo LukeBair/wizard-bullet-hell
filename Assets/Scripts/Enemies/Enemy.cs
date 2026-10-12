@@ -19,6 +19,7 @@ public class Enemy : MonoBehaviour
     public bool IsChilled => chillTimer > 0f;
     public bool IsBurning => burnTimer > 0f;
     public Vector2 Position => transform.position;
+    public bool Hidden { get; private set; }   // burrowed: can't be hit or targeted
 
     float fireTimer;
     float stateTimer;
@@ -31,7 +32,9 @@ public class Enemy : MonoBehaviour
     float flash;
     float chillTimer;
     float burnTimer, burnDps;
+    float dodgeTimer;
     SpriteRenderer body;
+    SpriteRenderer[] renderers;
     Color bodyColor;
 
     public static Enemy Spawn(EnemyDef def, Vector2 position, float healthScale)
@@ -54,7 +57,7 @@ public class Enemy : MonoBehaviour
         float bestSq = maxRange * maxRange;
         foreach (var e in All)
         {
-            if (!e.IsAlive || (exclude != null && exclude.Contains(e))) continue;
+            if (!e.IsAlive || e.Hidden || (exclude != null && exclude.Contains(e))) continue;
             float sq = (e.Position - from).sqrMagnitude;
             if (sq < bestSq) { bestSq = sq; best = e; }
         }
@@ -86,6 +89,13 @@ public class Enemy : MonoBehaviour
                 Horn(s, -1, o, 0.45f, 70f, d.Color);
                 Horn(s, 1, o, 0.45f, 70f, d.Color);
                 break;
+            case EnemyLook.Pixie:
+                Wing(s, -1, o); Wing(s, 1, o);
+                break;
+            case EnemyLook.Mole:
+                Horn(s, -1, o, 0.3f, 40f, d.Accent);
+                Horn(s, 1, o, 0.3f, 40f, d.Accent);
+                break;
             case EnemyLook.Treant:
                 for (int i = 0; i < 5; i++)
                 {
@@ -96,6 +106,15 @@ public class Enemy : MonoBehaviour
         }
 
         body = SpriteFactory.Child(transform, "Body", SpriteFactory.Circle, bodyColor, Vector2.zero, s, o);
+
+        if (d.Look == EnemyLook.Mushroom)
+        {
+            SpriteFactory.Child(transform, "Cap", SpriteFactory.Circle, d.Accent, new Vector2(0f, 0.35f) * s, s, o + 2).transform.localScale = new Vector3(s * 1.3f, s * 0.7f, 1f);
+            for (int i = -1; i <= 1; i++)
+                SpriteFactory.Child(transform, "Spot", SpriteFactory.Circle, Color.white, new Vector2(i * 0.3f, 0.45f + (i == 0 ? 0.1f : 0f)) * s, s * 0.15f, o + 3);
+        }
+        if (d.Look == EnemyLook.Pixie)
+            SpriteFactory.Child(transform, "Sparkle", SpriteFactory.Glow, new Color(d.Accent.r, d.Accent.g, d.Accent.b, 0.6f), Vector2.zero, s * 2.2f, o - 3);
 
         if (d.Look == EnemyLook.Wizard || d.Look == EnemyLook.Witch)
         {
@@ -108,6 +127,13 @@ public class Enemy : MonoBehaviour
         SpriteFactory.Child(transform, "EyeR", SpriteFactory.Circle, eye, new Vector2(0.17f, 0.05f) * s, s * 0.17f, o + 1);
         SpriteFactory.Child(transform, "PupilL", SpriteFactory.Circle, Color.black, new Vector2(-0.17f, 0.03f) * s, s * 0.08f, o + 2);
         SpriteFactory.Child(transform, "PupilR", SpriteFactory.Circle, Color.black, new Vector2(0.17f, 0.03f) * s, s * 0.08f, o + 2);
+        renderers = GetComponentsInChildren<SpriteRenderer>();
+    }
+
+    void SetHidden(bool hidden)
+    {
+        Hidden = hidden;
+        foreach (var r in renderers) r.enabled = !hidden;
     }
 
     void Wing(float s, int side, int order)
@@ -160,7 +186,7 @@ public class Enemy : MonoBehaviour
         UpdateStatus(dt);
 
         float hit = Radius * 0.85f + Player.BodyRadius;
-        if ((player.Position - pos).sqrMagnitude < hit * hit)
+        if (!Hidden && (player.Position - pos).sqrMagnitude < hit * hit)
             player.TakeDamage(Def.ContactDamage);
     }
 
@@ -185,14 +211,21 @@ public class Enemy : MonoBehaviour
                 switch (state)
                 {
                     case 0:
-                        if (dist < 5f && stateTimer <= 0f) { state = 1; stateTimer = 0.55f; lockedDir = dir; }
+                        if (dist < 5f && stateTimer <= 0f)
+                        {
+                            state = 1; stateTimer = 0.7f; lockedDir = dir;
+                            // Warning lane showing exactly where the charge will go.
+                            Fx.Telegraph(Position, lockedDir, speed * 5f * 0.35f + Radius, Radius * 1.6f, new Color(1f, 0.25f, 0.2f, 0.45f), 0.7f);
+                        }
                         return dir * speed;
                     case 1:
-                        flash = Mathf.Max(flash, 0.4f);
+                        flash = Mathf.Max(flash, 0.5f + 0.5f * Mathf.Sin(Time.time * 40f));
+                        transform.position += (Vector3)(Random.insideUnitCircle * 0.04f);   // shiver
                         if (stateTimer <= 0f) { state = 2; stateTimer = 0.35f; }
                         return Vector2.zero;
                     case 2:
                         if (stateTimer <= 0f) { state = 3; stateTimer = 0.6f; }
+                        if (Random.value < 0.5f) Fx.Burst(Position - lockedDir * Radius, Def.Color * 0.8f, Radius * 1.5f);   // dust trail
                         return lockedDir * speed * 5f;
                     default:
                         if (stateTimer <= 0f) { state = 0; stateTimer = 1.4f; }
@@ -219,14 +252,85 @@ public class Enemy : MonoBehaviour
                 return KeepRange(dir, dist, speed);
             }
 
+            case EnemyBehavior.Splitter:
+                return dir * speed;
+
+            case EnemyBehavior.Lobber:
+            {
+                // Lead the target a little so standing still isn't the only answer.
+                TickFire(dt, dist, () =>
+                {
+                    Vector2 target = player.Position + Joystick.Direction * player.MoveSpeed * 0.6f + Random.insideUnitCircle * 0.5f;
+                    Hazard.Spawn(target, 1.3f, 1.2f, Def.BulletDamage, Def.Accent, Position);
+                });
+                return KeepRange(dir, dist, speed);
+            }
+
+            case EnemyBehavior.Trickster:
+            {
+                dodgeTimer -= dt;
+                if (dodgeTimer <= 0f && SpellIncoming())
+                {
+                    dodgeTimer = 2.5f;
+                    Vector2 side = new Vector2(-dir.y, dir.x) * (Random.value < 0.5f ? -1f : 1f);
+                    TeleportTo(Position + side * Random.Range(2f, 3f) - dir * 0.5f);
+                }
+                TickFire(dt, dist, () =>
+                {
+                    float a = AngleTo(player.Position);
+                    for (int i = 0; i < Def.Bullets; i++)
+                    {
+                        var p = Shoot(Position, a + (i - (Def.Bullets - 1) * 0.5f) * Def.Spread, Def.BulletSpeed);
+                        p.WaveAmplitude = 0.6f;
+                        p.WaveFrequency = 5f + i;
+                    }
+                });
+                return KeepRange(dir, dist, speed) + new Vector2(-dir.y, dir.x) * Mathf.Sin(Time.time * 3f + phase) * speed * 0.5f;
+            }
+
+            case EnemyBehavior.Burrower:
+            {
+                // 0 = walk, 1 = tunnelling (hidden), 2 = about to erupt (warning circle), 3 = recover
+                stateTimer -= dt;
+                switch (state)
+                {
+                    case 0:
+                        if (stateTimer <= 0f && dist < 9f) { state = 1; stateTimer = 2.2f; SetHidden(true); Fx.Burst(Position, Def.Color, 1.5f); }
+                        return dir * speed * 0.4f;
+                    case 1:
+                        if (Random.value < 0.3f) Fx.Burst(Position, Def.Color * 0.9f, 0.8f);   // dirt churning above it
+                        if (dist < 0.8f || stateTimer <= 0f)
+                        {
+                            state = 2; stateTimer = 0.8f;
+                            Hazard.Spawn(Position, 1.5f, 0.8f, Def.ContactDamage, Def.Accent);
+                        }
+                        return dir * speed;
+                    case 2:
+                        if (stateTimer <= 0f)
+                        {
+                            state = 3; stateTimer = 2.5f;
+                            SetHidden(false);
+                            Ring(Position, Def.Bullets, Def.BulletSpeed, Random.value * 360f);
+                        }
+                        return Vector2.zero;
+                    default:
+                        if (stateTimer <= 0f) { state = 0; stateTimer = 1.5f; }
+                        return dir * speed * 0.3f;
+                }
+            }
+
             case EnemyBehavior.BossTreant:
             {
                 fireTimer -= dt;
                 if (fireTimer <= 0f)
                 {
                     fireTimer = Def.FireInterval * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
-                    switch (attackIndex++ % 3)
+                    switch (attackIndex++ % 4)
                     {
+                        case 3:
+                            for (int i = 0; i < 5; i++)
+                                Hazard.Spawn(player.Position + Random.insideUnitCircle * 3f, 1.4f, 1.4f, 20f, Def.Accent, Position);
+                            break;
                         case 0: Ring(Position, Def.Bullets, Def.BulletSpeed, spinAngle += 10f); break;
                         case 1: Summon(GameManager.Instance.Arena.Biome.Roster.Chaff[0], 5); break;
                         default:
@@ -260,7 +364,14 @@ public class Enemy : MonoBehaviour
                     else if (state == 1)
                     {
                         fireTimer = 0.7f;
-                        Fan(Position, AngleTo(player.Position), 7, 10f, 5f);
+                        if (attackIndex++ % 2 == 0) Fan(Position, AngleTo(player.Position), 7, 10f, 5f);
+                        else
+                            for (int i = 0; i < 4; i++)
+                            {
+                                var p = Shoot(Position, AngleTo(player.Position) + 90f * i + 45f, 3f);
+                                p.Homing = 90f;
+                                p.HomingTime = 2.5f;
+                            }
                     }
                     else fireTimer = 0.2f;
                 }
@@ -294,11 +405,31 @@ public class Enemy : MonoBehaviour
             float a = Random.value * Mathf.PI * 2f;
             Vector2 p = gm.Player.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * range;
             if (!gm.Arena.Inside(p, -1f) || gm.Arena.Blocked(p, Radius)) continue;
-            Fx.Burst(Position, Def.Accent, Radius * 3f);
-            transform.position = p;
-            Fx.Burst(p, Def.Accent, Radius * 3f);
+            TeleportTo(p);
             return;
         }
+    }
+
+    void TeleportTo(Vector2 p)
+    {
+        var arena = GameManager.Instance.Arena;
+        p = arena.PushOut(p, Radius);
+        Fx.Burst(Position, Def.Accent, Radius * 3f);
+        Fx.Ring(Position, Def.Accent, Radius * 1.5f);
+        transform.position = p;
+        Fx.Burst(p, Def.Accent, Radius * 3f);
+    }
+
+    // A wizard spell heading our way and about to arrive.
+    bool SpellIncoming()
+    {
+        foreach (var p in Projectile.All)
+        {
+            if (p.Team != Team.Player) continue;
+            Vector2 to = Position - (Vector2)p.transform.position;
+            if (to.sqrMagnitude < 2.5f * 2.5f && Vector2.Dot(to, p.Velocity) > 0f) return true;
+        }
+        return false;
     }
 
     void Summon(EnemyDef def, int count)
@@ -325,12 +456,13 @@ public class Enemy : MonoBehaviour
             Shoot(from, offset + i * 360f / n, speed);
     }
 
-    void Shoot(Vector2 from, float angleDeg, float speed)
+    Projectile Shoot(Vector2 from, float angleDeg, float speed)
     {
         float rad = angleDeg * Mathf.Deg2Rad;
         var p = Projectile.Spawn(from, new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * speed, Team.Enemy, Def.Accent, 0.14f);
         p.Damage = Def.BulletDamage;
         p.Lifetime = 6f;
+        return p;
     }
 
     void UpdateStatus(float dt)
@@ -350,11 +482,12 @@ public class Enemy : MonoBehaviour
         body.color = Color.Lerp(c, Color.white, Mathf.Clamp01(flash));
     }
 
-    public void TakeDamage(float amount, Vector2 push = default)
+    public void TakeDamage(float amount, Vector2 push = default, Color? numberColor = null)
     {
-        if (!IsAlive) return;
+        if (!IsAlive || Hidden) return;
         Health -= amount;
         flash = 1f;
+        DamageText.Spawn(Position + Vector2.up * Radius, amount, numberColor ?? Color.white);
         if (!IsBoss) knockback += push;
         if (Health <= 0f) Die();
     }
@@ -377,6 +510,16 @@ public class Enemy : MonoBehaviour
         XpGem.Spawn(Position, Def.Xp);
         Fx.Burst(Position, Def.Color, Radius * 2.5f);
         Died?.Invoke(this);
+        if (Def.Behavior == EnemyBehavior.Splitter)
+        {
+            var small = gm.Arena.Biome.Roster.Chaff[0];
+            for (int i = 0; i < 3; i++)
+            {
+                float a = i * Mathf.PI * 2f / 3f + phase;
+                var child = Spawn(small, Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.5f, gm.Director.HealthScale);
+                child.knockback = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 6f;
+            }
+        }
         Destroy(gameObject);
     }
 }
