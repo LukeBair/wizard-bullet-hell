@@ -160,7 +160,9 @@ public class WaterPillar : MonoBehaviour
     SpriteRenderer column;
     Color color;
 
-    public static void Create(Vector2 at, float radius, float duration, Color color, Action<Enemy, Vector2> onHit)
+    float wet;
+
+    public static void Create(Vector2 at, float radius, float duration, Color color, Action<Enemy, Vector2> onHit, float wetTime = 2.5f)
     {
         var go = new GameObject("WaterPillar");
         go.transform.position = at;
@@ -168,6 +170,7 @@ public class WaterPillar : MonoBehaviour
         w.radius = radius;
         w.life = w.maxLife = duration;
         w.hit = onHit;
+        w.wet = wetTime;
         w.color = color;
         SpriteFactory.Child(go.transform, "Edge", SpriteFactory.Ring, new Color(color.r, color.g, color.b, 0.8f), Vector2.zero, radius * 2f, 74);
         w.column = SpriteFactory.Child(go.transform, "Column", SpriteFactory.Circle, new Color(0.7f, 0.9f, 1f, 0.55f), Vector2.zero, radius * 1.7f, 75);
@@ -191,7 +194,7 @@ public class WaterPillar : MonoBehaviour
         Vector2 c = transform.position;
         foreach (var e in Spell.EnemiesWithin(c, radius))
         {
-            e.ApplyWet(2.5f);
+            e.ApplyWet(wet);
             hit(e, (e.Position - c).normalized * 6f);
         }
         if (UnityEngine.Random.value < 0.6f) Fx.Burst(c + UnityEngine.Random.insideUnitCircle * radius * 0.6f, color, 0.8f);

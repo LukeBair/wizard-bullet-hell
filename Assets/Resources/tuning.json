@@ -288,6 +288,7 @@
     "frostbiteTakenBoss": 0.2,
     "shatter": 0.3,
     "shatterBoss": 0.1,
+    "shatterChainDepth": 3,
     "rootBossFactor": 0.25,
     "thornBumpFactor": 1.0
   },
@@ -351,6 +352,9 @@
       "pushPerPierce": 3,
       "frostbite_t3": 0.35,
       "frostbitePerFrostRune_t3": 0.25,
+      "shatterSpread_t3": 0.5,
+      "shatterSpreadRadius_t3": 1.8,
+      "_shatterSpread_t3": "Tier III: frostbite given to foes within shatterSpreadRadius_t3 when a foe shatters (status.shatterChainDepth caps the chain).",
       "potencyPerRune": 0.2,
       "areaPerRune": 0.15
     },
@@ -383,7 +387,9 @@
       "hitEvery": 0.5,
       "quietSeconds_t2": 3,
       "quietHeal_t2": 0.1,
-      "hitHeal_t3": 0.01,
+      "bonusWispLife_t3": 6,
+      "maxBonusWisps_t3": 4,
+      "_bonusWispLife_t3": "Tier III: each kill adds a wisp to the inner ring for this many seconds, up to maxBonusWisps_t3 extra.",
       "potencyPerRune": 0.3,
       "areaPerRune": 0.15
     },
@@ -415,6 +421,8 @@
       "rootTime_t3": 2.2,
       "thornDps_t2": 8,
       "thornDps_t3": 8,
+      "deathBloomScale_t3": 0.75,
+      "_deathBloomScale_t3": "Tier III: size of the vine patch a dying trapped foe sprouts, relative to the normal patch.",
       "_thornDps_t2": "Damage per second to trapped foes; foes bumping a trapped foe take this much per bump."
     },
     "Veil": {
@@ -450,7 +458,9 @@
       "push_t3": 12,
       "coneAngle_t2": 35,
       "coneAngle_t3": 35,
-      "pillarEvery_t3": 5,
+      "pillarEvery_t3": 2.5,
+      "pillarWet_t3": 5,
+      "_pillarWet_t3": "Tier III: seconds a water pillar keeps foes Wet.",
       "pillarDuration_t3": 2,
       "pillarRadius_t3": 1.3,
       "pillarDamage_t3": 1.5,

@@ -95,7 +95,7 @@ public class Rejuvenate : Spell
 
 // Vines burst under a group of foes and hold them in place. Rooted foes can still shoot,
 // but can't hurt you by touch. II: thorns bleed trapped foes and hurt foes that bump into them.
-// III: foes that bump into trapped foes get trapped too.
+// III: foes that bump into trapped foes get trapped too, and trapped foes that die sprout fresh vines.
 public class Overgrowth : Spell
 {
     public override string Name => "Overgrowth";
@@ -112,7 +112,7 @@ public class Overgrowth : Spell
     public override string TierName(int tier) => tier == 2 ? "Thornweave" : tier == 3 ? "Strangling Bramble" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Thorns: trapped foes take damage over time, and foes that run into them get hurt."
-                  : "Thorns, and foes that touch a trapped foe get trapped too.";
+                  : "Thorns, foes that touch a trapped foe get trapped too, and trapped foes that die burst into a fresh patch of vines.";
 
     public override string RuneEffect(Rune r)
     {
@@ -134,16 +134,28 @@ public class Overgrowth : Spell
         {
             var target = Enemy.Nearest(Owner.Position, Range, used) ?? Enemy.Nearest(Owner.Position, Range);
             if (target == null) return;
-            Vector2 at = target.Position;
-            Fx.Ring(at, Color, Radius, 0.5f);
-            Fx.Burst(at, new Color(0.2f, 0.6f, 0.15f, 0.6f), Radius * 2f);
-            foreach (var e in EnemiesWithin(at, Radius))
-            {
-                used.Add(e);
-                e.Root(RootTime, 0.15f * RuneCount(Rune.Pierce), ThornDps, Tier == 3);
-                Hit(e, Damage);
-            }
+            foreach (var e in Vines(target.Position, Radius)) used.Add(e);
         }
+    }
+
+    System.Collections.Generic.List<Enemy> Vines(Vector2 at, float radius)
+    {
+        Fx.Ring(at, Color, radius, 0.5f);
+        Fx.Burst(at, new Color(0.2f, 0.6f, 0.15f, 0.6f), radius * 2f);
+        var caught = EnemiesWithin(at, radius);
+        foreach (var e in caught)
+        {
+            e.Root(RootTime, 0.15f * RuneCount(Rune.Pierce), ThornDps, Tier == 3, Tier == 3 ? DeathBloom : null);
+            Hit(e, Damage);
+        }
+        return caught;
+    }
+
+    // Strangling Bramble: a trapped foe that dies sprouts a smaller patch of vines where it fell.
+    void DeathBloom(Vector2 at)
+    {
+        if (Owner == null) return;
+        Vines(at, Radius * T("deathBloomScale_t3", 0.75f));
     }
 }
 
@@ -250,7 +262,7 @@ public class TidalLance : Spell
     public override string TierName(int tier) => tier == 2 ? "Torrent" : tier == 3 ? "Monsoon" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Sprays a wide cone instead of a beam, pushing foes back hard."
-                  : $"The cone, plus every {Secs(T("pillarEvery_t3", 5f))} pillars of water erupt under foes for {T("pillarDuration_t3", 2f):0.#}s.";
+                  : $"The cone, plus every {Secs(T("pillarEvery_t3", 2.5f))} pillars of water erupt under foes for {T("pillarDuration_t3", 2f):0.#}s, leaving them Wet for {T("pillarWet_t3", 5f):0.#}s.";
 
     public override string RuneEffect(Rune r)
     {
@@ -285,14 +297,14 @@ public class TidalLance : Spell
         if (Tier < 3 || Owner == null) return;
         pillarTimer -= dt;
         if (pillarTimer > 0f) return;
-        pillarTimer = T("pillarEvery_t3", 5f) * Tuning.CastRate;
+        pillarTimer = T("pillarEvery_t3", 2.5f) * Tuning.CastRate;
         var used = new System.Collections.Generic.List<Enemy>();
         for (int i = 0; i < Count; i++)
         {
             var e = Enemy.Nearest(Owner.Position, Range, used);
             if (e == null) return;
             used.Add(e);
-            WaterPillar.Create(e.Position, T("pillarRadius_t3", 1.3f) * Area, T("pillarDuration_t3", 2f), Color, (x, p) => Hit(x, Damage * T("pillarDamage_t3", 1.5f), p));
+            WaterPillar.Create(e.Position, T("pillarRadius_t3", 1.3f) * Area, T("pillarDuration_t3", 2f), Color, (x, p) => Hit(x, Damage * T("pillarDamage_t3", 1.5f), p), T("pillarWet_t3", 5f));
         }
     }
 }

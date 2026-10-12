@@ -46,6 +46,9 @@ public class Enemy : MonoBehaviour
     float chillTimer, wetTimer, rootTimer, rootVuln;
     float thornDps, thornTick;   // evolved Overgrowth: trapped foes bleed, and hurt (or trap) foes that bump them
     bool thornSpread;
+    Action<Vector2> rootDeathBloom;   // Strangling Bramble: a trapped foe that dies sprouts new vines
+    float shatterSpread, shatterRadius;
+    static int shatterChain;
     float burnTimer, burnDps;
     float frostbite;
     float curseBonus;
@@ -267,7 +270,7 @@ public class Enemy : MonoBehaviour
         {
             // Bumped into a thorn-trapped foe.
             thornTick = 0.5f;
-            if (thorns.thornSpread) Root(thorns.rootTimer, thorns.rootVuln, thorns.thornDps, true);
+            if (thorns.thornSpread) Root(thorns.rootTimer, thorns.rootVuln, thorns.thornDps, true, thorns.rootDeathBloom);
             TakeDamage(thorns.thornDps * Tune.F("status.thornBumpFactor", 1f), default, new Color(0.5f, 0.85f, 0.3f));
             if (!IsAlive) return;
         }
@@ -734,7 +737,7 @@ public class Enemy : MonoBehaviour
                 Health -= thornDps * dt;
                 if (Health <= 0f) { Die(); return; }
             }
-            if (rootTimer <= 0f) { thornDps = 0f; thornSpread = false; }
+            if (rootTimer <= 0f) { thornDps = 0f; thornSpread = false; rootDeathBloom = null; }
         }
         if (infestTimer > 0f) infestTimer -= dt;
         if (steamCooldown > 0f) steamCooldown -= dt;
@@ -802,8 +805,9 @@ public class Enemy : MonoBehaviour
 
     public void ApplyWet(float duration) => wetTimer = Mathf.Max(wetTimer, duration);
 
-    public void Root(float duration, float vulnerability, float thornsDps = 0f, bool spreads = false)
+    public void Root(float duration, float vulnerability, float thornsDps = 0f, bool spreads = false, Action<Vector2> deathBloom = null)
     {
+        if (deathBloom != null) rootDeathBloom = deathBloom;
         rootTimer = Mathf.Max(rootTimer, IsBoss ? duration * Tune.F("status.rootBossFactor", 0.25f) : duration);
         rootVuln = Mathf.Max(rootVuln, vulnerability);
         thornDps = Mathf.Max(thornDps, thornsDps);
@@ -811,11 +815,22 @@ public class Enemy : MonoBehaviour
     }
 
     // Stacking slow from evolved Frost Nova. At 100% the enemy shatters.
-    public void AddFrostbite(float amount)
+    // spread > 0 (Shatterstorm): when this foe shatters, foes near it gain that much frostbite,
+    // so shatters can chain through a pack (up to status.shatterChainDepth links).
+    public void AddFrostbite(float amount, float spread = 0f, float spreadRadius = 0f)
     {
         frostbite += amount * FrostResist;
+        shatterSpread = Mathf.Max(shatterSpread, spread);
+        shatterRadius = Mathf.Max(shatterRadius, spreadRadius);
         if (frostbite < 1f) return;
         frostbite = 0f;
+        if (shatterSpread > 0f && shatterChain < Tune.I("status.shatterChainDepth", 3))
+        {
+            shatterChain++;
+            foreach (var e in Spell.EnemiesWithin(Position, shatterRadius))
+                if (e != this) e.AddFrostbite(shatterSpread, shatterSpread, shatterRadius);
+            shatterChain--;
+        }
         float dmg = Health * (IsBoss ? Tune.F("status.shatterBoss", 0.1f) : Tune.F("status.shatter", 0.3f));
         Fx.Burst(Position, new Color(0.7f, 0.95f, 1f), Radius * 4f);
         Fx.Ring(Position, Color.white, Radius * 2f);
@@ -931,6 +946,7 @@ public class Enemy : MonoBehaviour
         Particles.Death(Position, Def.Look, Radius, Def.Tier);
         if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();
+        if (IsRooted) rootDeathBloom?.Invoke(Position);
         Died?.Invoke(this);
         if (Def.Behavior == EnemyBehavior.Splitter)
         {
