@@ -5,7 +5,7 @@ public class DamageText : MonoBehaviour
 {
     const int MaxLive = 60;
     static int live;
-    static Font font;
+    static Font builtin;
 
     float life;
     TextMesh text;
@@ -14,7 +14,8 @@ public class DamageText : MonoBehaviour
     public static void Spawn(Vector2 pos, float amount, Color color)
     {
         if (live >= MaxLive || amount < 0.5f) return;
-        if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (builtin == null) builtin = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        var font = UI.Font != null ? UI.Font : builtin;
 
         var go = new GameObject("Dmg");
         go.transform.position = pos + new Vector2(Random.Range(-0.2f, 0.2f), 0.3f);
@@ -23,9 +24,9 @@ public class DamageText : MonoBehaviour
         d.text.font = font;
         d.text.text = Mathf.RoundToInt(amount).ToString();
         d.text.fontSize = 48;
-        d.text.characterSize = 0.05f;
+        d.text.characterSize = 0.05f * UI.FontScale;
         d.text.anchor = TextAnchor.MiddleCenter;
-        d.text.fontStyle = FontStyle.Bold;
+        d.text.fontStyle = font == builtin ? FontStyle.Bold : FontStyle.Normal;
         d.color = color;
         d.text.color = color;
         var mr = go.GetComponent<MeshRenderer>();

@@ -14,6 +14,18 @@
   "audio": {
     "volume": 1
   },
+  "hud": {
+    "fontScale": 1.2,
+    "_fontScale": "Text size multiplier for the pixel font (Dusk and CRT); VT323 draws small for its point size.",
+    "effectCounters": {
+      "enabled": true,
+      "size": 0.035,
+      "offset": 0.6,
+      "life": 0.9,
+      "rise": 0.6,
+      "_about": "The small x### tallies over combos and bug bursts. size = text scale (damage numbers are 0.05), offset = units above the trigger spot, life in seconds, rise in units/s."
+    }
+  },
   "fx": {
     "enabled": true,
     "maxParticles": 1500,
@@ -175,8 +187,8 @@
     "maxEnemies": 200,
     "bossEvery": 150,
     "swarmEvery": 50,
-    "firstMediumAt": 60,
-    "chaffBase": 0.4,
+    "firstMediumAt": 50,
+    "chaffBase": 0.5,
     "chaffPerSecond": 0.00217,
     "chaffPerThreat": 0.05,
     "chaffMax": 10,
@@ -195,7 +207,14 @@
     "healthPerBossKill": 1,
     "bossHealthScaleRate": 0.5,
     "bossKillHeal": 50,
-    "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) + run.zoneRateStep*zones cleared, capped at chaffMax."
+    "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) * chaffScale + chaffAdd, capped at chaffMax. chaffScale and chaffAdd come from the zone's row in zones (defaults 1 and run.zoneRateStep*zones cleared).",
+    "zones": [
+      { "_name": "Zone 1: stage rules (mediums every mediumEveryStage0/1)" },
+      { "_name": "Zone 2: calm, few chaff, a couple of mediums", "chaffScale": 0.45, "chaffAdd": 0, "mediumEvery": 6.5, "packMin": 1, "packMax": 2, "casterWeight": 0.5 },
+      { "_name": "Zone 3: lots of chaff, medium packs", "chaffAdd": 1.5, "mediumEvery": 7, "packMin": 2, "packMax": 2, "casterWeight": 1 },
+      { "_name": "Zone 4", "chaffAdd": 3, "mediumEvery": 6, "packMin": 2, "packMax": 3, "casterWeight": 1 }
+    ],
+    "_zones": "One row per zone (first row = zone 1). Any key a row leaves out uses the default. chaffScale multiplies the chaff curve, chaffAdd is extra chaff per second. mediumEvery (seconds) switches the zone to packs of packMin..packMax mediums from one direction. casterWeight is how likely caster-type mediums are (1 = normal)."
   },
   "run": {
     "bosses": 4,
@@ -318,7 +337,7 @@
     "shatterBoss": 0.1,
     "shatterChainDepth": 3,
     "rootBossFactor": 0.25,
-    "thornBumpFactor": 1.0
+    "thornBumpFactor": 1
   },
   "combos": {
     "conductiveMultiplier": 1.5,
@@ -523,7 +542,9 @@
       "damage": 12,
       "cooldown": 1,
       "count": 1,
-      "shardSize": 0.32,
+      "shardLength": 1,
+      "shardThickness": 0.16,
+      "_shardLength": "Each mirror shard is a curved bar along its ring: length along the ring and thickness, in world units (Area scales both).",
       "spinSpeed": 160,
       "boltSpeed": 10,
       "homing_t2": 300,

@@ -901,6 +901,7 @@ public class Enemy : MonoBehaviour
         float radius = fire ? Tune.F("combos.firebugsRadius", 2f) : Tune.F("runes.Infest.burstRadius", 1.4f);
         if (fire) Interactions.Trigger(Interaction.Firebugs, Position);
         if (hex) Interactions.Trigger(Interaction.HexSwarm, Position);
+        if (!fire && !hex) EffectCounter.Count("Bug Burst", Position, new Color(0.6f, 0.75f, 0.2f));
         var c = fire ? new Color(1f, 0.6f, 0.2f) : new Color(0.6f, 0.75f, 0.2f);
         Fx.Burst(Position, c, radius * 2f);
         Fx.Ring(Position, c, radius, 0.3f);

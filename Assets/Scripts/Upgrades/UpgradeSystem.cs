@@ -68,6 +68,10 @@ public abstract class UpgradeSystem
     // Optional extra HUD (e.g. element levels).
     public virtual void DrawHud(Rect area) { }
 
+    // What the pause menu shows for each spell.
+    public virtual IReadOnlyList<Rune> SocketedRunes(Spell spell) => Array.Empty<Rune>();
+    public virtual int SocketCount => 0;
+
     protected List<SpellId> UnlearnedSpells()
     {
         var list = new List<SpellId>();

@@ -32,7 +32,7 @@ The first line is `run_start`. A finished run ends with `death`, `win` or `quit`
 | `tick` | `hp`, `maxHp`, `level`, `xp`, `xpToNext`, `chaff`, `medium` (alive), `bullets` (enemy bullets in flight), `gems` (on the ground), `threat`, `healthScale` | Every `telemetry.snapshotEvery` seconds |
 | `death` | `killer`, `level`, `boss` (if a boss was up), `alive` (enemies) | The wizard dies |
 | `win` | `level` | The last boss dies |
-| `quit` | `level`, `hp` | The run is left from the Menu button |
+| `quit` | `level`, `hp` | The run is ended from the pause menu (Quit or Restart) |
 | `summary` | `run`, `outcome` (`death`, `win`, `quit`), `duration`, `level`, `bossesDefeated`, `threat`, `healthScale`, `kills`, `score`, `gold` (paid out), `killer`, `spells` (`[{id, name, tier, level, runes: {Rune: count}}]`; rune counts include power kept through evolutions), `enemies` (`{name: {tier, spawned, killed, despawned, avgLife, hitsOnPlayer, damageToPlayer}}`), `damageTaken` (`{total, hits, blocked, bySource, byKind}`), `picks` (`{runes: {Rune: n}, tomes, evolves, rests}`), `aliveAtEnd` (`{name: count}`) | Last line |
 
 Enemy `id`s tie `spawn`, `kill`, `boss_spawn` and `boss_kill` lines together. Enemies cleared by a zone change count as `despawned` in the summary and have no `kill` line.

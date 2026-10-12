@@ -14,12 +14,30 @@ public static class Interactions
 {
     static readonly HashSet<Interaction> seen = new HashSet<Interaction>();
 
-    public static void Reset() => seen.Clear();
+    public static void Reset()
+    {
+        seen.Clear();
+        EffectCounter.Reset();
+    }
 
     public static void Trigger(Interaction i, Vector2 at)
     {
         if (seen.Add(i)) GameManager.Instance.Toast($"Combo: {Name(i)}!");
         Particles.Combo(i, at);
+        EffectCounter.Count(Name(i), at, Tint(i));
+    }
+
+    // Text colour for the combo's x### counter.
+    public static Color Tint(Interaction i)
+    {
+        switch (i)
+        {
+            case Interaction.Steam: return new Color(0.95f, 0.95f, 0.95f);
+            case Interaction.Conductive: return new Color(1f, 0.95f, 0.4f);
+            case Interaction.DeepFreeze: return new Color(0.7f, 0.95f, 1f);
+            case Interaction.Firebugs: return new Color(1f, 0.6f, 0.2f);
+            default: return new Color(0.8f, 0.45f, 1f);
+        }
     }
 
     public static string Name(Interaction i)
