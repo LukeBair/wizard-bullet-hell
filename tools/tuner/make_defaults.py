@@ -44,6 +44,8 @@ tuning = {
     },
     "runes": {
         "sockets": 4, "maxSpells": 5, "tomeEveryLevels": 2, "resonanceCount": 3,
+        "evolveRetain": 0.75,
+        "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
         "Potency": {"weight": 10},
         "Haste": {"weight": 10, "cooldownMultiplier": 0.85},
         "Split": {"weight": 2.5},

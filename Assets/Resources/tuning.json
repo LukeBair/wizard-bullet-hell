@@ -7,13 +7,13 @@
     "_castRate": "Multiplies every spell cooldown and enemy attack interval."
   },
   "audio": {
-    "volume": 1.0
+    "volume": 1
   },
   "player": {
     "MaxHealth": 100,
     "MoveSpeed": 4.6,
-    "PickupRadius": 2.2,
-    "invulnTime": 0.6
+    "PickupRadius": 1.5,
+    "invulnTime": 1
   },
   "xp": {
     "base": 3,
@@ -24,19 +24,19 @@
     "_formula": "floor(base + perLevel*L + L^2/quadDivisor) * stepMultiplier^(L/stepEvery)"
   },
   "drops": {
-    "xpMultiplier": 1.0,
+    "xpMultiplier": 3,
     "extra": [
       {
         "name": "Lucky gem",
         "tier": "Any",
-        "chance": 0.0,
-        "xp": 10,
+        "chance": 0,
+        "xp": 5,
         "heal": 0
       },
       {
         "name": "Medium heal",
         "tier": "Medium",
-        "chance": 0.0,
+        "chance": 0,
         "xp": 0,
         "heal": 10
       }
@@ -46,18 +46,18 @@
   "spawning": {
     "maxEnemies": 200,
     "bossEvery": 150,
-    "swarmEvery": 45,
-    "firstMediumAt": 40,
+    "swarmEvery": 50,
+    "firstMediumAt": 60,
     "chaffBase": 0.4,
-    "chaffPerSecond": 0.00417,
-    "chaffPerThreat": 0.1,
-    "chaffPerBossKill": 1.2,
+    "chaffPerSecond": 0.00217,
+    "chaffPerThreat": 0.05,
+    "chaffPerBossKill": 0.5,
     "chaffMax": 10,
-    "mediumEveryStage0": 14,
-    "mediumEveryStage1": 11,
+    "mediumEveryStage0": 10,
+    "mediumEveryStage1": 8,
     "pairChanceStage1": 0.3,
     "mediumEveryStage2": 6,
-    "mediumEveryMin": 2.5,
+    "mediumEveryMin": 1.5,
     "maxPack": 5,
     "swarmBasePreBoss": 14,
     "swarmPerThreatPreBoss": 3,
@@ -65,9 +65,9 @@
     "swarmPerThreat": 6,
     "casterWeightPreBoss": 0.25,
     "healthPerSwarm": 0.25,
-    "healthPerBossKill": 1.0,
+    "healthPerBossKill": 1,
     "bossHealthScaleRate": 0.5,
-    "bossKillHeal": 30,
+    "bossKillHeal": 50,
     "_chaff": "Chaff per second = (chaffBase + seconds*chaffPerSecond) * (1 + chaffPerThreat*swarms) * (1 + chaffPerBossKill*bossKills), capped at chaffMax."
   },
   "runes": {
@@ -75,6 +75,8 @@
     "maxSpells": 5,
     "tomeEveryLevels": 2,
     "resonanceCount": 3,
+    "evolveRetain": 0.75,
+    "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
     "Potency": {
       "weight": 10
     },
@@ -101,22 +103,22 @@
     },
     "Frost": {
       "weight": 10,
-      "chillBase": 1.0,
+      "chillBase": 1,
       "chillPerRune": 0.6
     },
     "Curse": {
-      "weight": 10,
+      "weight": 2.5,
       "bonusPerRune": 0.5,
       "maxBonus": 5
     },
     "Infest": {
       "weight": 10,
       "burstPerRune": 0.5,
-      "duration": 1.0,
+      "duration": 1,
       "burstRadius": 1.4
     },
     "Bless": {
-      "weight": 10,
+      "weight": 2.5,
       "chancePerRune": 0.15,
       "maxChance": 0.8,
       "gemMultiplier": 4,
@@ -127,7 +129,7 @@
   "status": {
     "chillSlow": 0.5,
     "frostbiteMaxSlow": 0.6,
-    "frostbiteTakenChaff": 1.0,
+    "frostbiteTakenChaff": 1,
     "frostbiteTakenMedium": 0.55,
     "frostbiteTakenBoss": 0.2,
     "shatter": 0.3,
@@ -139,7 +141,7 @@
     "steamBaseDamage": 10,
     "steamHealthFraction": 0.08,
     "steamMaxDamage": 60,
-    "firebugsRadius": 2.0
+    "firebugsRadius": 2
   },
   "spells": {
     "ArcaneMissile": {
@@ -163,7 +165,7 @@
       "damage_t3": 30,
       "cooldown": 2.1,
       "count": 1,
-      "radius": 1.0,
+      "radius": 1,
       "radius_t2": 1.8,
       "radius_t3": 1.8,
       "speed": 7.5,
@@ -184,7 +186,7 @@
       "damage": 10,
       "cooldown": 2.6,
       "count": 1,
-      "radius": 2.0,
+      "radius": 2,
       "radius_t2": 2.4,
       "radius_t3": 2.8,
       "chill_t2": 1.8,
@@ -200,8 +202,8 @@
       "damage": 18,
       "cooldown": 1.5,
       "count": 1,
-      "splash": 1.0,
-      "splash_t2": 1.0,
+      "splash": 1,
+      "splash_t2": 1,
       "splashDamage": 0.5,
       "splashDamage_t2": 0.5,
       "jumps_t2": 2,
@@ -263,7 +265,7 @@
       "damage": 4,
       "cooldown": 6,
       "count": 1,
-      "radius": 3,
+      "radius": 2,
       "duration": 2.5,
       "pull": 9,
       "distance": 4.5,

@@ -14,7 +14,10 @@ public enum Rune { Potency, Haste, Split, Pierce, Area, Echo, Ember, Frost, Curs
 
 // A spell the wizard casts automatically. Subclasses define the base numbers and what a cast does;
 // runes stack on top and are read through the computed properties below. Some spells can Evolve
-// (tier 1 -> 3): evolving clears that spell's runes in exchange for a stronger base form.
+// (tier 1 -> 3): evolving empties that spell's sockets for a stronger base form, but keeps a share
+// of the runes' power (runes.evolveRetain, default 75%). Kept power can be fractional: continuous
+// effects (Potency, Area, Haste, Ember...) use it directly, and whole-number effects (Split, Pierce,
+// Echo) roll the fraction as a chance each cast, e.g. 1.5 Pierce = 1 pierce plus a 50% chance of 2.
 public abstract class Spell
 {
     public static readonly SpellId[] AllIds = (SpellId[])System.Enum.GetValues(typeof(SpellId));
@@ -37,10 +40,28 @@ public abstract class Spell
     public virtual bool CanEvolve => false;
 
     readonly int[] runes = new int[System.Enum.GetValues(typeof(Rune)).Length];
+    readonly float[] retained = new float[System.Enum.GetValues(typeof(Rune)).Length];   // kept through evolutions
     float timer = 0.3f;
     readonly List<float> echoes = new List<float>();
+    int rolledSplit, rolledPierce, rolledEcho;   // whole-number rune effects, rolled per cast
 
-    public int RuneCount(Rune r) => runes[(int)r];
+    // Socketed runes plus power kept from evolving (may be fractional).
+    public float RuneCount(Rune r) => runes[(int)r] + retained[(int)r];
+    public float Retained(Rune r) => retained[(int)r];
+
+    // A fractional count becomes a chance: 1.5 -> 1, or 2 half the time.
+    static int Roll(float v)
+    {
+        int whole = Mathf.FloorToInt(v);
+        return whole + (Random.value < v - whole ? 1 : 0);
+    }
+
+    protected void Reroll()
+    {
+        rolledSplit = Roll(RuneCount(Rune.Split));
+        rolledPierce = Roll(RuneCount(Rune.Pierce));
+        rolledEcho = Roll(RuneCount(Rune.Echo));
+    }
     public int TotalRunes { get { int n = 0; foreach (var r in runes) n += r; return n; } }
     public int Level => 1 + TotalRunes;
 
@@ -53,10 +74,10 @@ public abstract class Spell
     public float Potency => 1f + PotencyStep * RuneCount(Rune.Potency);
     public float Damage => TT("damage", BaseDamage) * Potency;
     public float Cooldown => TT("cooldown", BaseCooldown) * Tuning.CastRate * Mathf.Pow(Tune.F("runes.Haste.cooldownMultiplier", 0.85f), RuneCount(Rune.Haste));
-    public int Count => Mathf.RoundToInt(TT("count", BaseCount)) + RuneCount(Rune.Split);
-    public int PierceCount => Mathf.RoundToInt(TT("pierce", BasePierce)) + RuneCount(Rune.Pierce);
+    public int Count => Mathf.RoundToInt(TT("count", BaseCount)) + rolledSplit;
+    public int PierceCount => Mathf.RoundToInt(TT("pierce", BasePierce)) + rolledPierce;
     public float Area => 1f + AreaStep * RuneCount(Rune.Area);
-    public int Echoes => RuneCount(Rune.Echo);
+    public int Echoes => rolledEcho;
     public virtual float CooldownProgress => 1f - Mathf.Clamp01(timer / Cooldown);
     protected float Range => GameManager.Instance.TargetRange;
 
@@ -109,16 +130,32 @@ public abstract class Spell
     public void AddRune(Rune r, int amount = 1)
     {
         runes[(int)r] += amount;
+        Reroll();
         OnRunesChanged();
     }
 
-    // Raise the tier and wipe all runes.
+    // Raise the tier, empty the sockets and keep a share of their power.
     public void Evolve()
     {
         if (!CanEvolve || Tier >= MaxTier) return;
         Tier++;
-        for (int i = 0; i < runes.Length; i++) runes[i] = 0;
+        float keep = Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.75f));
+        for (int i = 0; i < runes.Length; i++)
+        {
+            retained[i] = (retained[i] + runes[i]) * keep;
+            runes[i] = 0;
+        }
+        Reroll();
         OnRunesChanged();
+    }
+
+    // "Pierce 1.5 · Potency 0.75" for the UI; empty if nothing was kept.
+    public string RetainedSummary()
+    {
+        var parts = new List<string>();
+        for (int i = 0; i < retained.Length; i++)
+            if (retained[i] > 0.01f) parts.Add($"{(Rune)i} {retained[i]:0.##}");
+        return string.Join(" · ", parts);
     }
 
     // What the next tier does, for the evolve card.
@@ -131,12 +168,13 @@ public abstract class Spell
         for (int i = echoes.Count - 1; i >= 0; i--)
         {
             echoes[i] -= dt;
-            if (echoes[i] <= 0f) { echoes.RemoveAt(i); Cast(); }
+            if (echoes[i] <= 0f) { echoes.RemoveAt(i); Reroll(); Cast(); }
         }
 
         timer -= dt;
         if (timer > 0f || !Ready()) return;
         timer = Cooldown;
+        Reroll();
         Cast();
         if (EchoRecasts)
             for (int i = 1; i <= Echoes; i++) echoes.Add(0.22f * i);
@@ -210,18 +248,18 @@ public abstract class Spell
             Interactions.Trigger(Interaction.DeepFreeze, e.Position);
         }
 
-        int ember = RuneCount(Rune.Ember);
+        float ember = RuneCount(Rune.Ember);
         if (ember > 0) e.ApplyBurn(Damage * Tune.F("runes.Ember.burnPerRune", 0.4f) * ember, Tune.F("runes.Ember.duration", 2.5f));
-        int frost = RuneCount(Rune.Frost);
+        float frost = RuneCount(Rune.Frost);
         if (frost > 0) e.ApplyChill(Tune.F("runes.Frost.chillBase", 1f) + Tune.F("runes.Frost.chillPerRune", 0.6f) * frost);
-        int infest = RuneCount(Rune.Infest);
+        float infest = RuneCount(Rune.Infest);
         if (infest > 0) e.Infest(Damage * Tune.F("runes.Infest.burstPerRune", 0.5f) * infest, Tune.F("runes.Infest.duration", 1f));
-        int bless = RuneCount(Rune.Bless);
+        float bless = RuneCount(Rune.Bless);
         if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
 
         e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
 
-        int curse = RuneCount(Rune.Curse);
+        float curse = RuneCount(Rune.Curse);
         if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(Tune.F("runes.Curse.maxBonus", 5f), Tune.F("runes.Curse.bonusPerRune", 0.5f) * curse));
     }
 
