@@ -55,6 +55,7 @@ public class Player : MonoBehaviour
     SpriteRenderer[] renderers;
     Transform visual;
     SpriteRenderer hitbox;
+    WizardAnimator anim;   // null when the style has no animated wizard
 
     public static Player Create(Vector2 position)
     {
@@ -76,8 +77,11 @@ public class Player : MonoBehaviour
         SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, -0.5f), 1f, 48)
             .transform.localScale = new Vector3(0.9f, 0.32f, 1f);
         SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, 49);
+        var sheet = SpriteSheet.Load("player_sheet");
         var art = ArtStyle.Get("player");
-        if (art != null)
+        if (sheet != null && sheet["idle"] != null)
+            anim = WizardAnimator.Attach(SpriteFactory.Child(visual, "Sprite", sheet["idle"].Frames[0], Color.white, new Vector2(0f, 0.1f), 0.85f, 50), sheet);
+        else if (art != null)
             SpriteFactory.Child(visual, "Sprite", art, Color.white, new Vector2(0f, 0.15f), 1f, 50);
         else
         {
@@ -104,6 +108,7 @@ public class Player : MonoBehaviour
         float dt = Time.deltaTime;
 
         Vector2 input = Joystick.Direction;
+        if (anim != null) anim.Moving = input.sqrMagnitude > 0.01f;
         if (input.sqrMagnitude > 0.01f)
         {
             Facing = input.normalized;
@@ -152,6 +157,9 @@ public class Player : MonoBehaviour
         c.a = a * (phaseTimer > 0f ? 0.5f : 1f);
         hitbox.color = c;
     }
+
+    // A spell just fired: swing the staff.
+    public void CastAnim() => anim?.Cast();
 
     public T GetSpell<T>() where T : Spell
     {
@@ -253,13 +261,24 @@ public class Player : MonoBehaviour
         GameManager.Instance.Shake(0.2f);
         Sfx.Play(Sound.PlayerHurt, 0.8f);
         Haptics.Tap(Haptics.Impact.Heavy);
+        anim?.Hit();
 
         if (!IsAlive && GetSpell<Rejuvenate>() is Rejuvenate rejuv && rejuv.TryRevive()) return;
 
         if (!IsAlive)
         {
-            foreach (var r in renderers) r.enabled = false;
-            Fx.Burst(Position, new Color(0.6f, 0.4f, 1f), 3f);
+            if (anim != null)
+            {
+                // Keep the sprite up for the death animation; hide the aura, hitbox and the rest.
+                foreach (var r in renderers) r.enabled = r.gameObject == anim.gameObject || r.name == "Shadow";
+                anim.Die();
+                Fx.Burst(Position, ArtStyle.ParticleColor(new Color(0.6f, 0.4f, 1f)), 1.5f);
+            }
+            else
+            {
+                foreach (var r in renderers) r.enabled = false;
+                Fx.Burst(Position, new Color(0.6f, 0.4f, 1f), 3f);
+            }
             Haptics.Notification(Haptics.Notify.Error);
             GameManager.Instance.GameOver();
         }
