@@ -6,9 +6,9 @@ using UnityEngine;
 // with 2 sockets and gains one more each time a boss dies. Three matching runes in one spell
 // Resonate for a free extra copy.
 // Split and Echo are rare. Spell tomes appear every other level. A spell whose sockets are full
-// (with at least runes.evolveAt runes) can Evolve, once that evolution is unlocked in the Grimoire:
-// its runes are wiped for a stronger base form
-// (up to tier III).
+// (with at least runes.evolveAt runes) can Evolve once that evolution is unlocked in the Grimoire
+// (every such spell gets its own Evolve card): its sockets empty for a stronger base form (up to
+// tier III), keeping part of the runes' power.
 public class RuneSystem : UpgradeSystem
 {
     public override string Name => "Rune Sockets";
@@ -23,7 +23,8 @@ public class RuneSystem : UpgradeSystem
     readonly Dictionary<Spell, List<Rune>> sockets = new Dictionary<Spell, List<Rune>>();
     readonly List<Rune> runeOffer = new List<Rune>();
     SpellId? tome;           // a new spell offered alongside the runes
-    Spell evolve;            // a full spell that may evolve
+    readonly List<Spell> evolves = new List<Spell>();   // full spells that may evolve (every one is offered)
+    Spell evolve => evolves.Count > 0 ? evolves[0] : null;
     Rune? held;              // chosen rune waiting for a socket
 
     public override void Begin(Player player)
@@ -67,7 +68,8 @@ public class RuneSystem : UpgradeSystem
             tome = unlearned[Random.Range(0, unlearned.Count)];
 
         var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Mathf.Max(Sockets, EvolveAt));
-        evolve = ready.Count > 0 ? ready[Random.Range(0, ready.Count)] : null;
+        evolves.Clear();
+        evolves.AddRange(ready);
     }
 
     public override void AutoPick()
@@ -101,7 +103,7 @@ public class RuneSystem : UpgradeSystem
     {
         SocketsOf(spell).Clear();
         spell.Evolve();
-        GameManager.Instance.Toast($"{spell.Name} evolved to tier {RomanTier(spell.Tier)}!");
+        GameManager.Instance.Toast($"{spell.Name} evolved: {spell.Title}!");
         Fx.Ring(Player.Position, spell.Color, 3f, 0.6f);
         Fx.Burst(Player.Position, spell.Color, 5f);
     }
@@ -110,9 +112,12 @@ public class RuneSystem : UpgradeSystem
 
     bool DrawRuneChoice()
     {
-        Header($"Level {Player.Level}", "Take a rune stone");
+        Header($"Level {Player.Level}", "Take a rune stone", InteractionNote);
         var col = UI.Column(0.24f, 0.72f);
-        float h = 140f * UI.S, gap = 18f * UI.S, y = col.y;
+        // Shrink cards a little if several evolutions plus a tome all need room.
+        int cards = runeOffer.Count + evolves.Count + (tome.HasValue ? 1 : 0);
+        float gap = 16f * UI.S;
+        float h = Mathf.Min(170f * UI.S, (col.height - gap * cards) / Mathf.Max(1, cards)), y = col.y;
         bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
 
         foreach (var r in runeOffer)
@@ -128,14 +133,14 @@ public class RuneSystem : UpgradeSystem
             y += h + gap;
         }
 
-        if (evolve != null)
+        foreach (var spell in evolves)
         {
             var rect = new Rect(col.x, y, col.width, h);
-            int next = evolve.Tier + 1;
+            int next = spell.Tier + 1;
             int keep = Mathf.RoundToInt(Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.75f)) * 100f);
-            if (UI.Card(rect, $"Evolve {evolve.Name} → {RomanTier(next)}", evolve.TierDescription(next) + $" <i>(empties its sockets, keeps {keep}% of their power)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
+            if (UI.Card(rect, $"{spell.Name} → {RomanTier(next)}: {spell.TierName(next)}", spell.TierDescription(next) + $" <i>(empties its sockets, keeps {keep}% of their power)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
             {
-                Evolve(evolve);
+                Evolve(spell);
                 return true;
             }
             y += h + gap;
@@ -167,10 +172,10 @@ public class RuneSystem : UpgradeSystem
     bool DrawSocketChoice()
     {
         var rune = held.Value;
-        Header($"{Spell.RuneName(rune)} Rune", "Tap a spell to socket it");
+        Header($"{Spell.RuneName(rune)} Rune", "Tap a spell to socket it", InteractionNote);
         var col = UI.Column(0.22f, 0.74f);
         float s = UI.S;
-        float h = 150f * s, gap = 14f * s, y = col.y;
+        float h = 172f * s, gap = 12f * s, y = col.y;
 
         foreach (var spell in Player.Spells)
         {
@@ -182,7 +187,7 @@ public class RuneSystem : UpgradeSystem
             if (kept.Length > 0) effect += $"\n<size={Mathf.RoundToInt(18 * s)}><color=#ffd966>Kept: {kept}</color></size>";
             var rect = new Rect(col.x, y, col.width, h);
             string tag = spell.CanEvolve ? $"TIER {RomanTier(spell.Tier)}" : null;
-            bool tapped = UI.Card(rect, spell.Name, effect, spell.Color, tag, room);
+            bool tapped = UI.Card(rect, spell.Title, effect, spell.Color, tag, room);
 
             // Socket row
             float d = 40f * s;
@@ -216,6 +221,8 @@ public class RuneSystem : UpgradeSystem
         return false;
     }
 
+    const string InteractionNote = "Runes may interact strangely with some spells.";
+
     static string RomanTier(int t) => t == 1 ? "I" : t == 2 ? "II" : "III";
 
     static int CountOf(List<Rune> list, Rune r)
@@ -230,16 +237,16 @@ public class RuneSystem : UpgradeSystem
         switch (r)
         {
             case Rune.Potency: return "More effective: damage, healing or duration, depending on the spell.";
-            case Rune.Haste: return "Faster casting.";
+            case Rune.Haste: return "Shorter cooldown: casts, heals or recharges more often.";
             case Rune.Split: return "More projectiles, bolts, pulses, wisps or beams.";
-            case Rune.Pierce: return "Pass through, chain further, push harder or last longer.";
+            case Rune.Pierce: return "Pass through, chain further, push harder or last longer. Varies by spell.";
             case Rune.Area: return "Bigger explosions, auras and orbits.";
-            case Rune.Echo: return "The spell casts a second time.";
+            case Rune.Echo: return "The spell casts a second time. A few spells get an extra ring or charge instead.";
             case Rune.Ember: return "Hits set foes on fire.";
             case Rune.Frost: return "Hits chill and slow foes.";
-            case Rune.Curse: return "Marks foes: their next hit from anything deals +50%.";
-            case Rune.Infest: return "Infests foes for 1s. If they die, bugs burst out and hurt others.";
-            default: return "Kills may drop a big XP gem.";
+            case Rune.Curse: return $"Marks foes it hits: the next spell to hit them deals +{Tune.F("runes.Curse.bonusPerRune", 0.5f) * 100f:0}%.";
+            case Rune.Infest: return $"Infests foes for {Tune.F("runes.Infest.duration", 1f):0.#}s. If they die, bugs burst out and hurt others.";
+            default: return "Foes it hits may drop a big XP gem when they die.";
         }
     }
 }

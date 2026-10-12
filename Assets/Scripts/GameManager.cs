@@ -113,6 +113,9 @@ public class GameManager : MonoBehaviour
         Clear<Fx>();
         Clear<Hazard>();
         Clear<DamageText>();
+        Clear<Vortex>();
+        Clear<WaterBeam>();
+        Clear<WaterPillar>();
     }
 
     static void Clear<T>() where T : MonoBehaviour
@@ -369,6 +372,8 @@ public class GameManager : MonoBehaviour
         bool owned = Grimoire.HasTome(id);
         UI.Box(r, new Color(1f, 1f, 1f, 0.06f));
         UI.Text(new Rect(r.x + 14f * s, r.y + 8f * s, r.width - 28f * s, 40f * s), spell.Name, 30, TextAnchor.UpperLeft, owned ? spell.Color : new Color(0.6f, 0.6f, 0.65f));
+        if (spell.CanEvolve)   // what the evolutions are called, e.g. "II Inferno · III Sunfall"
+            UI.Text(new Rect(r.x + 14f * s, r.y + 14f * s, r.width - 28f * s, 30f * s), $"II {spell.TierName(2)}  ·  III {spell.TierName(3)}", 20, TextAnchor.UpperRight, new Color(1f, 1f, 1f, 0.6f), false);
 
         int tiers = spell.CanEvolve ? 2 : 0;
         float bw = (r.width - 28f * s - gap * tiers) / (1 + tiers), bh = 70f * s, bx = r.x + 14f * s, by = r.y + 52f * s;
