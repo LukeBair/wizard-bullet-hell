@@ -23,7 +23,7 @@ public abstract class UpgradeSystem
         Player = player;
         Interactions.Reset();
         startOffer.Clear();
-        startOffer.AddRange(Starters);
+        foreach (var id in Starters) if (Grimoire.HasTome(id)) startOffer.Add(id);
         Shuffle(startOffer);
         int n = Mathf.Clamp(Tune.I("run.startTomeChoices", 3), 1, startOffer.Count);
         startOffer.RemoveRange(n, startOffer.Count - n);
@@ -65,7 +65,7 @@ public abstract class UpgradeSystem
     protected List<SpellId> UnlearnedSpells()
     {
         var list = new List<SpellId>();
-        foreach (var id in Spell.AllIds) if (Player.GetSpell(id) == null) list.Add(id);
+        foreach (var id in Spell.AllIds) if (Player.GetSpell(id) == null && Grimoire.HasTome(id)) list.Add(id);
         return list;
     }
 

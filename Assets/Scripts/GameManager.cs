@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum GameState { Title, TomePick, Playing, LevelUp, GameOver, Victory }
+public enum GameState { Title, Grimoire, TomePick, Playing, LevelUp, GameOver, Victory }
 
 // Owns the run: title screen, camera, starting tome, level-up flow, zone changes, game over, victory
 // and the HUD.
@@ -14,6 +14,7 @@ public class GameManager : MonoBehaviour
     const string WinsKey = "wins";
     const float FadeTime = 0.6f;
     const float CameraSize = 7.5f;
+    static readonly Color GoldColor = new Color(1f, 0.85f, 0.4f);
 
     public GameState State { get; private set; }
     public Player Player { get; private set; }
@@ -35,6 +36,9 @@ public class GameManager : MonoBehaviour
     int zoneIndex;
     float shiftAt = -1f;     // when the next zone change happens (game time), or -1
     float fadeInUntil;
+    float runGold;           // gold picked up this run, banked when the run ends
+    int bankedGold = -1;     // what the last run paid out (-1 = not banked yet)
+    int grimoirePage;
     readonly List<(string text, float until)> toasts = new List<(string, float)>();
 
     void Awake()
@@ -52,6 +56,26 @@ public class GameManager : MonoBehaviour
         BuildWorld();
         State = GameState.Title;
         StartCoroutine(Tune.FetchFromMac());
+    }
+
+    void OnEnable() => Enemy.Died += OnEnemyDied;
+    void OnDisable() => Enemy.Died -= OnEnemyDied;
+
+    void OnEnemyDied(Enemy e)
+    {
+        if (State != GameState.Playing) return;
+        runGold += e.Def.Tier == EnemyTier.Boss ? Tune.F("meta.goldPerBoss", 25f)
+                 : e.Def.Tier == EnemyTier.Medium ? Tune.F("meta.goldPerMedium", 1f)
+                 : Tune.F("meta.goldPerKill", 0.1f);
+    }
+
+    // Pays out the run's gold once: pickups plus time survived, plus the win bonus.
+    void BankGold(bool won)
+    {
+        if (bankedGold >= 0) return;
+        float total = runGold + Director.Elapsed / 60f * Tune.F("meta.goldPerMinute", 5f) + (won ? Tune.F("meta.goldWin", 50f) : 0f);
+        bankedGold = Mathf.FloorToInt(total);
+        Grimoire.AddGold(bankedGold);
     }
 
     void SetupCamera()
@@ -102,6 +126,8 @@ public class GameManager : MonoBehaviour
         shiftAt = -1f;
         BuildWorld(zones[0]);
         Score = 0;
+        runGold = 0f;
+        bankedGold = -1;
         pendingLevelUps = 0;
         toasts.Clear();
         Director.ResetRun(Arena.Biome);
@@ -123,6 +149,7 @@ public class GameManager : MonoBehaviour
     // the next zone after a short pause to collect the loot.
     public void BossDefeated(bool final)
     {
+        Grimoire.RecordBossKill(Player);
         if (final) { Win(); return; }
         Toast("+1 rune socket on every spell");
         Director.Holding = true;
@@ -151,6 +178,8 @@ public class GameManager : MonoBehaviour
     {
         State = GameState.Victory;
         gameOverTime = Time.unscaledTime;
+        Grimoire.RecordWin(Player);
+        BankGold(true);
         PlayerPrefs.SetInt(WinsKey, PlayerPrefs.GetInt(WinsKey, 0) + 1);
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f)) PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
         PlayerPrefs.Save();
@@ -173,6 +202,7 @@ public class GameManager : MonoBehaviour
     {
         State = GameState.GameOver;
         gameOverTime = Time.unscaledTime;
+        BankGold(false);
         StartCoroutine(Tune.FetchFromMac());   // pick up tuner edits before the next try
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f))
         {
@@ -237,6 +267,7 @@ public class GameManager : MonoBehaviour
         switch (State)
         {
             case GameState.Title: DrawTitle(); break;
+            case GameState.Grimoire: DrawGrimoire(); break;
             case GameState.TomePick:
                 if (Upgrades.DrawStart())
                 {
@@ -280,15 +311,94 @@ public class GameManager : MonoBehaviour
             Haptics.Selection();
             StartRun();
         }
-        DrawStylePicker(new Rect(col.x, col.y + 360f * s, col.width, 110f * s));
+        if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 355f * s, col.width * 0.7f, 80f * s), $"Grimoire  ·  {Grimoire.Gold} gold", GoldColor))
+        {
+            Sfx.Play(Sound.Select, 0.8f);
+            Haptics.Selection();
+            grimoirePage = 0;
+            State = GameState.Grimoire;
+        }
+        DrawStylePicker(new Rect(col.x, col.y + 455f * s, col.width, 110f * s));
 
         string tuning = Tune.Fetching ? "Tuning: checking Mac..." : $"Tuning: {Tune.Source}";
-        UI.Text(new Rect(col.x, col.y + 680f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
-        if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 730f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
+        UI.Text(new Rect(col.x, col.y + 720f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
+        if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 765f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
             StartCoroutine(Tune.FetchFromMac());
-        UI.Text(new Rect(col.x, col.y + 500f * s, col.width, 200f * s),
+        UI.Text(new Rect(col.x, col.y + 585f * s, col.width, 140f * s),
             "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nBeat the bosses for more sockets and a new zone.",
             24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
+    }
+
+    // Between runs: spend gold on new tomes, and on evolutions whose feat is done.
+    // Four spells per page; each row has a tome button and one button per evolution tier.
+    void DrawGrimoire()
+    {
+        float s = UiScale;
+        UI.Dim(0.75f);
+        var col = UI.Column(0.08f, 0.88f);
+        UI.Text(new Rect(col.x, col.y, col.width, 60f * s), "Grimoire", 52, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
+        UI.Text(new Rect(col.x, col.y + 62f * s, col.width, 40f * s), $"{Grimoire.Gold} gold", 30, TextAnchor.UpperCenter, GoldColor);
+
+        const int perPage = 4;
+        var ids = Spell.AllIds;
+        int pages = (ids.Length + perPage - 1) / perPage;
+        grimoirePage = Mathf.Clamp(grimoirePage, 0, pages - 1);
+        float rowH = 190f * s, y = col.y + 115f * s, gap = 10f * s;
+        for (int i = grimoirePage * perPage; i < Mathf.Min(ids.Length, (grimoirePage + 1) * perPage); i++)
+        {
+            DrawGrimoireRow(ids[i], new Rect(col.x, y, col.width, rowH));
+            y += rowH + 14f * s;
+        }
+
+        float by = col.y + 115f * s + perPage * (rowH + 14f * s) + 6f * s, bw = (col.width - 2f * gap) / 3f, bh = 80f * s;
+        if (grimoirePage > 0 && UI.Button(new Rect(col.x, by, bw, bh), "‹ Prev", new Color(0.6f, 0.6f, 0.7f))) grimoirePage--;
+        if (UI.Button(new Rect(col.x + bw + gap, by, bw, bh), "Back", new Color(0.6f, 0.45f, 1f))) State = GameState.Title;
+        if (grimoirePage < pages - 1 && UI.Button(new Rect(col.x + 2f * (bw + gap), by, bw, bh), "Next ›", new Color(0.6f, 0.6f, 0.7f))) grimoirePage++;
+        UI.Text(new Rect(col.x, by + bh + 8f * s, col.width, 30f * s), $"Page {grimoirePage + 1} / {pages}", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
+    }
+
+    void DrawGrimoireRow(SpellId id, Rect r)
+    {
+        float s = UiScale, gap = 10f * s;
+        var spell = Spell.Preview(id);
+        bool owned = Grimoire.HasTome(id);
+        UI.Box(r, new Color(1f, 1f, 1f, 0.06f));
+        UI.Text(new Rect(r.x + 14f * s, r.y + 8f * s, r.width - 28f * s, 40f * s), spell.Name, 30, TextAnchor.UpperLeft, owned ? spell.Color : new Color(0.6f, 0.6f, 0.65f));
+
+        int tiers = spell.CanEvolve ? 2 : 0;
+        float bw = (r.width - 28f * s - gap * tiers) / (1 + tiers), bh = 70f * s, bx = r.x + 14f * s, by = r.y + 52f * s;
+        var dim = new Color(0.4f, 0.4f, 0.45f);
+
+        string tomeLabel = owned ? "Tome owned" : $"Tome  {Grimoire.TomeCost}g";
+        bool canBuyTome = !owned && Grimoire.Gold >= Grimoire.TomeCost;
+        if (UI.Button(new Rect(bx, by, bw, bh), tomeLabel, owned ? spell.Color : canBuyTome ? GoldColor : dim) && canBuyTome && Grimoire.BuyTome(id))
+            Bought();
+
+        string nextFeat = owned ? "" : "Buy the tome to add it to your runs.";
+        for (int tier = 2; tier <= 1 + tiers; tier++)
+        {
+            var rect = new Rect(bx + (tier - 1) * (bw + gap), by, bw, bh);
+            string roman = tier == 2 ? "II" : "III";
+            if (Grimoire.HasEvolution(id, tier))
+            {
+                UI.Button(rect, $"{roman} owned", spell.Color);
+                continue;
+            }
+            bool can = Grimoire.CanBuyEvolution(id, tier);
+            bool featDone = Grimoire.FeatDone(id, tier);
+            if (UI.Button(rect, featDone ? $"{roman}  {Grimoire.EvolutionCost(tier)}g" : $"{roman}  locked", can ? GoldColor : dim) && can && Grimoire.BuyEvolution(id, tier))
+                Bought();
+            if (nextFeat.Length == 0 && !featDone) nextFeat = Grimoire.FeatText(id, tier);
+            else if (nextFeat.Length == 0 && tier == 3 && !Grimoire.HasEvolution(id, 2)) nextFeat = "Unlock II first.";
+        }
+        if (!spell.CanEvolve && owned) nextFeat = "This spell doesn't evolve.";
+        UI.Text(new Rect(r.x + 14f * s, by + bh + 8f * s, r.width - 28f * s, 50f * s), nextFeat, 20, TextAnchor.UpperLeft, new Color(1f, 1f, 1f, 0.7f), false);
+    }
+
+    void Bought()
+    {
+        Sfx.Play(Sound.LevelUp, 0.6f, 0f);
+        Haptics.Notification(Haptics.Notify.Success);
     }
 
     // Art style buttons; picking one rebuilds the world behind the title so it previews right away.
@@ -326,10 +436,12 @@ public class GameManager : MonoBehaviour
         top += 22f * s;
 
         UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
+        UI.Text(new Rect(left + 130f * s, top + 8f * s, 200f * s, 30f * s), $"{Mathf.FloorToInt(runGold)} gold", 24, TextAnchor.UpperLeft, GoldColor);
         UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
         UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}  ·  Threat {Director.Threat + 1}  ·  Foes x{Director.HealthScale:0.##}", 20, TextAnchor.UpperCenter, new Color(1f, 0.6f, 0.5f));
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
         {
+            BankGold(false);
             State = GameState.Title;
             Time.timeScale = 1f;
         }
@@ -374,7 +486,7 @@ public class GameManager : MonoBehaviour
         var col = UI.Column(0.25f, 0.6f);
         float best = PlayerPrefs.GetFloat(BestKey, 0f);
         UI.Text(new Rect(col.x, col.y, col.width, 300f * s),
-            $"The wizard has fallen\n\n<size={Mathf.RoundToInt(30 * s)}>Survived {FormatTime(Director.Elapsed)}  ·  Level {Player.Level}\nBest: {FormatTime(best)}</size>",
+            $"The wizard has fallen\n\n<size={Mathf.RoundToInt(30 * s)}>Survived {FormatTime(Director.Elapsed)}  ·  Level {Player.Level}\nBest: {FormatTime(best)}\n+{bankedGold} gold  (you have {Grimoire.Gold})</size>",
             48, TextAnchor.UpperCenter);
         if (Time.unscaledTime - gameOverTime < 0.8f) return;  // so a finger still dragging doesn't tap a button
         if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), "Try again", new Color(0.6f, 0.45f, 1f)))
@@ -401,7 +513,7 @@ public class GameManager : MonoBehaviour
         UI.Dim(0.6f);
         var col = UI.Column(0.25f, 0.6f);
         UI.Text(new Rect(col.x, col.y, col.width, 300f * s),
-            $"Victory!\n\n<size={Mathf.RoundToInt(30 * s)}>The wizard survived every zone\n{FormatTime(Director.Elapsed)}  ·  Level {Player.Level}  ·  Wins: {PlayerPrefs.GetInt(WinsKey, 0)}</size>",
+            $"Victory!\n\n<size={Mathf.RoundToInt(30 * s)}>The wizard survived every zone\n{FormatTime(Director.Elapsed)}  ·  Level {Player.Level}  ·  Wins: {PlayerPrefs.GetInt(WinsKey, 0)}\n+{bankedGold} gold  (you have {Grimoire.Gold})</size>",
             56, TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.4f));
         if (Time.unscaledTime - gameOverTime < 0.8f) return;
         if (UI.Button(new Rect(col.x, col.y + 330f * s, col.width, 100f * s), "Play again", new Color(0.6f, 0.45f, 1f)))

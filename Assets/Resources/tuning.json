@@ -201,7 +201,23 @@
     "_bosses": "Bosses per run. Each one (spawning.bossEvery apart) moves the run to a new zone; killing the last one wins. 0 = endless.",
     "_startTomeChoices": "How many starting tomes are offered at the start of a run.",
     "_zoneShiftDelay": "Seconds between a boss dying and the zone changing (time to grab the loot).",
-    "_favoredWeight": "How much more often a zone's home medium enemies show up."
+    "_favoredWeight": "How much more often a zone's home medium enemies show up.",
+    "zoneRampSeconds": 40,
+    "zoneRampFactor": 0.75,
+    "zoneFirstMedium": 8,
+    "_zoneRampSeconds": "A new zone starts empty; spawning ramps from 0 to full over this many seconds (second zone), times zoneRampFactor for each zone after that. zoneFirstMedium is the delay before the first medium enemy, scaled the same way."
+  },
+  "meta": {
+    "tomeCost": 100,
+    "evolveCostT2": 150,
+    "evolveCostT3": 300,
+    "featBossesT2": 2,
+    "goldPerKill": 0.1,
+    "goldPerMedium": 1,
+    "goldPerBoss": 25,
+    "goldPerMinute": 5,
+    "goldWin": 50,
+    "_about": "Gold and the Grimoire. Gold per run = kills + bosses + minutes survived (+ goldWin on a win), kept even if you die. Arcane Missile, Fireball and Frost Nova tomes are free; the rest cost tomeCost. Evolution II needs its feat (beat featBossesT2 bosses with the spell in your build), III needs a win with the spell at tier II+."
   },
   "runes": {
     "startSockets": 2,

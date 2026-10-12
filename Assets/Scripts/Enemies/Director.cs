@@ -9,7 +9,8 @@ using UnityEngine;
 // While a boss is alive nothing else spawns (apart from whatever the boss summons itself), and all
 // the timers pause until it's dead.
 // A run has run.bosses bosses (0 = endless). Killing one moves the run to the next zone; killing the
-// last one wins the run.
+// last one wins the run. A new zone starts empty and spawning ramps back up from zero over
+// run.zoneRampSeconds, a little faster in each later zone (x run.zoneRampFactor per zone).
 public class Director : MonoBehaviour
 {
     // All spawn numbers live in the tuner under spawning.*
@@ -32,9 +33,12 @@ public class Director : MonoBehaviour
     EnemyRoster roster;
     float chaffBudget, mediumTimer, swarmTimer, bossTimer;
     int bossIndex;
+    int zoneNumber;          // 0 for the first zone of the run
+    float zoneTime;          // seconds since entering this zone
 
     public void ResetRun(Biome b)
     {
+        zoneNumber = -1;
         EnterZone(b);
         Elapsed = 0f;
         HealthScale = 1f;
@@ -54,7 +58,21 @@ public class Director : MonoBehaviour
         zone = b;
         roster = b.Roster;
         bossIndex = 0;
+        zoneNumber++;
+        zoneTime = 0f;
+        chaffBudget = 0f;
+        if (zoneNumber > 0)
+        {
+            mediumTimer = Tune.F("run.zoneFirstMedium", 8f) * RampSpeed;
+            swarmTimer = Mathf.Max(swarmTimer, Tune.F("run.zoneRampSeconds", 40f) * RampSpeed);   // no swarm before the ramp is done
+        }
     }
+
+    // How fast this zone's spawning ramps up: 1 in the second zone, quicker after that.
+    float RampSpeed => Mathf.Pow(Tune.F("run.zoneRampFactor", 0.75f), Mathf.Max(0, zoneNumber - 1));
+
+    // 0 -> 1 over the zone's ramp time; the first zone of a run has no ramp.
+    float ZoneRamp => zoneNumber == 0 ? 1f : Mathf.Clamp01(zoneTime / Mathf.Max(0.01f, Tune.F("run.zoneRampSeconds", 40f) * RampSpeed));
 
     void OnEnable() => Enemy.Died += OnEnemyDied;
     void OnDisable() => Enemy.Died -= OnEnemyDied;
@@ -80,12 +98,13 @@ public class Director : MonoBehaviour
         float dt = Time.deltaTime;
         Elapsed += dt;
         if (Boss != null || Holding) return;   // boss fight or zone change: no other spawns
+        zoneTime += dt;
 
         // Slow climb until the first boss; each boss kill then steps the pressure up sharply.
         float chaffRate = (T("chaffBase", 0.4f) + Elapsed * T("chaffPerSecond", 1f / 240f))
                           * (1f + T("chaffPerThreat", 0.1f) * Threat)
                           * (1f + T("chaffPerBossKill", 1.2f) * BossesDefeated);
-        chaffRate = Mathf.Min(chaffRate, T("chaffMax", 10f));
+        chaffRate = Mathf.Min(chaffRate, T("chaffMax", 10f)) * ZoneRamp;
         chaffBudget += chaffRate * dt;
         while (chaffBudget >= 1f)
         {

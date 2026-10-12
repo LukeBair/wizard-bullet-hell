@@ -6,7 +6,8 @@ using UnityEngine;
 // with 2 sockets and gains one more each time a boss dies. Three matching runes in one spell
 // Resonate for a free extra copy.
 // Split and Echo are rare. Spell tomes appear every other level. A spell whose sockets are full
-// (with at least runes.evolveAt runes) can Evolve: its runes are wiped for a stronger base form
+// (with at least runes.evolveAt runes) can Evolve, once that evolution is unlocked in the Grimoire:
+// its runes are wiped for a stronger base form
 // (up to tier III).
 public class RuneSystem : UpgradeSystem
 {
@@ -65,7 +66,7 @@ public class RuneSystem : UpgradeSystem
         if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
             tome = unlearned[Random.Range(0, unlearned.Count)];
 
-        var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && SocketsOf(s).Count >= Mathf.Max(Sockets, EvolveAt));
+        var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Mathf.Max(Sockets, EvolveAt));
         evolve = ready.Count > 0 ? ready[Random.Range(0, ready.Count)] : null;
     }
 
