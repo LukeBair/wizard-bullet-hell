@@ -11,6 +11,8 @@ using UnityEngine;
 // A run has run.bosses bosses (0 = endless). Killing one moves the run to the next zone; killing the
 // last one wins the run. A new zone starts empty and spawning ramps back up from zero over
 // run.zoneRampSeconds, a little faster in each later zone (x run.zoneRampFactor per zone).
+// spawning.zones has one row per zone that overrides its chaff and medium numbers; a zone without a
+// row (or a key a row leaves out) uses the stage rules above.
 public class Director : MonoBehaviour
 {
     // All spawn numbers live in the tuner under spawning.*
@@ -36,6 +38,11 @@ public class Director : MonoBehaviour
     int zoneNumber;          // 0 for the first zone of the run
     int zoneThreat;          // swarms survived in this zone
     float zoneTime;          // seconds since entering this zone
+    Dictionary<string, object> zoneRow;   // this zone's row in spawning.zones, or null
+
+    // A number from this zone's row, or the fallback when the row doesn't set it.
+    float Z(string key, float fallback) => zoneRow != null ? Tune.Num(zoneRow, key, fallback) : fallback;
+    bool ZoneHas(string key) => zoneRow != null && zoneRow.ContainsKey(key);
 
     public void ResetRun(Biome b)
     {
@@ -62,6 +69,8 @@ public class Director : MonoBehaviour
         zoneNumber++;
         zoneTime = 0f;
         zoneThreat = 0;
+        var rows = Tune.List("spawning.zones");
+        zoneRow = zoneNumber < rows.Count ? rows[zoneNumber] : null;
         chaffBudget = 0f;
         if (zoneNumber > 0)
         {
@@ -102,11 +111,11 @@ public class Director : MonoBehaviour
         if (Boss != null || Holding) return;   // boss fight or zone change: no other spawns
         zoneTime += dt;
 
-        // Every zone climbs on the same curve (time and swarms counted from the zone's start), raised
-        // by run.zoneRateStep chaff per second for each zone already cleared.
+        // Every zone climbs on the same curve (time and swarms counted from the zone's start), scaled by
+        // the zone's chaffScale and raised by its chaffAdd (default: run.zoneRateStep per zone cleared).
         float chaffRate = (T("chaffBase", 0.4f) + zoneTime * T("chaffPerSecond", 1f / 240f))
-                          * (1f + T("chaffPerThreat", 0.1f) * zoneThreat)
-                          + Tune.F("run.zoneRateStep", 2f) * zoneNumber;
+                          * (1f + T("chaffPerThreat", 0.1f) * zoneThreat) * Z("chaffScale", 1f)
+                          + Z("chaffAdd", Tune.F("run.zoneRateStep", 2f) * zoneNumber);
         chaffRate = Mathf.Min(chaffRate, T("chaffMax", 10f)) * ZoneRamp;
         chaffBudget += chaffRate * dt;
         while (chaffBudget >= 1f)
@@ -119,7 +128,17 @@ public class Director : MonoBehaviour
         if (mediumTimer <= 0f)
         {
             int stage = Stage;
-            if (stage == 0)
+            if (ZoneHas("mediumEvery"))
+            {
+                // This zone's row sets the pace: a pack of packMin..packMax from one direction.
+                mediumTimer = Z("mediumEvery", 7f);
+                int pack = Random.Range(Mathf.RoundToInt(Z("packMin", 1f)), Mathf.RoundToInt(Z("packMax", 1f)) + 1);
+                var def = PickMedium();
+                Vector2 at = EdgePoint(def.Radius);
+                for (int i = 0; i < pack && Enemy.All.Count < MaxEnemies; i++)
+                    Spawn(i == 0 ? def : PickMedium(), at + Random.insideUnitCircle * 1.5f);
+            }
+            else if (stage == 0)
             {
                 mediumTimer = T("mediumEveryStage0", 14f);
                 SpawnAtEdge(PickMedium());
@@ -191,7 +210,8 @@ public class Director : MonoBehaviour
         d.Behavior == EnemyBehavior.Caster || d.Behavior == EnemyBehavior.Blinker ||
         d.Behavior == EnemyBehavior.Lobber || d.Behavior == EnemyBehavior.Trickster;
 
-    // Casters are rare (a quarter as likely) until the first boss is down.
+    // Casters are rare (a quarter as likely) until the first boss is down; a zone row can set its own
+    // casterWeight.
     EnemyDef PickMedium()
     {
         pool.Clear();
@@ -208,7 +228,7 @@ public class Director : MonoBehaviour
     }
 
     float Weight(EnemyDef d) =>
-        (IsCaster(d) && BossesDefeated == 0 ? T("casterWeightPreBoss", 0.25f) : 1f)
+        (IsCaster(d) ? Z("casterWeight", BossesDefeated == 0 ? T("casterWeightPreBoss", 0.25f) : 1f) : 1f)
         * (System.Array.IndexOf(zone.Favored, d.Name) >= 0 ? Tune.F("run.favoredWeight", 3f) : 1f);
 
     Vector2 EdgePoint(float radius)
