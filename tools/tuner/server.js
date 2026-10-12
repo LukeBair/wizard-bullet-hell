@@ -14,12 +14,15 @@ const path = require("path");
 const os = require("os");
 
 const PORT = +process.env.PORT || 8787;
-const ROOT = path.resolve(__dirname, "..", "..");
+// TUNER_ROOT runs this server against another checkout's files (e.g. a worktree's newer server
+// serving the main checkout's tuning, save and logs).
+const ROOT = path.resolve(process.env.TUNER_ROOT || path.join(__dirname, "..", ".."));
+const DIR = path.join(ROOT, "tools", "tuner");
 const TUNING = path.join(ROOT, "Assets", "Resources", "tuning.json");
-const DEFAULTS = path.join(__dirname, "tuning.defaults.json");
+const DEFAULTS = path.join(DIR, "tuning.defaults.json");
 const PAGE = path.join(__dirname, "index.html");
-const SAVE = path.join(__dirname, "save.json");   // not in git: it's one phone's progress
-const TELEMETRY = path.join(__dirname, "telemetry");   // run logs, not in git
+const SAVE = path.join(DIR, "save.json");   // not in git: it's one phone's progress
+const TELEMETRY = path.join(DIR, "telemetry");   // run logs, not in git
 const RUN_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 function readSave() {
