@@ -43,7 +43,7 @@ All three use the same five spells (Arcane Missile, Fireball, Frost Nova, Chain 
 | Boss | Elder Treant | Leaf rings, summons slimes, aimed volleys |
 | Boss | The Hedge Witch | Spiral barrages, aimed fans, blinks |
 
-\* Only after the first swarm. Each swarm (every 45s) raises the Threat level: more chaff, mediums in packs, bigger swarms with mediums mixed in. Enemy health steps up +25% per swarm and +100% per boss killed (bosses scale at half rate). A boss arrives every 2:30, alternating. New settings (wizarding school, caves) are a new `Biome` plus an `EnemyRoster`.
+\* Only after the first swarm. Pressure builds in stages: before the first swarm (45s) it's a light trickle with a rare basic medium; after it, mediums appear sometimes; after each boss kill they come often and in packs. Swarms grow each time. Enemy health steps up +25% per swarm and +100% per boss killed (bosses scale at half rate). A boss arrives every 2:30, alternating. New settings (wizarding school, caves) are a new `Biome` plus an `EnemyRoster`.
 
 ## How it works
 

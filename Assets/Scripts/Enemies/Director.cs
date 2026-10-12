@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Decides what spawns and when.
-// Before the first swarm (45s) it's a gentle trickle of chaff plus the occasional medium.
-// Every swarm survived raises the Threat level: more chaff, medium enemies in packs, and the
-// tougher medium types join in. Enemy health steps up +25% per swarm and +100% per boss killed.
+// Decides what spawns and when. Pressure builds in stages:
+//   Stage 0 (before the first swarm): a light trickle of chaff, a rare basic medium.
+//   Stage 1 (after the first swarm): mediums show up sometimes, all types possible.
+//   Stage 2+ (each boss killed): mediums come often and in packs; swarms bring escorts.
+// Enemy health steps up +25% per swarm and +100% per boss killed.
 public class Director : MonoBehaviour
 {
     const int MaxEnemies = 200;
@@ -14,6 +15,8 @@ public class Director : MonoBehaviour
     public float Elapsed { get; private set; }
     public float HealthScale { get; private set; } = 1f;
     public int Threat { get; private set; }   // swarms survived
+    public int BossesDefeated { get; private set; }
+    public int Stage => Threat == 0 ? 0 : 1 + BossesDefeated;
     public Enemy Boss { get; private set; }
 
     EnemyRoster roster;
@@ -26,8 +29,9 @@ public class Director : MonoBehaviour
         Elapsed = 0f;
         HealthScale = 1f;
         Threat = 0;
+        BossesDefeated = 0;
         chaffBudget = 0f;
-        mediumTimer = 30f;
+        mediumTimer = 40f;
         swarmTimer = SwarmEvery;
         bossTimer = BossEvery;
         bossIndex = 0;
@@ -41,6 +45,7 @@ public class Director : MonoBehaviour
     {
         if (e != Boss) return;
         Boss = null;
+        BossesDefeated++;
         HealthScale += 1f;
         XpGem.MagnetAll();
         GameManager.Instance.Player.Heal(30f);
@@ -55,8 +60,8 @@ public class Director : MonoBehaviour
         float dt = Time.deltaTime;
         Elapsed += dt;
 
-        float chaffRate = (0.9f + Elapsed / 30f) * (1f + 0.45f * Threat);
-        chaffRate = Mathf.Min(chaffRate, 14f) * (Boss != null ? 0.4f : 1f);
+        float chaffRate = (0.4f + Elapsed / 90f) * (1f + 0.2f * Threat) * (1f + 0.5f * BossesDefeated);
+        chaffRate = Mathf.Min(chaffRate, 10f) * (Boss != null ? 0.4f : 1f);
         chaffBudget += chaffRate * dt;
         while (chaffBudget >= 1f)
         {
@@ -67,16 +72,23 @@ public class Director : MonoBehaviour
         mediumTimer -= dt;
         if (mediumTimer <= 0f)
         {
-            if (Threat == 0)
+            int stage = Stage;
+            if (stage == 0)
             {
-                mediumTimer = Mathf.Max(5f, 9f - Elapsed / 30f);
+                mediumTimer = 14f;
                 SpawnAtEdge(PickMedium());
+            }
+            else if (stage == 1)
+            {
+                mediumTimer = 9f;
+                int pack = Random.value < 0.3f ? 2 : 1;
+                for (int i = 0; i < pack; i++) SpawnAtEdge(PickMedium());
             }
             else
             {
-                // Packs that come from one direction, bigger and more often as Threat rises.
-                mediumTimer = Mathf.Max(1.5f, 6f - Threat * 0.9f);
-                int pack = Mathf.Min(1 + Threat, 5);
+                // Packs that come from one direction, bigger and more often with each boss killed.
+                mediumTimer = Mathf.Max(2.5f, 6f - (stage - 2));
+                int pack = Mathf.Min(Random.Range(2, stage + 1), 5);
                 var def = PickMedium();
                 Vector2 at = EdgePoint(def.Radius);
                 for (int i = 0; i < pack && Enemy.All.Count < MaxEnemies; i++)
@@ -105,8 +117,8 @@ public class Director : MonoBehaviour
 
     void SpawnSwarm(GameManager gm)
     {
-        // A closing ring of bats; from the second swarm on, slimes and a few mediums join it.
-        int n = 24 + 10 * Threat;
+        // A closing ring of bats; slimes join from the second swarm, medium escorts after a boss kill.
+        int n = 16 + 6 * Threat;
         var bat = roster.Chaff[Mathf.Min(1, roster.Chaff.Length - 1)];
         for (int i = 0; i < n; i++)
         {
@@ -114,7 +126,7 @@ public class Director : MonoBehaviour
             var def = Threat > 0 && i % 3 == 0 ? roster.Chaff[0] : bat;
             Spawn(def, gm.Player.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (10f + (i % 2) * 1.5f));
         }
-        for (int i = 0; i < Threat * 2; i++) SpawnAtEdge(PickMedium());
+        for (int i = 0; i < (Stage - 1) * 2; i++) SpawnAtEdge(PickMedium());
         gm.Toast(Threat == 0 ? "A swarm descends!" : $"A bigger swarm descends! (Threat {Threat + 1})");
     }
 
