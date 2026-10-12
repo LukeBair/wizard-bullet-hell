@@ -5,7 +5,7 @@ using UnityEngine;
 // automatically off cooldown, and levels up from XP gems.
 public class Player : MonoBehaviour
 {
-    public const float HitRadius = 0.15f;   // enemy bullets: tiny hitbox, shown as the white dot
+    public const float HitRadius = 0.15f;   // enemy bullets: tiny hitbox, shown as a dot when bullets get close
     public const float BodyRadius = 0.3f;   // contact with melee enemies and trees
     static float InvulnTime => Tune.F("player.invulnTime", 0.6f);
 
@@ -39,6 +39,7 @@ public class Player : MonoBehaviour
     float[] baseAlpha;
     SpriteRenderer[] renderers;
     Transform visual;
+    SpriteRenderer hitbox;
 
     public static Player Create(Vector2 position)
     {
@@ -56,7 +57,9 @@ public class Player : MonoBehaviour
         visual = new GameObject("Visual").transform;
         visual.SetParent(transform, false);
         var robe = new Color(0.45f, 0.25f, 0.85f);
-        SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.45f), 0.7f, 48);
+        // Flat shadow centred under the feet (the visual flips on x, so it must sit at x = 0).
+        SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, -0.5f), 1f, 48)
+            .transform.localScale = new Vector3(0.9f, 0.32f, 1f);
         SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, 49);
         var art = ArtStyle.Get("player");
         if (art != null)
@@ -69,7 +72,7 @@ public class Player : MonoBehaviour
             SpriteFactory.Child(visual, "Staff", SpriteFactory.Square, new Color(0.6f, 0.4f, 0.2f), new Vector2(0.38f, 0f), 1f, 53).transform.localScale = new Vector3(0.07f, 0.8f, 1f);
             SpriteFactory.Child(visual, "Gem", SpriteFactory.Circle, new Color(0.5f, 0.95f, 1f), new Vector2(0.38f, 0.42f), 0.16f, 54);
         }
-        SpriteFactory.Child(visual, "Hitbox", ArtStyle.Round, Color.white, Vector2.zero, HitRadius * 2f, 55);
+        hitbox = SpriteFactory.Child(visual, "Hitbox", ArtStyle.Round, new Color(1f, 1f, 1f, 0f), Vector2.zero, HitRadius * 2f, 55);
         renderers = GetComponentsInChildren<SpriteRenderer>();
         baseAlpha = new float[renderers.Length];
         for (int i = 0; i < renderers.Length; i++) baseAlpha[i] = renderers[i].color.a;
@@ -110,6 +113,19 @@ public class Player : MonoBehaviour
             bool visible = invulnTimer <= 0f || Mathf.FloorToInt(invulnTimer * 14f) % 2 == 0;
             foreach (var r in renderers) r.enabled = visible;
         }
+        UpdateHitbox();
+    }
+
+    // The hitbox dot only fades in while an enemy bullet is close, so it doesn't sit on the sprite all the time.
+    void UpdateHitbox()
+    {
+        float nearest = float.MaxValue;
+        foreach (var p in Projectile.All)
+            if (p.Team == Team.Enemy) nearest = Mathf.Min(nearest, ((Vector2)p.transform.position - Position).sqrMagnitude);
+        float a = Mathf.Clamp01((3f - Mathf.Sqrt(nearest)) / 1.5f);
+        var c = hitbox.color;
+        c.a = a * (phaseTimer > 0f ? 0.5f : 1f);
+        hitbox.color = c;
     }
 
     public T GetSpell<T>() where T : Spell

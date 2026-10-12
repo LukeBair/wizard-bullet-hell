@@ -57,6 +57,10 @@ public static class ArtStyle
     }
 
     // The current style's sprite with this name, or null (Classic, or no such file).
+    // HUD meter colours: Dusk keeps them inside its palette (coral health, sage XP).
+    public static Color HealthColor => Current == ArtStyleId.Dusk ? new Color32(0xe5, 0x55, 0x5f, 255) : new Color(1f, 0.35f, 0.45f);
+    public static Color XpColor => Current == ArtStyleId.Dusk ? new Color32(0x6f, 0x9b, 0x7a, 255) : new Color(0.45f, 0.75f, 1f);
+
     public static Sprite Get(string name)
     {
         if (Current == ArtStyleId.Classic) return null;
