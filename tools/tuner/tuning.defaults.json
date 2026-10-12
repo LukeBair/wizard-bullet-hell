@@ -1,0 +1,424 @@
+{
+  "_about": "Every tunable in Wizard Bullet Hell. Keys starting with _ are notes. Spell values for evolved tiers use _t2 / _t3 suffixes.",
+  "global": {
+    "pace": 0.75,
+    "castRate": 0.85,
+    "_pace": "Multiplies all movement (wizard, enemies, projectiles).",
+    "_castRate": "Multiplies every spell cooldown and enemy attack interval."
+  },
+  "audio": {
+    "volume": 1.0
+  },
+  "player": {
+    "MaxHealth": 100,
+    "MoveSpeed": 4.6,
+    "PickupRadius": 2.2,
+    "invulnTime": 0.6
+  },
+  "xp": {
+    "base": 3,
+    "perLevel": 2,
+    "quadDivisor": 5,
+    "stepEvery": 5,
+    "stepMultiplier": 1.25,
+    "_formula": "floor(base + perLevel*L + L^2/quadDivisor) * stepMultiplier^(L/stepEvery)"
+  },
+  "drops": {
+    "xpMultiplier": 1.0,
+    "extra": [
+      {
+        "name": "Lucky gem",
+        "tier": "Any",
+        "chance": 0.0,
+        "xp": 10,
+        "heal": 0
+      },
+      {
+        "name": "Medium heal",
+        "tier": "Medium",
+        "chance": 0.0,
+        "xp": 0,
+        "heal": 10
+      }
+    ],
+    "_extra": "Bonus drops rolled on every kill. tier: Any, Chaff, Medium or Boss. Add as many as you like."
+  },
+  "spawning": {
+    "maxEnemies": 200,
+    "bossEvery": 150,
+    "swarmEvery": 45,
+    "firstMediumAt": 40,
+    "chaffBase": 0.4,
+    "chaffPerSecond": 0.00417,
+    "chaffPerThreat": 0.1,
+    "chaffPerBossKill": 1.2,
+    "chaffMax": 10,
+    "mediumEveryStage0": 14,
+    "mediumEveryStage1": 11,
+    "pairChanceStage1": 0.3,
+    "mediumEveryStage2": 6,
+    "mediumEveryMin": 2.5,
+    "maxPack": 5,
+    "swarmBasePreBoss": 14,
+    "swarmPerThreatPreBoss": 3,
+    "swarmBase": 16,
+    "swarmPerThreat": 6,
+    "casterWeightPreBoss": 0.25,
+    "healthPerSwarm": 0.25,
+    "healthPerBossKill": 1.0,
+    "bossHealthScaleRate": 0.5,
+    "bossKillHeal": 30,
+    "_chaff": "Chaff per second = (chaffBase + seconds*chaffPerSecond) * (1 + chaffPerThreat*swarms) * (1 + chaffPerBossKill*bossKills), capped at chaffMax."
+  },
+  "runes": {
+    "sockets": 4,
+    "maxSpells": 5,
+    "tomeEveryLevels": 2,
+    "resonanceCount": 3,
+    "evolveRetain": 0.75,
+    "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
+    "Potency": {
+      "weight": 10
+    },
+    "Haste": {
+      "weight": 10,
+      "cooldownMultiplier": 0.85
+    },
+    "Split": {
+      "weight": 2.5
+    },
+    "Pierce": {
+      "weight": 10
+    },
+    "Area": {
+      "weight": 10
+    },
+    "Echo": {
+      "weight": 2.5
+    },
+    "Ember": {
+      "weight": 10,
+      "burnPerRune": 0.4,
+      "duration": 2.5
+    },
+    "Frost": {
+      "weight": 10,
+      "chillBase": 1.0,
+      "chillPerRune": 0.6
+    },
+    "Curse": {
+      "weight": 10,
+      "bonusPerRune": 0.5,
+      "maxBonus": 5
+    },
+    "Infest": {
+      "weight": 10,
+      "burstPerRune": 0.5,
+      "duration": 1.0,
+      "burstRadius": 1.4
+    },
+    "Bless": {
+      "weight": 10,
+      "chancePerRune": 0.15,
+      "maxChance": 0.8,
+      "gemMultiplier": 4,
+      "minGem": 20
+    },
+    "_weight": "Relative chance to be offered. Under 5 shows as RARE."
+  },
+  "status": {
+    "chillSlow": 0.5,
+    "frostbiteMaxSlow": 0.6,
+    "frostbiteTakenChaff": 1.0,
+    "frostbiteTakenMedium": 0.55,
+    "frostbiteTakenBoss": 0.2,
+    "shatter": 0.3,
+    "shatterBoss": 0.1,
+    "rootBossFactor": 0.25
+  },
+  "combos": {
+    "conductiveMultiplier": 1.5,
+    "steamBaseDamage": 10,
+    "steamHealthFraction": 0.08,
+    "steamMaxDamage": 60,
+    "firebugsRadius": 2.0
+  },
+  "spells": {
+    "ArcaneMissile": {
+      "damage": 12,
+      "damage_t2": 12,
+      "damage_t3": 14.5,
+      "cooldown": 0.85,
+      "count": 1,
+      "speed": 11,
+      "lifetime": 2,
+      "homing": 0,
+      "homing_t2": 180,
+      "homing_t3": 420,
+      "followUpRange": 0.6,
+      "potencyPerRune": 0.3,
+      "areaPerRune": 0.2
+    },
+    "Fireball": {
+      "damage": 20,
+      "damage_t2": 30,
+      "damage_t3": 30,
+      "cooldown": 2.1,
+      "count": 1,
+      "radius": 1.0,
+      "radius_t2": 1.8,
+      "radius_t3": 1.8,
+      "speed": 7.5,
+      "speed_t2": 6,
+      "speed_t3": 6,
+      "burnFactor": 0.25,
+      "burnDuration": 2,
+      "burnFactor_t2": 0.3,
+      "burnDuration_t2": 2.5,
+      "burnFactor_t3": 0.3,
+      "burnDuration_t3": 2.5,
+      "shrapnelCount_t3": 6,
+      "shrapnelLifetime_t3": 0.6,
+      "potencyPerRune": 0.25,
+      "areaPerRune": 0.2
+    },
+    "FrostNova": {
+      "damage": 10,
+      "cooldown": 2.6,
+      "count": 1,
+      "radius": 2.0,
+      "radius_t2": 2.4,
+      "radius_t3": 2.8,
+      "chill_t2": 1.8,
+      "chill_t3": 1.8,
+      "push": 4,
+      "pushPerPierce": 3,
+      "frostbite_t3": 0.35,
+      "frostbitePerFrostRune_t3": 0.25,
+      "potencyPerRune": 0.2,
+      "areaPerRune": 0.15
+    },
+    "ChainLightning": {
+      "damage": 18,
+      "cooldown": 1.5,
+      "count": 1,
+      "splash": 1.0,
+      "splash_t2": 1.0,
+      "splashDamage": 0.5,
+      "splashDamage_t2": 0.5,
+      "jumps_t2": 2,
+      "jumps_t3": 2,
+      "jumpRange": 3.5,
+      "chainFalloff": 0.9,
+      "strikeMultiplier_t3": 3,
+      "strikeSplash_t3": 1.6,
+      "strikeSplashDamage_t3": 1.2,
+      "potencyPerRune": 0.3,
+      "areaPerRune": 0.2
+    },
+    "Wisps": {
+      "damage": 9,
+      "cooldown": 1,
+      "count": 2,
+      "orbit": 1.7,
+      "ringSpacing": 0.55,
+      "wispSize": 0.28,
+      "spinSpeed": 200,
+      "hitEvery": 0.5,
+      "quietSeconds_t2": 3,
+      "quietHeal_t2": 0.1,
+      "hitHeal_t3": 0.01,
+      "potencyPerRune": 0.3,
+      "areaPerRune": 0.15
+    },
+    "Rejuvenate": {
+      "damage": 0.06,
+      "cooldown": 9,
+      "count": 1,
+      "maxHealthPerPierce": 10,
+      "_damage": "Fraction of max health healed per pulse."
+    },
+    "Overgrowth": {
+      "damage": 6,
+      "cooldown": 5,
+      "count": 1,
+      "radius": 1.8,
+      "rootTime": 2.2,
+      "potencyPerRune": 0.25
+    },
+    "Veil": {
+      "damage": 1.5,
+      "cooldown": 12,
+      "potencyPerRune": 0.25,
+      "_damage": "Seconds of invulnerability."
+    },
+    "TidalLance": {
+      "damage": 5,
+      "cooldown": 5.5,
+      "count": 1,
+      "duration": 1.2,
+      "length": 6.5,
+      "width": 0.55,
+      "_damage": "Per tick (about 8 ticks a second)."
+    },
+    "Cyclone": {
+      "damage": 4,
+      "cooldown": 6,
+      "count": 1,
+      "radius": 3,
+      "duration": 2.5,
+      "pull": 9,
+      "distance": 4.5,
+      "_damage": "Per tick (4 a second)."
+    },
+    "Enthrall": {
+      "damage": 3,
+      "cooldown": 9,
+      "count": 1,
+      "_damage": "Charm duration in seconds."
+    }
+  },
+  "enemies": {
+    "Moss Slime": {
+      "Health": 20,
+      "Speed": 1.7,
+      "Radius": 0.35,
+      "ContactDamage": 8,
+      "Xp": 1
+    },
+    "Dusk Bat": {
+      "Health": 14,
+      "Speed": 3.1,
+      "Radius": 0.28,
+      "ContactDamage": 6,
+      "Xp": 1
+    },
+    "Thornback Wolf": {
+      "Health": 100,
+      "Speed": 2.4,
+      "Radius": 0.5,
+      "ContactDamage": 15,
+      "Xp": 5
+    },
+    "Goblin Hexer": {
+      "Health": 70,
+      "Speed": 1.8,
+      "Radius": 0.42,
+      "ContactDamage": 8,
+      "Xp": 5,
+      "FireInterval": 2.2,
+      "Bullets": 3,
+      "Spread": 14,
+      "BulletSpeed": 4.5,
+      "BulletDamage": 10,
+      "PreferredRange": 6
+    },
+    "Rogue Apprentice": {
+      "Health": 85,
+      "Speed": 1.6,
+      "Radius": 0.42,
+      "ContactDamage": 8,
+      "Xp": 7,
+      "FireInterval": 3,
+      "Bullets": 12,
+      "Spread": 20,
+      "BulletSpeed": 3.4,
+      "BulletDamage": 10,
+      "PreferredRange": 5
+    },
+    "Spore Lobber": {
+      "Health": 80,
+      "Speed": 1.3,
+      "Radius": 0.45,
+      "ContactDamage": 8,
+      "Xp": 6,
+      "EarlyGame": false,
+      "FireInterval": 2.8,
+      "Bullets": 3,
+      "Spread": 20,
+      "BulletSpeed": 4.5,
+      "BulletDamage": 18,
+      "PreferredRange": 7
+    },
+    "Pixie Trickster": {
+      "Health": 55,
+      "Speed": 2.6,
+      "Radius": 0.3,
+      "ContactDamage": 6,
+      "Xp": 6,
+      "EarlyGame": false,
+      "FireInterval": 1.8,
+      "Bullets": 3,
+      "Spread": 20,
+      "BulletSpeed": 4,
+      "BulletDamage": 10,
+      "PreferredRange": 5
+    },
+    "Root Burrower": {
+      "Health": 110,
+      "Speed": 3.6,
+      "Radius": 0.5,
+      "ContactDamage": 15,
+      "Xp": 7,
+      "EarlyGame": false,
+      "Bullets": 10,
+      "BulletSpeed": 3.5,
+      "BulletDamage": 20
+    },
+    "Mother Slime": {
+      "Health": 90,
+      "Speed": 1.2,
+      "Radius": 0.65,
+      "ContactDamage": 12,
+      "Xp": 4
+    },
+    "Elder Treant": {
+      "Health": 2400,
+      "Speed": 1.1,
+      "Radius": 1.3,
+      "ContactDamage": 25,
+      "Xp": 60,
+      "FireInterval": 2.6,
+      "Bullets": 18,
+      "BulletSpeed": 3.2,
+      "BulletDamage": 10
+    },
+    "The Hedge Witch": {
+      "Health": 3200,
+      "Speed": 1.8,
+      "Radius": 0.9,
+      "ContactDamage": 20,
+      "Xp": 80,
+      "FireInterval": 0.12,
+      "Bullets": 3,
+      "Spread": 20,
+      "BulletSpeed": 3.6,
+      "BulletDamage": 10,
+      "PreferredRange": 6
+    },
+    "Headmaster Vexley": {
+      "Health": 2800,
+      "Speed": 1.4,
+      "Radius": 0.9,
+      "ContactDamage": 20,
+      "Xp": 70,
+      "FireInterval": 2.4,
+      "Bullets": 36,
+      "Spread": 20,
+      "BulletSpeed": 2.6,
+      "BulletDamage": 10,
+      "PreferredRange": 6.5
+    },
+    "Crystal Golem": {
+      "Health": 3600,
+      "Speed": 0.9,
+      "Radius": 1.4,
+      "ContactDamage": 30,
+      "Xp": 80,
+      "FireInterval": 3,
+      "Bullets": 20,
+      "BulletSpeed": 3,
+      "BulletDamage": 14
+    }
+  }
+}

@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wizard Tuner</title>
+<style>
+  :root {
+    --bg: #14111c; --panel: #1d1928; --panel2: #262136; --line: #352e4a; --text: #ece8f6; --muted: #9a92b3;
+    --accent: #b48cff; --changed: #ffcf5c; --danger: #ff6b7d; --ok: #6be3a0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; color: var(--accent); }
+  input[type=search] { flex: 1; min-width: 160px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--panel2); color: var(--text); border-radius: 8px; padding: 7px 12px; font: inherit; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #1a1326; border-color: var(--accent); font-weight: 600; }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  button.danger { color: var(--danger); }
+  #status { font-size: 12px; color: var(--muted); }
+  #status.dirty { color: var(--changed); }
+  #status.ok { color: var(--ok); }
+  .layout { display: grid; grid-template-columns: 200px 1fr; min-height: calc(100vh - 54px); }
+  nav { border-right: 1px solid var(--line); padding: 10px 0; background: var(--panel); }
+  nav a { display: block; padding: 7px 16px; color: var(--muted); text-decoration: none; cursor: pointer; }
+  nav a.active { color: var(--text); background: var(--panel2); border-left: 3px solid var(--accent); padding-left: 13px; }
+  nav a .count { float: right; color: var(--changed); font-size: 11px; }
+  main { padding: 16px; overflow: auto; }
+  .note { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .card h3 { margin: 0 0 8px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .row { display: grid; grid-template-columns: 1fr 110px 26px; align-items: center; gap: 8px; padding: 3px 0; }
+  .row label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .row label .path { color: var(--muted); font-size: 11px; display: block; }
+  .row.changed label { color: var(--changed); }
+  .row input[type=number], .row input[type=text] { width: 100%; padding: 5px 7px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+  .row.changed input { border-color: var(--changed); }
+  .reset { visibility: hidden; padding: 0 6px; }
+  .row.changed .reset { visibility: visible; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 4px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td input, td select { width: 100%; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+  .addkey { display: flex; gap: 6px; margin-top: 8px; }
+  .addkey input { flex: 1; min-width: 0; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  .tip { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; color: var(--muted); font-size: 13px; }
+  .tip b { color: var(--text); }
+  .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .chart h4 { margin: 0 0 4px; font-size: 13px; }
+  .chart .sub { color: var(--muted); font-size: 11px; margin-bottom: 6px; }
+  .chart svg { width: 100%; height: 190px; display: block; }
+  .chart .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .chart .legend i { display: inline-block; width: 10px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+  .axis { stroke: var(--line); }
+  .tick { fill: var(--muted); font-size: 10px; }
+  .hoverline { stroke: var(--muted); stroke-dasharray: 3 3; }
+  .tipbox { fill: var(--panel2); stroke: var(--line); }
+  .tiptext { fill: var(--text); font-size: 11px; }
+  .split { display: grid; grid-template-columns: 220px minmax(0, 560px); gap: 12px; align-items: start; }
+  .itemlist { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 0; max-height: calc(100vh - 120px); overflow: auto; position: sticky; top: 66px; }
+  .itemlist a { display: block; padding: 7px 14px; color: var(--muted); cursor: pointer; }
+  .itemlist a:hover { color: var(--text); }
+  .itemlist a.active { color: var(--text); background: var(--panel2); border-left: 3px solid var(--accent); padding-left: 11px; }
+  .itemlist a .count { float: right; color: var(--changed); font-size: 11px; }
+  .split > div > .card + .card { margin-top: 12px; }
+  @media (max-width: 700px) {
+    .split { grid-template-columns: 1fr; }
+    .itemlist { position: static; max-height: none; display: flex; overflow-x: auto; padding: 0; }
+    .itemlist a { white-space: nowrap; }
+    .layout { grid-template-columns: 1fr; }
+    nav { display: flex; overflow-x: auto; padding: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+    nav a { white-space: nowrap; }
+    nav a.active { border-left: 0; border-bottom: 3px solid var(--accent); padding-left: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧙 Wizard Tuner</h1>
+  <input type="search" id="search" placeholder="Search any value (e.g. weight, Fireball, Health)…">
+  <span id="status">Loading…</span>
+  <button id="reload" title="Reload from disk">Reload</button>
+  <button class="primary" id="save" title="Save (⌘S)">Save</button>
+</header>
+<div class="layout">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<script>
+let data = {}, defaults = {}, dirty = false, section = null, info = null;
+const picked = {};               // selected item per section, for the column view
+const GENERAL = "\u0000general"; // the section's own loose values
+
+const $ = (s) => document.querySelector(s);
+const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
+const isNote = (k) => k.startsWith("_");
+const get = (obj, path) => path.reduce((o, k) => (o == null ? undefined : o[k]), obj);
+function set(obj, path, value) {
+  let o = obj;
+  for (let i = 0; i < path.length - 1; i++) o = o[path[i]];
+  o[path[path.length - 1]] = value;
+}
+function label(k) { return k.replace(/_t(\d)$/, " (tier $1)").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()); }
+
+function setDirty(d) {
+  dirty = d;
+  const s = $("#status");
+  s.className = d ? "dirty" : "";
+  s.textContent = d ? "Unsaved changes" : "All changes saved";
+  renderNav();
+}
+
+async function load() {
+  const [t, d] = await Promise.all([fetch("/tuning.json").then((r) => r.json()), fetch("/defaults.json").then((r) => r.json()).catch(() => ({}))]);
+  data = t; defaults = d;
+  info = await fetch("/info").then((r) => r.json()).catch(() => null);
+  if (!section) section = Object.keys(data).find((k) => !isNote(k));
+  setDirty(false);
+  render();
+}
+
+async function save() {
+  const r = await fetch("/tuning.json", { method: "PUT", body: JSON.stringify(data) });
+  const j = await r.json();
+  if (!j.ok) { alert("Save failed: " + j.error); return; }
+  setDirty(false);
+  const s = $("#status");
+  s.className = "ok";
+  s.textContent = "Saved. Start a new run in the game to use it.";
+}
+
+function changedCount(path) {
+  let n = 0;
+  (function walk(v, p) {
+    if (isObj(v)) for (const k of Object.keys(v)) { if (!isNote(k)) walk(v[k], [...p, k]); }
+    else if (!Array.isArray(v)) { const dv = get(defaults, p); if (dv !== undefined && dv !== v) n++; if (dv === undefined) n++; }
+    else if (JSON.stringify(v) !== JSON.stringify(get(defaults, p))) n++;
+  })(get(data, path), path);
+  return n;
+}
+
+function renderNav() {
+  const nav = $("#nav");
+  nav.innerHTML = "";
+  for (const k of Object.keys(data)) {
+    if (isNote(k)) continue;
+    const a = document.createElement("a");
+    a.textContent = label(k);
+    if (k === section && !$("#search").value) a.className = "active";
+    const c = changedCount([k]);
+    if (c) { const s = document.createElement("span"); s.className = "count"; s.textContent = c; a.appendChild(s); }
+    a.onclick = () => { section = k; $("#search").value = ""; render(); };
+    nav.appendChild(a);
+  }
+}
+
+function render() {
+  renderNav();
+  const main = $("#main");
+  main.innerHTML = "";
+  const q = $("#search").value.trim().toLowerCase();
+  if (q) return renderSearch(main, q);
+
+  if (section === Object.keys(data).find((k) => !isNote(k)) && info) {
+    const tip = document.createElement("div");
+    tip.className = "tip";
+    tip.innerHTML = `<b>How it works:</b> edit values, press <b>Save</b>, then start a new run. The game loads the newest values from this Mac at the title screen and after every death (phone on the same Wi‑Fi: ${info.ips.map((i) => i + ":" + info.port).join(", ")}). Changed values are highlighted; ↺ resets one to its original value. Bundled into the next phone build as well.`;
+    main.appendChild(tip);
+  }
+
+  const node = data[section];
+  const notes = Object.keys(node).filter((k) => isNote(k) && !Array.isArray(node[k.slice(1)])).map((k) => node[k]);
+  for (const n of notes) { const p = document.createElement("div"); p.className = "note"; p.textContent = n; main.appendChild(p); }
+
+  const charts = document.createElement("div");
+  charts.className = "charts";
+  charts.id = "charts";
+  main.appendChild(charts);
+  drawCharts();
+
+  const loose = Object.keys(node).filter((k) => !isNote(k) && !isObj(node[k]) && !Array.isArray(node[k]));
+  const items = Object.keys(node).filter((k) => !isNote(k) && isObj(node[k]));
+
+  // Sections made of many named things (spells, runes, enemies): pick one from a column.
+  if (items.length >= 3) {
+    const choices = [...(loose.length ? [GENERAL] : []), ...items];
+    let pick = picked[section];
+    if (!choices.includes(pick)) pick = picked[section] = choices[0];
+    const wrap = document.createElement("div");
+    wrap.className = "split";
+    const col = document.createElement("div");
+    col.className = "itemlist";
+    for (const k of choices) {
+      const a = document.createElement("a");
+      a.textContent = k === GENERAL ? "General" : label(k);
+      if (k === pick) a.className = "active";
+      const c = k === GENERAL ? loose.filter((x) => node[x] !== get(defaults, [section, x])).length : changedCount([section, k]);
+      if (c) { const s = document.createElement("span"); s.className = "count"; s.textContent = c; a.appendChild(s); }
+      a.onclick = () => { picked[section] = k; render(); };
+      col.appendChild(a);
+    }
+    const detail = document.createElement("div");
+    if (pick === GENERAL) detail.appendChild(card(label(section), [section], loose));
+    else detail.appendChild(card(pick, [section, pick], Object.keys(node[pick]).filter((x) => !isNote(x) && !isObj(node[pick][x])), true));
+    for (const k of Object.keys(node)) if (Array.isArray(node[k])) detail.appendChild(listCard(k, [section, k], node["_" + k]));
+    wrap.append(col, detail);
+    main.appendChild(wrap);
+    charts.style.marginTop = "14px";
+    main.appendChild(charts);   // graphs go below the picker here
+    return;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  main.appendChild(grid);
+
+  // Loose values first in one card, then one card per nested object / list.
+  if (loose.length) grid.appendChild(card(label(section), [section], loose));
+  for (const k of Object.keys(node)) {
+    if (isNote(k)) continue;
+    if (isObj(node[k])) grid.appendChild(card(k, [section, k], Object.keys(node[k]).filter((x) => !isNote(x) && !isObj(node[k][x])), true));
+    else if (Array.isArray(node[k])) grid.appendChild(listCard(k, [section, k], node["_" + k]));
+  }
+}
+
+function card(title, path, keys, removable) {
+  const c = document.createElement("div");
+  c.className = "card";
+  const h = document.createElement("h3");
+  h.textContent = label(title);
+  if (removable && get(defaults, path) === undefined) {
+    const del = document.createElement("button");
+    del.className = "small danger"; del.textContent = "Remove";
+    del.onclick = () => { const parent = get(data, path.slice(0, -1)); delete parent[path[path.length - 1]]; setDirty(true); render(); };
+    h.appendChild(del);
+  }
+  c.appendChild(h);
+  const obj = get(data, path);
+  if (path.length > 1) for (const k of Object.keys(obj).filter(isNote)) { const n = document.createElement("div"); n.className = "note"; n.textContent = obj[k]; c.appendChild(n); }
+  for (const k of keys) c.appendChild(row([...path, k], label(k)));
+
+  // Add a new value to this group.
+  const add = document.createElement("div");
+  add.className = "addkey";
+  add.innerHTML = `<input placeholder="new value name"><input placeholder="value" style="max-width:80px"><button class="small">Add</button>`;
+  const [nameIn, valIn, btn] = add.children;
+  btn.onclick = () => {
+    const name = nameIn.value.trim();
+    if (!name) return;
+    const raw = valIn.value.trim();
+    obj[name] = raw === "true" ? true : raw === "false" ? false : raw !== "" && !isNaN(+raw) ? +raw : raw;
+    setDirty(true); render();
+  };
+  c.appendChild(add);
+  return c;
+}
+
+function row(path, text, showPath) {
+  const r = document.createElement("div");
+  r.className = "row";
+  const value = get(data, path);
+  const dv = get(defaults, path);
+  const l = document.createElement("label");
+  l.textContent = text;
+  l.title = path.join(".");
+  if (showPath) { const p = document.createElement("span"); p.className = "path"; p.textContent = path.slice(0, -1).join(" › "); l.appendChild(p); }
+  let input;
+  if (typeof value === "boolean") {
+    input = document.createElement("input"); input.type = "checkbox"; input.checked = value;
+    input.onchange = () => { set(data, path, input.checked); mark(); };
+  } else if (typeof value === "number") {
+    input = document.createElement("input"); input.type = "number"; input.step = "any"; input.value = value;
+    input.oninput = () => { if (input.value !== "" && !isNaN(+input.value)) { set(data, path, +input.value); mark(); } };
+  } else {
+    input = document.createElement("input"); input.type = "text"; input.value = value ?? "";
+    input.oninput = () => { set(data, path, input.value); mark(); };
+  }
+  const reset = document.createElement("button");
+  reset.className = "small reset"; reset.textContent = "↺"; reset.title = dv === undefined ? "Remove (not in defaults)" : `Reset to ${dv}`;
+  reset.onclick = () => {
+    if (dv === undefined) { const parent = get(data, path.slice(0, -1)); delete parent[path[path.length - 1]]; }
+    else set(data, path, dv);
+    setDirty(true); render();
+  };
+  function mark() { r.classList.toggle("changed", get(data, path) !== dv); if (!dirty) setDirty(true); drawCharts(); }
+  if (value !== dv) r.classList.add("changed");
+  r.append(l, input, reset);
+  return r;
+}
+
+function listCard(title, path, note) {
+  const list = get(data, path);
+  const c = document.createElement("div");
+  c.className = "card";
+  c.style.gridColumn = "1 / -1";
+  const h = document.createElement("h3");
+  h.textContent = label(title);
+  c.appendChild(h);
+  if (note) { const n = document.createElement("div"); n.className = "note"; n.textContent = note; c.appendChild(n); }
+  const cols = [...new Set(list.flatMap((o) => Object.keys(o)))];
+  if (!cols.length) cols.push("name");
+  const t = document.createElement("table");
+  t.innerHTML = `<tr>${cols.map((k) => `<th>${label(k)}</th>`).join("")}<th></th></tr>`;
+  list.forEach((item, i) => {
+    const tr = document.createElement("tr");
+    for (const k of cols) {
+      const td = document.createElement("td");
+      const v = item[k];
+      let input;
+      if (k === "tier") {
+        input = document.createElement("select");
+        for (const o of ["Any", "Chaff", "Medium", "Boss"]) { const op = document.createElement("option"); op.value = op.textContent = o; input.appendChild(op); }
+        input.value = v ?? "Any";
+        input.onchange = () => { item[k] = input.value; setDirty(true); };
+      } else {
+        input = document.createElement("input");
+        input.type = typeof v === "number" ? "number" : "text";
+        if (input.type === "number") input.step = "any";
+        input.value = v ?? "";
+        input.oninput = () => { item[k] = input.type === "number" ? +input.value : input.value; setDirty(true); };
+      }
+      td.appendChild(input);
+      tr.appendChild(td);
+    }
+    const td = document.createElement("td");
+    const del = document.createElement("button");
+    del.className = "small danger"; del.textContent = "✕";
+    del.onclick = () => { list.splice(i, 1); setDirty(true); render(); };
+    td.appendChild(del);
+    tr.appendChild(td);
+    t.appendChild(tr);
+  });
+  c.appendChild(t);
+  const add = document.createElement("button");
+  add.className = "small"; add.textContent = "+ Add row"; add.style.marginTop = "8px";
+  add.onclick = () => {
+    const template = list[0] ? Object.fromEntries(Object.entries(list[0]).map(([k, v]) => [k, typeof v === "number" ? 0 : k === "tier" ? "Any" : "New"])) : { name: "New" };
+    list.push(template); setDirty(true); render();
+  };
+  c.appendChild(add);
+  return c;
+}
+
+// ------------------------------------------------------------------ charts
+// Graphs for values that feed a formula. They mirror the game's code and redraw as you type.
+
+const COLORS = ["#b48cff", "#ffcf5c", "#6be3a0", "#ff6b7d", "#5cc8ff", "#ff9f5c"];
+const n = (path, fallback) => { const v = get(data, path.split(".")); return typeof v === "number" ? v : fallback; };
+
+function xpToNext(L) {
+  const raw = n("xp.base", 3) + L * n("xp.perLevel", 2) + (L * L) / Math.max(1, n("xp.quadDivisor", 5));
+  const steps = Math.floor(L / Math.max(1, Math.round(n("xp.stepEvery", 5))));
+  return Math.max(1, Math.round(Math.floor(raw) * Math.pow(n("xp.stepMultiplier", 1.25), steps)));
+}
+
+function chaffRate(t, kills) {
+  const threat = Math.floor(t / n("spawning.swarmEvery", 45));
+  const r = (n("spawning.chaffBase", 0.4) + t * n("spawning.chaffPerSecond", 1 / 240))
+          * (1 + n("spawning.chaffPerThreat", 0.1) * threat) * (1 + n("spawning.chaffPerBossKill", 1.2) * kills);
+  return Math.min(n("spawning.chaffMax", 10), r);
+}
+
+const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+const CHARTS = {
+  xp: () => {
+    const lv = [...Array(40)].map((_, i) => i + 1);
+    let total = 0;
+    const cum = lv.map((L) => (total += xpToNext(L)));
+    return [
+      { title: "XP needed for the next level", sub: "By current level", x: lv, xLabel: (v) => "Lv " + v, series: [{ name: "XP to next level", y: lv.map(xpToNext) }] },
+      { title: "Total XP to reach a level", sub: "Running total from level 1", x: lv, xLabel: (v) => "Lv " + v, series: [{ name: "Total XP", y: cum }] },
+    ];
+  },
+  spawning: () => {
+    const t = [...Array(61)].map((_, i) => i * 10);
+    const be = n("spawning.bossEvery", 150), se = n("spawning.swarmEvery", 45);
+    const hp = (s, killBosses) => 1 + n("spawning.healthPerSwarm", 0.25) * Math.floor(s / se) + (killBosses ? n("spawning.healthPerBossKill", 1) * Math.floor(s / be) : 0);
+    const swarms = [...Array(12)].map((_, i) => i);
+    // Vertical lines where swarms and bosses arrive.
+    const markers = [];
+    for (let s = se; s <= 600; s += se) markers.push({ at: s, color: "#5cc8ff" });
+    for (let s = be; s <= 600; s += be) markers.push({ at: s, color: "#ff6b7d" });
+    const markerLegend = [{ name: "Swarm", color: "#5cc8ff" }, { name: "Boss", color: "#ff6b7d" }];
+    return [
+      { title: "Chaff spawned per second", sub: "Over a run (ignores time paused during boss fights)", x: t, xLabel: fmtTime, markers, markerLegend, series: [
+        { name: "Each boss killed when it arrives", y: t.map((s) => chaffRate(s, Math.floor(s / be))) },
+        { name: "No bosses killed", y: t.map((s) => chaffRate(s, 0)) },
+      ] },
+      { title: "Enemy health multiplier", sub: "+ per swarm and per boss kill", x: t, xLabel: fmtTime, markers, markerLegend, series: [
+        { name: "Each boss killed when it arrives", y: t.map((s) => hp(s, true)) },
+        { name: "No bosses killed", y: t.map((s) => hp(s, false)) },
+      ] },
+      { title: "Swarm size", sub: "By swarm number", x: swarms.map((s) => s + 1), xLabel: (v) => "#" + v, series: [
+        { name: "Before first boss kill", y: swarms.map((s) => Math.round(n("spawning.swarmBasePreBoss", 14) + n("spawning.swarmPerThreatPreBoss", 3) * s)) },
+        { name: "After a boss kill", y: swarms.map((s) => Math.round(n("spawning.swarmBase", 16) + n("spawning.swarmPerThreat", 6) * s)) },
+      ] },
+    ];
+  },
+  runes: () => {
+    const names = Object.keys(data.runes).filter((k) => isObj(data.runes[k]) && typeof data.runes[k].weight === "number");
+    const total = names.reduce((a, k) => a + data.runes[k].weight, 0) || 1;
+    return [{ title: "Chance each rune is the first offered", sub: "From the rarity weights", bars: names.map((k) => ({ label: k, value: (100 * data.runes[k].weight) / total })), unit: "%" }];
+  },
+  spells: () => {
+    const ids = Object.keys(data.spells);
+    const dps = (s, suffix) => {
+      const d = s["damage" + suffix] ?? s.damage, c = (s["cooldown" + suffix] ?? s.cooldown) * n("global.castRate", 0.85), k = s["count" + suffix] ?? s.count ?? 1;
+      return d && c ? (d * k) / c : 0;
+    };
+    const dmgSpells = ids.filter((k) => !["Rejuvenate", "Veil", "Enthrall"].includes(k));
+    return [{ title: "Base damage per second (no runes, one target)", sub: "damage × count ÷ cooldown; tier I", bars: dmgSpells.map((k) => ({ label: k, value: dps(data.spells[k], "") })), unit: "" }];
+  },
+};
+
+function drawCharts() {
+  const box = document.getElementById("charts");
+  if (!box) return;
+  box.innerHTML = "";
+  const make = CHARTS[section];
+  if (!make) return;
+  for (const c of make()) box.appendChild(c.bars ? barChart(c) : lineChart(c));
+}
+
+function chartShell(c) {
+  const el = document.createElement("div");
+  el.className = "card chart";
+  el.innerHTML = `<h4>${c.title}</h4><div class="sub">${c.sub || ""}</div>`;
+  return el;
+}
+
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); return Math.ceil(v / p * 2) / 2 * p; }
+
+function lineChart(c) {
+  const el = chartShell(c);
+  const W = 360, H = 190, L = 40, R = 10, T = 8, B = 22;
+  const ymax = niceMax(Math.max(...c.series.flatMap((s) => s.y)));
+  const xs = (i) => L + (i / (c.x.length - 1)) * (W - L - R);
+  const ys = (v) => H - B - (v / ymax) * (H - T - B);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
+  for (let g = 0; g <= 4; g++) {
+    const v = (ymax * g) / 4, y = ys(v);
+    svg += `<line class="axis" x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" opacity="${g ? 0.5 : 1}"/><text class="tick" x="${L - 4}" y="${y + 3}" text-anchor="end">${+v.toFixed(2)}</text>`;
+  }
+  const step = Math.ceil(c.x.length / 6);
+  c.x.forEach((v, i) => { if (i % step === 0 && (c.x.length - 1 - i >= step * 0.6 || i === c.x.length - 1)) svg += `<text class="tick" x="${xs(i)}" y="${H - 6}" text-anchor="middle">${c.xLabel(v)}</text>`; });
+  const x0 = c.x[0], x1 = c.x[c.x.length - 1];
+  for (const m of c.markers || []) {
+    const mx = L + ((m.at - x0) / (x1 - x0)) * (W - L - R);
+    svg += `<line x1="${mx}" x2="${mx}" y1="${T}" y2="${H - B}" stroke="${m.color}" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>`;
+  }
+  c.series.forEach((s, k) => {
+    svg += `<polyline fill="none" stroke="${COLORS[k]}" stroke-width="2" points="${s.y.map((v, i) => `${xs(i)},${ys(v)}`).join(" ")}"/>`;
+  });
+  svg += `<g class="hover" visibility="hidden"><line class="hoverline" y1="${T}" y2="${H - B}"/><rect class="tipbox" rx="4" height="${14 + 14 * c.series.length}"/><text class="tiptext"></text></g>`;
+  svg += `<rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/></svg>`;
+  el.insertAdjacentHTML("beforeend", svg);
+  el.insertAdjacentHTML("beforeend", `<div class="legend">${c.series.map((s, k) => `<span><i style="background:${COLORS[k]}"></i>${s.name}</span>`).join("")}${(c.markerLegend || []).map((m) => `<span><i style="background:none;border-top:2px dashed ${m.color};height:0"></i>${m.name}</span>`).join("")}</div>`);
+
+  const svgEl = el.querySelector("svg"), hover = svgEl.querySelector(".hover");
+  svgEl.addEventListener("mousemove", (e) => {
+    const r = svgEl.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * W;
+    const i = Math.max(0, Math.min(c.x.length - 1, Math.round(((px - L) / (W - L - R)) * (c.x.length - 1))));
+    const x = xs(i);
+    hover.setAttribute("visibility", "visible");
+    hover.querySelector("line").setAttribute("x1", x);
+    hover.querySelector("line").setAttribute("x2", x);
+    const lines = [c.xLabel(c.x[i]), ...c.series.map((s) => `${s.name}: ${+s.y[i].toFixed(2)}`)];
+    const text = hover.querySelector("text");
+    text.innerHTML = lines.map((l, k) => `<tspan x="0" dy="${k ? 14 : 0}">${l}</tspan>`).join("");
+    const bw = Math.max(...lines.map((l) => l.length)) * 5.6 + 12;
+    const bx = x + bw + 8 > W ? x - bw - 6 : x + 6;
+    hover.querySelector("rect").setAttribute("x", bx);
+    hover.querySelector("rect").setAttribute("y", T);
+    hover.querySelector("rect").setAttribute("width", bw);
+    text.setAttribute("transform", `translate(${bx + 6},${T + 14})`);
+    text.querySelectorAll("tspan").forEach((t) => t.setAttribute("x", 0));
+  });
+  svgEl.addEventListener("mouseleave", () => hover.setAttribute("visibility", "hidden"));
+  return el;
+}
+
+function barChart(c) {
+  const el = chartShell(c);
+  const W = 360, rowH = 16, L = 110, R = 40;
+  const H = c.bars.length * rowH + 6;
+  const max = Math.max(...c.bars.map((b) => b.value)) || 1;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="height:${H}px">`;
+  c.bars.forEach((b, i) => {
+    const y = 3 + i * rowH, w = (b.value / max) * (W - L - R);
+    svg += `<text class="tick" x="${L - 6}" y="${y + 11}" text-anchor="end">${b.label}</text>`;
+    svg += `<rect x="${L}" y="${y + 2}" width="${Math.max(1, w)}" height="${rowH - 5}" rx="3" fill="${COLORS[0]}"/>`;
+    svg += `<text class="tick" x="${L + w + 4}" y="${y + 11}">${b.value.toFixed(1)}${c.unit}</text>`;
+  });
+  svg += "</svg>";
+  el.insertAdjacentHTML("beforeend", svg);
+  return el;
+}
+
+function renderSearch(main, q) {
+  const grid = document.createElement("div");
+  grid.className = "card";
+  let hits = 0;
+  (function walk(v, p) {
+    if (isObj(v)) { for (const k of Object.keys(v)) if (!isNote(k)) walk(v[k], [...p, k]); return; }
+    if (Array.isArray(v)) return;
+    if (p.join(" ").toLowerCase().includes(q)) { grid.appendChild(row(p, label(p[p.length - 1]), true)); hits++; }
+  })(data, []);
+  if (!hits) grid.textContent = "Nothing matches.";
+  main.appendChild(grid);
+}
+
+$("#search").oninput = render;
+$("#save").onclick = save;
+$("#reload").onclick = () => { if (!dirty || confirm("Discard unsaved changes?")) load(); };
+document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); save(); } });
+window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+load().catch((e) => { $("#status").textContent = "Could not load: " + e.message; });
+</script>
+</body>
+</html>

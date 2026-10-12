@@ -23,3 +23,8 @@
 .vs/
 .idea/
 .DS_Store
+Builds/
+
+# Baked at build time by Assets/Editor/TuningHost.cs
+Assets/Resources/tuning_host.txt
+Assets/Resources/tuning_host.txt.meta
