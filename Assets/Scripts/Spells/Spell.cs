@@ -204,6 +204,7 @@ public abstract class Spell
             Sfx.Play(Sound.Lightning, 0.35f, 0.3f);
         }
         Cast();
+        if (HitsFoes) Owner?.CastAnim();
         if (RuneCount(Rune.Ward) > 0f) Owner.GainWard();
         if (EchoRecasts)
             for (int i = 1; i <= Echoes; i++) echoes.Add(0.22f * i);
