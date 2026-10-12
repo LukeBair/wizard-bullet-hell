@@ -19,7 +19,7 @@ public class XpGem : MonoBehaviour
         Color c = value >= 20 ? new Color(1f, 0.8f, 0.3f) : value >= 5 ? new Color(0.4f, 1f, 0.6f) : new Color(0.45f, 0.75f, 1f);
         float size = value >= 20 ? 0.5f : value >= 5 ? 0.38f : 0.26f;
         SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(c.r, c.g, c.b, 0.4f), Vector2.zero, size * 2.2f, 8);
-        SpriteFactory.Child(go.transform, "Gem", SpriteFactory.Diamond, c, Vector2.zero, size, 9);
+        SpriteFactory.Child(go.transform, "Gem", ArtStyle.Gem, c, Vector2.zero, size, 9);
     }
 
     void OnEnable() => All.Add(this);

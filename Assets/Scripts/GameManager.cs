@@ -40,6 +40,7 @@ public class GameManager : MonoBehaviour
         Director = gameObject.AddComponent<Director>();
         gameObject.AddComponent<Joystick>();
         gameObject.AddComponent<Sfx>();
+        gameObject.AddComponent<ArtOverlay>();
         if (FindAnyObjectByType<AudioListener>() == null) cam.gameObject.AddComponent<AudioListener>();
         BuildWorld();
         State = GameState.Title;
@@ -199,13 +200,36 @@ public class GameManager : MonoBehaviour
             Haptics.Selection();
             StartRun();
         }
+        DrawStylePicker(new Rect(col.x, col.y + 360f * s, col.width, 110f * s));
+
         string tuning = Tune.Fetching ? "Tuning: checking Mac..." : $"Tuning: {Tune.Source}";
-        UI.Text(new Rect(col.x, col.y + 600f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
-        if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 650f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
+        UI.Text(new Rect(col.x, col.y + 680f * s, col.width, 40f * s), tuning, 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.5f), false);
+        if (!Tune.Fetching && UI.Button(new Rect(col.x + col.width * 0.3f, col.y + 730f * s, col.width * 0.4f, 64f * s), "Reload tuning", new Color(0.5f, 0.5f, 0.6f)))
             StartCoroutine(Tune.FetchFromMac());
-        UI.Text(new Rect(col.x, col.y + 380f * s, col.width, 200f * s),
+        UI.Text(new Rect(col.x, col.y + 500f * s, col.width, 200f * s),
             "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nFill a spell's sockets to evolve it.",
             24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
+    }
+
+    // Art style buttons; picking one rebuilds the world behind the title so it previews right away.
+    void DrawStylePicker(Rect r)
+    {
+        float s = UiScale;
+        UI.Text(new Rect(r.x, r.y, r.width, 36f * s), "Art style", 22, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
+        var styles = ArtStyle.All;
+        float gap = 10f * s, w = (r.width - gap * (styles.Length - 1)) / styles.Length;
+        for (int i = 0; i < styles.Length; i++)
+        {
+            bool on = styles[i] == ArtStyle.Current;
+            var accent = on ? new Color(1f, 0.85f, 0.4f) : new Color(0.45f, 0.45f, 0.55f);
+            if (UI.Button(new Rect(r.x + i * (w + gap), r.y + 40f * s, w, 70f * s), ArtStyle.Label(styles[i]), accent) && !on)
+            {
+                Sfx.Play(Sound.Select, 0.8f);
+                Haptics.Selection();
+                ArtStyle.Current = styles[i];
+                BuildWorld();
+            }
+        }
     }
 
     void DrawHud()
@@ -218,8 +242,7 @@ public class GameManager : MonoBehaviour
 
         // XP bar across the top
         float frac = Player.Xp / (float)Player.XpToNext;
-        UI.Box(new Rect(safe.xMin, top, safe.width, 16f * s), new Color(0f, 0f, 0f, 0.6f));
-        UI.Box(new Rect(safe.xMin, top, safe.width * frac, 16f * s), new Color(0.45f, 0.75f, 1f));
+        UI.Bar(new Rect(safe.xMin, top, safe.width, 16f * s), frac, ArtStyle.XpColor);
         top += 22f * s;
 
         UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
@@ -234,8 +257,7 @@ public class GameManager : MonoBehaviour
 
         // Health bar
         float hpW = 260f * s;
-        UI.Box(new Rect(left, top, hpW, 20f * s), new Color(0f, 0f, 0f, 0.6f));
-        UI.Box(new Rect(left, top, hpW * Mathf.Clamp01(Player.Health / Player.MaxHealth), 20f * s), new Color(1f, 0.35f, 0.45f));
+        UI.Bar(new Rect(left, top, hpW, 20f * s), Player.Health / Player.MaxHealth, ArtStyle.HealthColor);
         UI.Text(new Rect(left + hpW + 10f * s, top - 6f * s, 200f * s, 30f * s), Mathf.CeilToInt(Mathf.Max(0f, Player.Health)).ToString(), 22);
         top += 32f * s;
 
@@ -247,8 +269,7 @@ public class GameManager : MonoBehaviour
         {
             float bw = safe.width * 0.8f, bx = safe.center.x - bw * 0.5f, by = top + 70f * s;
             UI.Text(new Rect(bx, by, bw, 34f * s), boss.Def.Name, 26, TextAnchor.UpperCenter, boss.Def.Accent);
-            UI.Box(new Rect(bx, by + 36f * s, bw, 16f * s), new Color(0f, 0f, 0f, 0.6f));
-            UI.Box(new Rect(bx, by + 36f * s, bw * Mathf.Clamp01(boss.Health / boss.MaxHealth), 16f * s), boss.Def.Accent);
+            UI.Bar(new Rect(bx, by + 36f * s, bw, 16f * s), boss.Health / boss.MaxHealth, boss.Def.Accent);
         }
 
         // Spell icons along the bottom with cooldown sweep
@@ -257,8 +278,8 @@ public class GameManager : MonoBehaviour
         float x = safe.center.x - total * 0.5f, y = Screen.height - safe.yMin - d - 30f * s;
         foreach (var spell in Player.Spells)
         {
-            UI.Box(new Rect(x, y, d, d), new Color(0f, 0f, 0f, 0.55f));
-            UI.Box(new Rect(x, y + d * (1f - spell.CooldownProgress), d, d * spell.CooldownProgress), new Color(spell.Color.r, spell.Color.g, spell.Color.b, 0.45f));
+            var slot = UI.Slot(new Rect(x, y, d, d));
+            UI.Box(new Rect(slot.x, slot.y + slot.height * (1f - spell.CooldownProgress), slot.width, slot.height * spell.CooldownProgress), new Color(spell.Color.r, spell.Color.g, spell.Color.b, 0.45f));
             UI.Text(new Rect(x, y + 6f * s, d, 40f * s), Initials(spell.Name), 30, TextAnchor.UpperCenter, spell.Color);
             string tier = spell.CanEvolve ? (spell.Tier == 1 ? "I" : spell.Tier == 2 ? "II" : "III") + " · " : "";
             UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"{tier}Lv{spell.Level}", 20, TextAnchor.UpperCenter);
