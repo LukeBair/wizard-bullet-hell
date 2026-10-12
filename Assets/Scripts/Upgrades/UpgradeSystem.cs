@@ -41,6 +41,7 @@ public abstract class UpgradeSystem
             if (UI.Card(new Rect(col.x, y, col.width, h), $"Tome: {preview.Name}", preview.Blurb, preview.Color, "START"))
             {
                 Player.Learn(id);
+                Telemetry.StartTome(startOffer, id);
                 return true;
             }
             y += h + gap;
@@ -48,7 +49,12 @@ public abstract class UpgradeSystem
         return false;
     }
 
-    public void AutoPickStart() => Player.Learn(startOffer[Random.Range(0, startOffer.Count)]);
+    public void AutoPickStart()
+    {
+        var id = startOffer[Random.Range(0, startOffer.Count)];
+        Player.Learn(id);
+        Telemetry.StartTome(startOffer, id);
+    }
 
     // Called each time a level-up screen opens.
     public abstract void Open();

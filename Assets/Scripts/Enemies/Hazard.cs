@@ -9,6 +9,7 @@ public class Hazard : MonoBehaviour
     Vector2 from;
     bool lobbed;
     bool friendly;   // thrown by a charmed enemy: hurts enemies instead of the wizard
+    string source;   // who made it, for telemetry
     Transform fill, shell;
     SpriteRenderer edge;
 
@@ -22,6 +23,7 @@ public class Hazard : MonoBehaviour
         h.damage = damage;
         h.color = color;
         h.friendly = friendly;
+        h.source = Telemetry.Actor;
         h.edge = SpriteFactory.Child(go.transform, "Edge", SpriteFactory.Ring, new Color(color.r, color.g, color.b, 0.8f), Vector2.zero, radius * 2f, 2);
         h.fill = SpriteFactory.Child(go.transform, "Fill", SpriteFactory.Circle, new Color(color.r, color.g, color.b, 0.3f), Vector2.zero, 0.01f, 1).transform;
         if (lobFrom.HasValue)
@@ -68,7 +70,7 @@ public class Hazard : MonoBehaviour
         if (player != null && player.IsAlive)
         {
             float r = radius + Player.HitRadius;
-            if ((player.Position - pos).sqrMagnitude < r * r) player.TakeDamage(damage);
+            if ((player.Position - pos).sqrMagnitude < r * r) player.TakeDamage(damage, source, "hazard");
         }
         Destroy(gameObject);
     }

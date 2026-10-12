@@ -71,6 +71,22 @@
   .savetable input[type=number] { width: 70px; }
   .savetable .muted { color: var(--muted); font-size: 12px; }
   nav a.special { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+  nav a.special + a.special { margin-top: 0; border-top: 0; padding-top: 7px; }
+  .runs td, .runs th { padding: 6px 8px; white-space: nowrap; }
+  .runs tr.pick { cursor: pointer; }
+  .runs tr.pick:hover td { background: var(--panel2); }
+  .runs tr.sel td { background: var(--panel2); }
+  .runs .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .runs .wrap { white-space: normal; color: var(--muted); font-size: 12px; }
+  .scroll { overflow-x: auto; }
+  .outcome-win { color: var(--ok); } .outcome-death { color: var(--danger); } .outcome-quit, .outcome-unfinished { color: var(--muted); }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 110px; }
+  .stat b { display: block; font-size: 18px; }
+  .stat span { color: var(--muted); font-size: 12px; }
+  .evlog { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 420px; overflow: auto; white-space: pre; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .chips label { font-size: 12px; color: var(--muted); display: flex; gap: 4px; align-items: center; }
   @media (max-width: 700px) {
     .split { grid-template-columns: 1fr; }
     .itemlist { position: static; max-height: none; display: flex; overflow-x: auto; padding: 0; }
@@ -99,6 +115,7 @@ let data = {}, defaults = {}, dirty = false, section = null, info = null;
 const picked = {};               // selected item per section, for the column view
 const GENERAL = "\u0000general"; // the section's own loose values
 const SAVE = "\u0000save";       // the phone's progress page (not part of tuning.json)
+const RUNS = "\u0000runs";       // gameplay telemetry page
 let phoneSave = {};
 
 const $ = (s) => document.querySelector(s);
@@ -168,6 +185,11 @@ function renderNav() {
   a.className = "special" + (section === SAVE && !$("#search").value ? " active" : "");
   a.onclick = () => { section = SAVE; $("#search").value = ""; render(); };
   nav.appendChild(a);
+  const r = document.createElement("a");
+  r.textContent = "📊 Runs";
+  r.className = "special" + (section === RUNS && !$("#search").value ? " active" : "");
+  r.onclick = () => { section = RUNS; $("#search").value = ""; render(); refreshRuns(); };
+  nav.appendChild(r);
 }
 
 // The phone's gold, tomes, feats and evolutions. The phone reports them each time it loads tuning
@@ -253,6 +275,192 @@ function renderSave(main) {
   main.appendChild(c);
 }
 
+// ---------------------------------------------------------------- Runs (telemetry)
+// The phone logs every run to tools/tuner/telemetry/<run>.jsonl (format: telemetry/README.md).
+let runs = null, runPick = null, runLines = null, runFilter = null;
+
+async function refreshRuns() {
+  runs = await fetch("/telemetry").then((r) => r.json()).catch(() => []);
+  if (section === RUNS) render();
+}
+
+async function openRun(id) {
+  runPick = id; runLines = null; runFilter = null;
+  render();
+  const text = await fetch("/telemetry/" + id).then((r) => r.text()).catch(() => "");
+  runLines = text.split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+  if (section === RUNS && runPick === id) render();
+}
+
+const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const mmss = (t) => `${Math.floor((t || 0) / 60)}:${String(Math.floor((t || 0) % 60)).padStart(2, "0")}`;
+const r1 = (v) => (Math.round((v || 0) * 10) / 10).toString();
+
+function stat(label, value) { return `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`; }
+
+function renderRuns(main) {
+  if (runs === null) { main.textContent = "Loading runs…"; refreshRuns(); return; }
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  tip.innerHTML = runs.length
+    ? `<b>${runs.length} runs logged.</b> Pick one for its timeline, enemies, damage and picks. Files are in <code>tools/tuner/telemetry</code>: <code>runs.json</code> has a row per run, each <code>&lt;run&gt;.jsonl</code> the full log (format in its README). Switches are under Telemetry.`
+    : "<b>No runs yet.</b> Play a run with the tuner running: the game sends its log during the run and when it ends.";
+  main.appendChild(tip);
+  const bar = document.createElement("div");
+  bar.style.cssText = "display:flex;gap:8px;margin-bottom:12px";
+  const refresh = document.createElement("button");
+  refresh.textContent = "Refresh"; refresh.onclick = () => { refreshRuns(); if (runPick) openRun(runPick); };
+  bar.appendChild(refresh);
+  main.appendChild(bar);
+  if (!runs.length) return;
+
+  // Across all finished runs.
+  const done = runs.filter((r) => r.outcome !== "unfinished");
+  if (done.length) {
+    const wins = done.filter((r) => r.outcome === "win").length;
+    const avg = (f) => done.reduce((a, r) => a + (f(r) || 0), 0) / done.length;
+    const killers = {};
+    for (const r of done) if (r.killer) killers[r.killer] = (killers[r.killer] || 0) + 1;
+    const top = Object.entries(killers).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k} (${n})`).join(", ");
+    main.insertAdjacentHTML("beforeend", `<div class="stats">${stat("finished runs", done.length)}${stat("wins", `${wins} (${Math.round((wins / done.length) * 100)}%)`)}${stat("avg time", mmss(avg((r) => r.duration)))}${stat("avg level", r1(avg((r) => r.level)))}${stat("avg bosses", r1(avg((r) => r.bossesDefeated)))}${stat("top killers", top || "—")}</div>`);
+  }
+
+  const wrap = document.createElement("div");
+  wrap.className = "card scroll";
+  const t = document.createElement("table");
+  t.className = "runs";
+  t.innerHTML = `<tr><th>Started</th><th>Outcome</th><th class="num">Time</th><th class="num">Level</th><th class="num">Bosses</th><th class="num">Zone</th><th class="num">Kills</th><th class="num">Dmg taken</th><th>Killed by</th><th>Spells</th></tr>`;
+  for (const r of runs) {
+    const tr = document.createElement("tr");
+    tr.className = "pick" + (r.run === runPick ? " sel" : "");
+    tr.innerHTML = `<td>${esc(new Date(r.date).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</td><td class="outcome-${esc(r.outcome)}">${esc(r.outcome)}</td><td class="num">${mmss(r.duration)}</td><td class="num">${r.level}</td><td class="num">${r.bossesDefeated}</td><td class="num">${r.zone}</td><td class="num">${r.kills}</td><td class="num">${Math.round(r.damageTaken)}</td><td>${esc(r.killer || "")}</td><td class="wrap">${esc((r.spells || []).join(", "))}</td>`;
+    tr.onclick = () => openRun(r.run);
+    t.appendChild(tr);
+  }
+  wrap.appendChild(t);
+  main.appendChild(wrap);
+
+  if (runPick) {
+    const d = document.createElement("div");
+    d.style.marginTop = "14px";
+    main.appendChild(d);
+    if (!runLines) d.textContent = "Loading run…";
+    else renderRun(d, runPick, runLines);
+  }
+}
+
+function renderRun(box, id, lines) {
+  const start = lines.find((l) => l.ev === "run_start") || {};
+  const sum = lines.find((l) => l.ev === "summary");
+  const head = document.createElement("div");
+  head.style.cssText = "display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px";
+  head.innerHTML = `<h3 style="margin:0">Run ${esc(id)}</h3><span class="note" style="margin:0">${esc(start.device || "")} · ${esc(start.style || "")} · tuning ${esc(start.tuning || "?")} · zones ${esc((start.zones || []).join(" → "))}</span>`;
+  const raw = document.createElement("a");
+  raw.href = "/telemetry/" + id; raw.target = "_blank"; raw.textContent = "Raw JSONL"; raw.style.color = "var(--accent)";
+  const del = document.createElement("button");
+  del.className = "small danger"; del.textContent = "Delete run";
+  del.onclick = async () => {
+    if (!confirm("Delete this run's log?")) return;
+    await fetch("/telemetry/" + id, { method: "DELETE" });
+    runPick = null; runLines = null; refreshRuns();
+  };
+  head.append(raw, del);
+  box.appendChild(head);
+
+  if (sum) {
+    const dt = sum.damageTaken || {};
+    box.insertAdjacentHTML("beforeend", `<div class="stats">${stat("outcome", sum.outcome)}${stat("time", mmss(sum.duration))}${stat("level", sum.level)}${stat("bosses", sum.bossesDefeated)}${stat("kills", sum.kills)}${stat("damage taken", `${Math.round(dt.total || 0)} in ${dt.hits || 0} hits`)}${stat("blocked", dt.blocked || 0)}${stat("gold", sum.gold)}${stat("killed by", sum.killer || "—")}</div>`);
+  } else box.insertAdjacentHTML("beforeend", `<div class="tip">No summary: the run was cut off (app closed) or is still going. Showing what was logged.</div>`);
+
+  // Timeline from the tick lines, with swarms and bosses marked.
+  const ticks = lines.filter((l) => l.ev === "tick");
+  const charts = document.createElement("div");
+  charts.className = "charts";
+  box.appendChild(charts);
+  const markers = [
+    ...lines.filter((l) => l.ev === "swarm").map((l) => ({ at: l.t, color: "#5cc8ff" })),
+    ...lines.filter((l) => l.ev === "boss_spawn").map((l) => ({ at: l.t, color: "#ff6b7d" })),
+    ...lines.filter((l) => l.ev === "boss_kill").map((l) => ({ at: l.t, color: "#6be3a0" })),
+  ];
+  const markerLegend = [{ name: "swarm", color: "#5cc8ff" }, { name: "boss", color: "#ff6b7d" }, { name: "boss down", color: "#6be3a0" }];
+  if (ticks.length >= 2) {
+    const x = ticks.map((l) => l.t);
+    charts.appendChild(lineChart({ title: "Health", sub: "Wizard HP over play time", x, xLabel: mmss, series: [{ name: "HP", y: ticks.map((l) => l.hp) }, { name: "Max HP", y: ticks.map((l) => l.maxHp) }], markers, markerLegend }));
+    charts.appendChild(lineChart({ title: "On screen", sub: "Enemies alive and enemy bullets in flight", x, xLabel: mmss, series: [{ name: "Chaff", y: ticks.map((l) => l.chaff) }, { name: "Medium", y: ticks.map((l) => l.medium) }, { name: "Bullets", y: ticks.map((l) => l.bullets) }], markers, markerLegend }));
+    charts.appendChild(lineChart({ title: "Level", sub: "Wizard level and enemy health multiplier", x, xLabel: mmss, series: [{ name: "Level", y: ticks.map((l) => l.level) }, { name: "Foe HP x", y: ticks.map((l) => l.healthScale) }], markers, markerLegend }));
+  }
+  const bySource = sum ? (sum.damageTaken || {}).bySource || {} : lines.filter((l) => l.ev === "hurt").reduce((m, l) => ((m[l.src] = (m[l.src] || 0) + l.amount), m), {});
+  const srcBars = Object.entries(bySource).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([label, value]) => ({ label, value }));
+  if (srcBars.length) charts.appendChild(barChart({ title: "Damage taken by source", sub: "Total HP lost to each enemy", bars: srcBars, unit: "" }));
+
+  // Enemies: per type totals.
+  const foes = sum ? sum.enemies || {} : {};
+  if (Object.keys(foes).length) {
+    const c = document.createElement("div");
+    c.className = "card scroll"; c.style.marginBottom = "12px";
+    let h = `<h3>Enemies</h3><table class="runs"><tr><th>Enemy</th><th>Tier</th><th class="num">Spawned</th><th class="num">Killed</th><th class="num">Cleared</th><th class="num">Avg life</th><th class="num">Hits on you</th><th class="num">Damage to you</th></tr>`;
+    for (const [name, e] of Object.entries(foes).sort((a, b) => b[1].spawned - a[1].spawned))
+      h += `<tr><td>${esc(name)}</td><td>${esc(e.tier)}</td><td class="num">${e.spawned}</td><td class="num">${e.killed}</td><td class="num">${e.despawned}</td><td class="num">${r1(e.avgLife)}s</td><td class="num">${e.hitsOnPlayer}</td><td class="num">${Math.round(e.damageToPlayer)}</td></tr>`;
+    c.innerHTML = h + "</table>";
+    box.appendChild(c);
+  }
+
+  // Build: final spells, then every pick with what was offered.
+  const grid = document.createElement("div");
+  grid.className = "grid"; grid.style.marginBottom = "12px";
+  if (sum && sum.spells) {
+    const c = document.createElement("div");
+    c.className = "card";
+    c.innerHTML = `<h3>Final build</h3>` + sum.spells.map((s) => `<div style="margin:4px 0"><b>${esc(s.name)}</b> <span class="note">tier ${s.tier} · lv ${s.level}</span><br><span class="note">${esc(Object.entries(s.runes).map(([r, n]) => `${r} ${+n.toFixed(2)}`).join(" · ") || "no runes")}</span></div>`).join("");
+    grid.appendChild(c);
+  }
+  const picks = lines.filter((l) => l.ev === "pick");
+  if (picks.length) {
+    const c = document.createElement("div");
+    c.className = "card";
+    const offered = (o) => !o ? "" : o.tomes ? o.tomes.join(", ") : [...(o.runes || []), ...(o.tome ? ["tome " + o.tome] : []), ...(o.evolve || []).map((e) => "evolve " + e)].join(", ");
+    const took = (p) => p.took === "rune" ? `${p.rune} → ${p.spell}${p.resonance ? " (resonance)" : ""}` : p.took === "evolve" ? `evolve ${p.spell} ${p.tier}` : p.took === "rest" ? "rest" : `tome ${p.spell}`;
+    c.innerHTML = `<h3>Picks</h3><table class="runs"><tr><th class="num">Lv</th><th class="num">At</th><th>Took</th><th>Offered</th></tr>` + picks.map((p) => `<tr><td class="num">${p.level}</td><td class="num">${mmss(p.t)}</td><td>${esc(took(p))}</td><td class="wrap">${esc(offered(p.offered))}</td></tr>`).join("") + "</table>";
+    grid.appendChild(c);
+  }
+  const bosses = lines.filter((l) => l.ev === "boss_kill" || l.ev === "boss_spawn");
+  if (bosses.length) {
+    const c = document.createElement("div");
+    c.className = "card";
+    c.innerHTML = `<h3>Bosses</h3>` + lines.filter((l) => l.ev === "boss_spawn").map((b) => {
+      const k = lines.find((l) => l.ev === "boss_kill" && l.id === b.id);
+      return `<div style="margin:4px 0"><b>${esc(b.enemy)}</b> <span class="note">at ${mmss(b.t)}, ${Math.round(b.hp)} HP</span><br><span class="note">${k ? `down in ${r1(k.fight)}s · you took ${Math.round(k.damageTaken)} in ${k.hitsTaken} hits` : "not beaten"}</span></div>`;
+    }).join("");
+    grid.appendChild(c);
+  }
+  box.appendChild(grid);
+
+  // Event log, filterable by type.
+  const types = [...new Set(lines.map((l) => l.ev))];
+  if (!runFilter) runFilter = new Set(types.filter((t) => t !== "spawn" && t !== "kill" && t !== "tick"));
+  const c = document.createElement("div");
+  c.className = "card";
+  c.innerHTML = `<h3>Event log</h3>`;
+  const chips = document.createElement("div");
+  chips.className = "chips";
+  const log = document.createElement("div");
+  log.className = "evlog";
+  const draw = () => {
+    log.textContent = lines.filter((l) => runFilter.has(l.ev)).map((l) => { const { t, ev, ...rest } = l; return `${mmss(t).padStart(6)}  ${ev.padEnd(10)} ${JSON.stringify(rest)}`; }).join("\n");
+  };
+  for (const ty of types) {
+    const lab = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = runFilter.has(ty);
+    cb.onchange = () => { cb.checked ? runFilter.add(ty) : runFilter.delete(ty); draw(); };
+    lab.append(cb, document.createTextNode(`${ty} (${lines.filter((l) => l.ev === ty).length})`));
+    chips.appendChild(lab);
+  }
+  c.append(chips, log);
+  draw();
+  box.appendChild(c);
+}
+
 function render() {
   renderNav();
   const main = $("#main");
@@ -260,6 +468,7 @@ function render() {
   const q = $("#search").value.trim().toLowerCase();
   if (q) return renderSearch(main, q);
   if (section === SAVE) return renderSave(main);
+  if (section === RUNS) return renderRuns(main);
 
   if (section === Object.keys(data).find((k) => !isNote(k)) && info) {
     const tip = document.createElement("div");

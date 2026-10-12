@@ -69,6 +69,10 @@ node tools/tuner/server.js
 
 then open http://localhost:8787 (or double-click `tools/tuner/start.command`). Change values, press Save, and start a new run: the game (editor, or the phone on the same Wi-Fi) loads the newest values from the Mac on the title screen and after each death, so no rebuild is needed. The file is also bundled into every build. Changed values are highlighted with a reset button; you can add values and add rows to lists like `drops.extra` (bonus drops per kill). `tools/tuner/tuning.defaults.json` holds the original values.
 
+## Run telemetry
+
+Every run is logged and sent to the tuner server while it plays and when it ends: enemy spawns and kills (with lifetimes), every hit the wizard takes and who dealt it, level-ups with what was offered and what was picked, evolutions, swarms, boss fights, the death or win, and a summary. The tuner's **Runs** page lists them with a timeline, per-enemy totals, damage by source and the pick history. The logs are JSON Lines files in `tools/tuner/telemetry/` (not in git), with `runs.json` as an index; the format is in `tools/tuner/telemetry/README.md`. If the Mac can't be reached the log waits on the phone and is sent next time. Switches are under `telemetry` in the tuner.
+
 ## How it works
 
 | Script | Role |
