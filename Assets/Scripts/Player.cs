@@ -36,6 +36,7 @@ public class Player : MonoBehaviour
 
     float invulnTimer;
     float phaseTimer;
+    public bool IsPhased => phaseTimer > 0f;
     float[] baseAlpha;
     SpriteRenderer[] renderers;
     Transform visual;

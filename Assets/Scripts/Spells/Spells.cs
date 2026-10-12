@@ -13,6 +13,7 @@ public class ArcaneMissile : Spell
     protected override float BaseDamage => Tier == 3 ? 14.5f : 12f;
     protected override float BaseCooldown => 0.85f;
 
+    public override string TierName(int tier) => tier == 2 ? "Seeker Bolts" : tier == 3 ? "Arcane Barrage" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Missiles home in on foes." : "Stronger tracking, and each hit fires another missile at a new foe.";
 
@@ -61,6 +62,7 @@ public class Fireball : Spell
     float Radius => TT("radius", Tier == 1 ? 1.0f : 1.8f) * Area;
     float Speed => TT("speed", Tier == 1 ? 7.5f : 6f);
 
+    public override string TierName(int tier) => tier == 2 ? "Greater Fireball" : tier == 3 ? "Meteor Cluster" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Slower but much bigger, and burns everything in the blast." : "Each explosion throws out a ring of fireballs.";
 
@@ -135,6 +137,7 @@ public class FrostNova : Spell
     protected override float AreaPerRune => 0.15f;
     float Radius => TT("radius", Tier == 1 ? 2.0f : Tier == 2 ? 2.4f : 2.8f) * Area;
 
+    public override string TierName(int tier) => tier == 2 ? "Glacial Nova" : tier == 3 ? "Shatterstorm" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Full size, and chills foes (slows 50%)."
                   : "Bigger. Stacks frostbite on every pulse; at 100% the foe shatters for 30% of its remaining health. Bigger foes resist.";
@@ -194,6 +197,7 @@ public class ChainLightning : Spell
     protected override float BaseCooldown => 1.5f;
     int Jumps => Mathf.RoundToInt(TT("jumps", 2f)) + PierceCount;
 
+    public override string TierName(int tier) => tier == 2 ? "Arc Lightning" : tier == 3 ? "Stormcaller" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Lightning leaps from foe to foe." : "Calls down a heavy bolt on the toughest foe, then chains from there.";
 
@@ -294,6 +298,7 @@ public class Wisps : Spell
     float OrbitRadius(int ring) => T("orbit", 1.7f) * Area * (1f + T("ringSpacing", 0.55f) * ring);
     float OrbRadius => T("wispSize", 0.28f) * Mathf.Sqrt(Area);
 
+    public override string TierName(int tier) => tier == 2 ? "Twin Halo" : tier == 3 ? "Lifebloom Halo" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "Starts with two rings. After 3s without striking anything, the wisps heal you 10%."
                   : "Two rings, and the wisps also heal you a little every time they strike.";

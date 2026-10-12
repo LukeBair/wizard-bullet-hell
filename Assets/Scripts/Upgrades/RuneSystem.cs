@@ -96,7 +96,7 @@ public class RuneSystem : UpgradeSystem
     {
         SocketsOf(spell).Clear();
         spell.Evolve();
-        GameManager.Instance.Toast($"{spell.Name} evolved to tier {RomanTier(spell.Tier)}!");
+        GameManager.Instance.Toast($"{spell.Name} evolved: {spell.Title}!");
         Fx.Ring(Player.Position, spell.Color, 3f, 0.6f);
         Fx.Burst(Player.Position, spell.Color, 5f);
     }
@@ -107,7 +107,7 @@ public class RuneSystem : UpgradeSystem
     {
         Header($"Level {Player.Level}", "Take a rune stone");
         var col = UI.Column(0.24f, 0.72f);
-        float h = 140f * UI.S, gap = 18f * UI.S, y = col.y;
+        float h = 170f * UI.S, gap = 16f * UI.S, y = col.y;
         bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
 
         foreach (var r in runeOffer)
@@ -128,7 +128,7 @@ public class RuneSystem : UpgradeSystem
             var rect = new Rect(col.x, y, col.width, h);
             int next = evolve.Tier + 1;
             int keep = Mathf.RoundToInt(Mathf.Clamp01(Tune.F("runes.evolveRetain", 0.75f)) * 100f);
-            if (UI.Card(rect, $"Evolve {evolve.Name} → {RomanTier(next)}", evolve.TierDescription(next) + $" <i>(empties its sockets, keeps {keep}% of their power)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
+            if (UI.Card(rect, $"{evolve.Name} → {RomanTier(next)}: {evolve.TierName(next)}", evolve.TierDescription(next) + $" <i>(empties its sockets, keeps {keep}% of their power)</i>", new Color(1f, 0.85f, 0.35f), "EVOLVE"))
             {
                 Evolve(evolve);
                 return true;
@@ -165,7 +165,7 @@ public class RuneSystem : UpgradeSystem
         Header($"{Spell.RuneName(rune)} Rune", "Tap a spell to socket it");
         var col = UI.Column(0.22f, 0.74f);
         float s = UI.S;
-        float h = 150f * s, gap = 14f * s, y = col.y;
+        float h = 172f * s, gap = 12f * s, y = col.y;
 
         foreach (var spell in Player.Spells)
         {
@@ -177,7 +177,7 @@ public class RuneSystem : UpgradeSystem
             if (kept.Length > 0) effect += $"\n<size={Mathf.RoundToInt(18 * s)}><color=#ffd966>Kept: {kept}</color></size>";
             var rect = new Rect(col.x, y, col.width, h);
             string tag = spell.CanEvolve ? $"TIER {RomanTier(spell.Tier)}" : null;
-            bool tapped = UI.Card(rect, spell.Name, effect, spell.Color, tag, room);
+            bool tapped = UI.Card(rect, spell.Title, effect, spell.Color, tag, room);
 
             // Socket row
             float d = 40f * s;

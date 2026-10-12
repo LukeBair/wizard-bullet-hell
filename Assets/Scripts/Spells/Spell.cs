@@ -65,9 +65,14 @@ public abstract class Spell
     public int TotalRunes { get { int n = 0; foreach (var r in runes) n += r; return n; } }
     public int Level => 1 + TotalRunes;
 
-    // Tuner lookups: spells.<SpellId>.<key>. Tier 2/3 values use "<key>_t2" / "<key>_t3".
+    // Tuner lookups: spells.<SpellId>.<key>. Tier 2/3 read "<key>_t2" / "<key>_t3"; if that key is
+    // missing they use the code's default for that tier.
     protected float T(string key, float fallback) => Tune.F($"spells.{Id}.{key}", fallback);
-    protected float TT(string key, float fallback) => T(Tier == 1 ? key : $"{key}_t{Tier}", fallback);
+    protected float TT(string key, float fallback)
+    {
+        if (Tier > 1 && Tune.Has($"spells.{Id}.{key}_t{Tier}")) return T($"{key}_t{Tier}", fallback);
+        return Tier == 1 ? T(key, fallback) : fallback;
+    }
 
     protected float PotencyStep => TT("potencyPerRune", PotencyPerRune);
     protected float AreaStep => TT("areaPerRune", AreaPerRune);
@@ -160,6 +165,10 @@ public abstract class Spell
 
     // What the next tier does, for the evolve card.
     public virtual string TierDescription(int tier) => "";
+
+    // Each evolved form has its own name; tier I is just the spell's name.
+    public virtual string TierName(int tier) => Name;
+    public string Title => Tier == 1 ? Name : TierName(Tier);
 
     public void Tick(float dt)
     {
@@ -258,6 +267,7 @@ public abstract class Spell
         if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
 
         e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
+        if (Owner != null) Owner.GetSpell<Rejuvenate>()?.OnOwnerHit();
 
         float curse = RuneCount(Rune.Curse);
         if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(Tune.F("runes.Curse.maxBonus", 5f), Tune.F("runes.Curse.bonusPerRune", 0.5f) * curse));
