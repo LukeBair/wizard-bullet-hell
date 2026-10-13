@@ -565,6 +565,12 @@
       "devourBelow": 0.35,
       "_devourBelow": "Dart into an infested non-boss foe at or below this fraction of max HP: it dies outright and its bugs burst.",
       "drainHeal": 0.02,
+      "count_t2": 4,
+      "count_t3": 4,
+      "_count_t2": "Tier II+ adds 2 wisps to every set (Split and Echo still add on top).",
+      "absorbHits": 3,
+      "absorbTime": 5,
+      "_absorbHits": "Tier II+: a wisp that sets off a reaction absorbs that element for absorbHits strikes or absorbTime seconds, whichever ends first, and repeats the reaction on any foe. A wisp holding fire doesn't burn out.",
       "_drainHeal": "Dart into a rooted foe: heals this fraction of max HP.",
       "potencyPerRune": 0.3,
       "areaPerRune": 0.15
