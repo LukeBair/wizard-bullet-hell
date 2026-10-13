@@ -332,7 +332,7 @@ public class Cyclone : Spell
     public override string TierName(int tier) => tier == 2 ? "Wandering Gale" : tier == 3 ? "Tempest" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "The whirlwind travels outward away from you, sweeping foes along."
-                  : $"Travels, hits twice as often, and each condition it passes deals {Pct(T("passDamage_t3", 4f) / T("passDamage", 3f) - 1f)} more reaction damage.";
+                  : $"Travels, hits twice as often, and each condition it passes deals {Pct(T("passDamage_t3", 4f) / T("passDamage", 2f) - 1f)} more reaction damage.";
 
     public override string RuneEffect(Rune r)
     {
@@ -381,7 +381,7 @@ public class Cyclone : Spell
         if (burn <= 0f && bugs <= 0f && curse <= 0f && !chill && !wet) return;
 
         float lasts = T("passDuration", 2f);
-        float reaction = Damage * (Tier == 3 ? T("passDamage_t3", 4f) : T("passDamage", 3f));
+        float reaction = Damage * (Tier == 3 ? T("passDamage_t3", 4f) : T("passDamage", 2f));
         int bolts = 0;
         foreach (var e in foes)
         {

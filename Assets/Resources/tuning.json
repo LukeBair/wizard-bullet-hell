@@ -297,9 +297,9 @@
         "text": "Reflect {goal} bullets in one run"
       },
       "StoneSpikes": {
-        "goal": 1500,
+        "goal": 8000,
         "kind": "count",
-        "text": "Block {goal} bullets with stone walls in one run"
+        "text": "Absorb {goal} bullet damage with stone walls in one run"
       },
       "SpectralBlades": {
         "goal": 8,
@@ -616,7 +616,7 @@
       "pull": 9,
       "distance": 4.5,
       "_damage": "Per tick (4 a second).",
-      "passDamage": 3,
+      "passDamage": 2,
       "passDamage_t3": 4,
       "_passDamage": "Reaction damage (x damage) for each condition a foe catches from the others in the whirlwind eye.",
       "passDuration": 2,
@@ -668,8 +668,8 @@
       "pinTime": 0.3,
       "spikeTime": 0.4,
       "wallTime_t2": 3,
-      "wallHits": 12,
-      "_wallHits": "Bullets a wall spike blocks before it breaks (x potency). Bosses smash walls on contact.",
+      "wallHealth": 80,
+      "_wallHealth": "Bullet damage a wall spike absorbs before it breaks (x potency; most bullets do 10). Bosses smash walls on contact.",
       "wallTime_t3": 3,
       "potencyPerRune": 0.25,
       "shards_t3": 4,

@@ -214,14 +214,14 @@ public class Spike : MonoBehaviour
 {
     float radius, life;
     bool wall;
-    int hitsLeft;   // walls break after blocking this many bullets
+    float healthLeft;   // walls break after absorbing this much bullet damage
     Action<Enemy, Vector2> onErupt;
     Action<Vector2> onCrumble;
     Transform body;
     static readonly List<Projectile> scratch = new List<Projectile>();
 
     // A boss that walks into a wall takes the spike's hit and smashes it.
-    public static void Create(Vector2 at, float radius, float duration, Color color, bool wall, Action<Enemy, Vector2> onErupt, Action<Vector2> onCrumble, int wallHits = 0)
+    public static void Create(Vector2 at, float radius, float duration, Color color, bool wall, Action<Enemy, Vector2> onErupt, Action<Vector2> onCrumble, float wallHealth = 0f)
     {
         var go = new GameObject("Spike");
         go.transform.position = at;
@@ -231,7 +231,7 @@ public class Spike : MonoBehaviour
         s.wall = wall;
         s.onCrumble = onCrumble;
         s.onErupt = onErupt;
-        s.hitsLeft = wallHits > 0 ? wallHits : int.MaxValue;
+        s.healthLeft = wallHealth > 0f ? wallHealth : float.MaxValue;
         SpriteFactory.Child(go.transform, "Base", SpriteFactory.Circle, new Color(0.25f, 0.18f, 0.1f, 0.5f), Vector2.zero, radius * 2.2f, 40);
         s.body = SpriteFactory.Child(go.transform, "Body", SpriteFactory.Triangle, color, new Vector2(0f, radius * 0.4f), radius * 2.2f, 62).transform;
         SpriteFactory.Child(s.body, "Tip", SpriteFactory.Triangle, Color.Lerp(color, Color.white, 0.4f), new Vector2(0f, 0.15f), 0.45f, 63);
@@ -254,7 +254,7 @@ public class Spike : MonoBehaviour
         life -= dt;
         if (life <= 0f) { Crumble(); return; }
         // Plain spikes sink away as they expire; walls stay at full height.
-        if (hitsLeft < 4 && UnityEngine.Random.value < 0.1f) Fx.Burst(transform.position, new Color(0.6f, 0.45f, 0.3f), radius);   // cracking
+        if (healthLeft < 30f && UnityEngine.Random.value < 0.1f) Fx.Burst(transform.position, new Color(0.6f, 0.45f, 0.3f), radius);   // cracking
         body.localScale = Vector3.one * radius * 2.2f * Mathf.Min(1f, 0.4f + (wall ? 1f : 0f) + life * 4f);
         if (!wall) return;
 
@@ -266,9 +266,10 @@ public class Spike : MonoBehaviour
             float r = radius + p.Radius;
             if ((p.Position - c).sqrMagnitude > r * r) continue;
             Fx.Burst(p.Position, new Color(0.8f, 0.65f, 0.45f), 0.6f);
-            Grimoire.Feat(SpellId.StoneSpikes);
+            Grimoire.Feat(SpellId.StoneSpikes, p.Damage);
+            healthLeft -= p.Damage;
             p.Release();
-            if (--hitsLeft <= 0) { Crumble(); return; }
+            if (healthLeft <= 0f) { Crumble(); return; }
         }
         foreach (var e in Spell.EnemiesWithin(c, radius))
         {

@@ -168,10 +168,11 @@ public class StoneSpikes : Spell
 
     int SpikesPerLine => Mathf.RoundToInt(T("spikes", 5f)) + Mathf.RoundToInt(T("spikesPerPierce", 2f)) * PierceCount;
     float SpikeRadius => T("spikeRadius", 0.45f) * Area;
+    float WallHealth => T("wallHealth", 80f) * Potency;
 
     public override string TierName(int tier) => tier == 2 ? "Stonewall" : tier == 3 ? "Rockburst" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? $"Spikes stay up for {T("wallTime_t2", 3f):0.#}s as a wall that blocks enemy bullets and holds foes back. Each spike breaks after {Mathf.RoundToInt(T("wallHits", 12f) * Potency)} bullets, and bosses smash through."
+        tier == 2 ? $"Spikes stay up for {T("wallTime_t2", 3f):0.#}s as a wall that blocks enemy bullets and holds foes back. Each spike breaks after absorbing {WallHealth:0} bullet damage, and bosses smash through."
                   : $"Walls, and each spike bursts into {T("shards_t3", 4f):0} stone shards when the wall crumbles.";
 
     public override string RuneEffect(Rune r)
@@ -209,7 +210,7 @@ public class StoneSpikes : Spell
         {
             Vector2 at = from + dir * spacing * i;
             if (!GameManager.Instance.Arena.Inside(at)) yield break;
-            Spike.Create(at, SpikeRadius, wall, Color, Tier >= 2, Erupt, Tier == 3 ? new System.Action<Vector2>(Crumble) : null, Mathf.RoundToInt(T("wallHits", 12f) * Potency));
+            Spike.Create(at, SpikeRadius, wall, Color, Tier >= 2, Erupt, Tier == 3 ? new System.Action<Vector2>(Crumble) : null, WallHealth);
             yield return new WaitForSeconds(T("stagger", 0.05f));
         }
     }
