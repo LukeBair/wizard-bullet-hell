@@ -210,12 +210,40 @@
     "bossKillHeal": 50,
     "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) * chaffScale + chaffAdd, capped at chaffMax. chaffScale and chaffAdd come from the zone's row in zones (defaults 1 and run.zoneRateStep*zones cleared).",
     "zones": [
-      { "_name": "Zone 1: stage rules (mediums every mediumEveryStage0/1)" },
-      { "_name": "Zone 2: calm, few chaff, a couple of mediums", "chaffScale": 0.45, "chaffAdd": 0, "mediumEvery": 6.5, "packMin": 1, "packMax": 2, "casterWeight": 0.5 },
-      { "_name": "Zone 3: lots of chaff, medium packs", "chaffAdd": 1.5, "mediumEvery": 7, "packMin": 2, "packMax": 2, "casterWeight": 1 },
-      { "_name": "Zone 4", "chaffAdd": 3, "mediumEvery": 6, "packMin": 2, "packMax": 3, "casterWeight": 1 }
+      {
+        "_name": "Zone 1: stage rules (mediums every mediumEveryStage0/1)"
+      },
+      {
+        "_name": "Zone 2: calm, few chaff, a couple of mediums",
+        "chaffScale": 0.45,
+        "chaffAdd": 0,
+        "mediumEvery": 6.5,
+        "packMin": 1,
+        "packMax": 2,
+        "casterWeight": 0.5
+      },
+      {
+        "_name": "Zone 3: lots of chaff, medium packs",
+        "chaffAdd": 1.32,
+        "mediumEvery": 8.0,
+        "packMin": 2,
+        "packMax": 2,
+        "casterWeight": 1,
+        "chaffScale": 0.88,
+        "swarmScale": 0.88
+      },
+      {
+        "_name": "Zone 4: lots of chaff, bigger medium packs",
+        "chaffAdd": 2.64,
+        "mediumEvery": 6.8,
+        "packMin": 2,
+        "packMax": 3,
+        "casterWeight": 1,
+        "chaffScale": 0.88,
+        "swarmScale": 0.88
+      }
     ],
-    "_zones": "One row per zone (first row = zone 1). Any key a row leaves out uses the default. chaffScale multiplies the chaff curve, chaffAdd is extra chaff per second. mediumEvery (seconds) switches the zone to packs of packMin..packMax mediums from one direction. casterWeight is how likely caster-type mediums are (1 = normal)."
+    "_zones": "One row per zone (first row = zone 1). Any key a row leaves out uses the default. chaffScale multiplies the chaff curve, chaffAdd is extra chaff per second. mediumEvery (seconds) switches the zone to packs of packMin..packMax mediums from one direction. swarmScale multiplies swarm size. casterWeight is how likely caster-type mediums are (1 = normal)."
   },
   "run": {
     "bosses": 4,
@@ -783,7 +811,8 @@
       "Spread": 20,
       "BulletSpeed": 4.5,
       "BulletDamage": 18,
-      "PreferredRange": 7
+      "PreferredRange": 7,
+      "MaxAlive": 4
     },
     "Pixie Trickster": {
       "Health": 55,
@@ -818,15 +847,15 @@
       "Xp": 4
     },
     "Elder Treant": {
-      "Health": 2400,
+      "Health": 3000,
       "Speed": 1.1,
       "Radius": 1.3,
       "ContactDamage": 25,
       "Xp": 60,
-      "FireInterval": 2.6,
+      "FireInterval": 2.1,
       "Bullets": 18,
       "BulletSpeed": 3.2,
-      "BulletDamage": 10
+      "BulletDamage": 14
     },
     "The Hedge Witch": {
       "Health": 3200,
@@ -864,6 +893,7 @@
       "Bullets": 20,
       "BulletSpeed": 3,
       "BulletDamage": 14
-    }
+    },
+    "_MaxAlive": "Any medium can set MaxAlive: the spawner won't pick it while that many are alive (0 = no cap)."
   }
 }

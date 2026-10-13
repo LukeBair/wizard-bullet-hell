@@ -40,6 +40,7 @@ public class EnemyDef
     public float BulletDamage = 10f;
     public float PreferredRange = 6f;
     public bool EarlyGame = true;   // false = only appears after the first swarm
+    public int MaxAlive;            // mediums: the Director won't pick it while this many are alive (0 = no cap)
 }
 
 // The enemies that appear in one biome, split by tier. The Director picks from these.

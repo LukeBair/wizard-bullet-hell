@@ -190,7 +190,7 @@ public class Director : MonoBehaviour
         // A closing ring of bats; slimes join from the second swarm, medium escorts after a boss kill.
         int n = BossesDefeated == 0
             ? Mathf.RoundToInt(T("swarmBasePreBoss", 14f) + T("swarmPerThreatPreBoss", 3f) * Threat)
-            : Mathf.RoundToInt(T("swarmBase", 16f) + T("swarmPerThreat", 6f) * Threat);
+            : Mathf.RoundToInt((T("swarmBase", 16f) + T("swarmPerThreat", 6f) * Threat) * Z("swarmScale", 1f));
         var bat = roster.Chaff[Mathf.Min(1, roster.Chaff.Length - 1)];
         for (int i = 0; i < n; i++)
         {
@@ -216,7 +216,8 @@ public class Director : MonoBehaviour
     EnemyDef PickMedium()
     {
         pool.Clear();
-        foreach (var d in roster.Medium) if (d.EarlyGame || Threat > 0) pool.Add(d);
+        foreach (var d in roster.Medium) if ((d.EarlyGame || Threat > 0) && !AtCap(d)) pool.Add(d);
+        if (pool.Count == 0) foreach (var d in roster.Medium) if (d.EarlyGame || Threat > 0) pool.Add(d);
         float total = 0f;
         foreach (var d in pool) total += Weight(d);
         float roll = Random.value * total;
@@ -226,6 +227,14 @@ public class Director : MonoBehaviour
             if (roll <= 0f) return d;
         }
         return pool[pool.Count - 1];
+    }
+
+    static bool AtCap(EnemyDef d)
+    {
+        if (d.MaxAlive <= 0) return false;
+        int n = 0;
+        foreach (var e in Enemy.All) if (e.Def.Name == d.Name && ++n >= d.MaxAlive) return true;
+        return false;
     }
 
     float Weight(EnemyDef d) =>
