@@ -436,7 +436,7 @@
       "cooldown": 3,
       "_about": "Each cast of the spell grants a ward that blocks one enemy bullet. Max wards = Ward runes across all spells; at most one new ward every cooldown seconds."
     },
-    "_weight": "Relative chance to be offered. Under 5 shows as RARE."
+    "_weight": "Relative chance to be offered. Under 5 shows as RARE. (Spell tomes: spells.<Id>.tomeWeight, default 1.)"
   },
   "status": {
     "chillSlow": 0.5,
@@ -573,12 +573,13 @@
       "damage": 0.06,
       "cooldown": 9,
       "count": 1,
+      "tomeWeight": 0.4,
       "maxHealthPerPierce": 10,
       "_damage": "Fraction of max health healed per pulse.",
-      "damage_t2": 0.05,
-      "damage_t3": 0.05,
-      "cooldown_t2": 3,
-      "cooldown_t3": 3,
+      "damage_t2": 0.04,
+      "damage_t3": 0.04,
+      "cooldown_t2": 4,
+      "cooldown_t3": 4,
       "reviveChargeTime_t3": 90,
       "_reviveChargeTime_t3": "Tier III: seconds to charge the revive (Haste runes shorten it)."
     },
@@ -605,6 +606,7 @@
       "damage": 1.5,
       "cooldown": 18,
       "potencyPerRune": 0.25,
+      "tomeWeight": 0.4,
       "_damage": "Seconds of invulnerability.",
       "damage_t2": 2.5,
       "damage_t3": 3.5,

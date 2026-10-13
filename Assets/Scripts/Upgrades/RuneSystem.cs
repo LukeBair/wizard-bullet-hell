@@ -18,6 +18,23 @@ public class RuneSystem : UpgradeSystem
 
     // Rarity: runes.<Rune>.weight. Rare runes default to a quarter of the common weight.
     static float Weight(Rune r) => Tune.F($"runes.{r}.weight", Spell.IsRare(r) ? 2.5f : 10f);
+    // spells.<SpellId>.tomeWeight: relative chance a spell's tome is offered mid-run (default 1), so
+    // build-carrying defensives can be rarer finds.
+    static float TomeWeight(SpellId id) => Mathf.Max(0f, Tune.F($"spells.{id}.tomeWeight", 1f));
+
+    static SpellId WeightedTome(List<SpellId> pool)
+    {
+        float total = 0f;
+        foreach (var id in pool) total += TomeWeight(id);
+        if (total <= 0f) return pool[Random.Range(0, pool.Count)];
+        float roll = Random.value * total;
+        foreach (var id in pool)
+        {
+            roll -= TomeWeight(id);
+            if (roll <= 0f) return id;
+        }
+        return pool[pool.Count - 1];
+    }
 
     readonly Dictionary<Spell, List<Rune>> sockets = new Dictionary<Spell, List<Rune>>();
     readonly List<Rune> runeOffer = new List<Rune>();
@@ -67,7 +84,7 @@ public class RuneSystem : UpgradeSystem
         bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
         tome = null;
         if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
-            tome = unlearned[Random.Range(0, unlearned.Count)];
+            tome = WeightedTome(unlearned);
 
         // Tier III also waits for tier3Bosses boss kills, so it can't land before the first boss.
         int bosses = GameManager.Instance.Director.BossesDefeated;
