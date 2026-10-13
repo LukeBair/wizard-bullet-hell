@@ -168,17 +168,18 @@ public class StoneSpikes : Spell
 
     int SpikesPerLine => Mathf.RoundToInt(T("spikes", 5f)) + Mathf.RoundToInt(T("spikesPerPierce", 2f)) * PierceCount;
     float SpikeRadius => T("spikeRadius", 0.45f) * Area;
+    float WallHealth => T("wallHealth", 80f) * Potency;
 
     public override string TierName(int tier) => tier == 2 ? "Stonewall" : tier == 3 ? "Rockburst" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? $"Spikes stay up for {T("wallTime_t2", 3f):0.#}s as a wall that blocks enemy bullets and holds foes back."
+        tier == 2 ? $"Spikes stay up for {T("wallTime_t2", 3f):0.#}s as a wall that blocks enemy bullets and holds foes back. Each spike breaks after absorbing {WallHealth:0} bullet damage, and bosses smash through."
                   : $"Walls, and each spike bursts into {T("shards_t3", 4f):0} stone shards when the wall crumbles.";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
-            case Rune.Potency: return $"+{Pct(PotencyStep)} damage and pin time";
+            case Rune.Potency: return Tier >= 2 ? $"+{Pct(PotencyStep)} damage, pin time and wall toughness" : $"+{Pct(PotencyStep)} damage and pin time";
             case Rune.Split: return "+1 line of spikes";
             case Rune.Pierce: return $"+{T("spikesPerPierce", 2f):0} spikes per line";
             case Rune.Area: return $"+{Pct(AreaStep)} spike size";
@@ -209,7 +210,7 @@ public class StoneSpikes : Spell
         {
             Vector2 at = from + dir * spacing * i;
             if (!GameManager.Instance.Arena.Inside(at)) yield break;
-            Spike.Create(at, SpikeRadius, wall, Color, Tier >= 2, Erupt, Tier == 3 ? new System.Action<Vector2>(Crumble) : null);
+            Spike.Create(at, SpikeRadius, wall, Color, Tier >= 2, Erupt, Tier == 3 ? new System.Action<Vector2>(Crumble) : null, WallHealth);
             yield return new WaitForSeconds(T("stagger", 0.05f));
         }
     }
@@ -217,7 +218,7 @@ public class StoneSpikes : Spell
     void Erupt(Enemy e, Vector2 at)
     {
         e.Root(T("pinTime", 0.3f) * Potency, 0f);
-        Hit(e, Damage, (e.Position - at).normalized * 2f);
+        Hit(e, Damage);   // no knockback: the foe stays pinned where the spike caught it
     }
 
     // Rockburst: a crumbling spike throws stone shards in a ring.
@@ -244,7 +245,7 @@ public class SpectralBlades : Spell
     public override Element Element => Element.Shadow;
     public override string Blurb => "Throws blades that boomerang back, cutting foes both ways.";
     public override bool CanEvolve => true;
-    protected override float BaseDamage => 10f;
+    protected override float BaseDamage => 8.5f;
     protected override float BaseCooldown => 2f;
     protected override int BaseCount => 2;
 

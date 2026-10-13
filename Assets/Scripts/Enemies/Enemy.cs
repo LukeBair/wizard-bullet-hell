@@ -26,6 +26,9 @@ public class Enemy : MonoBehaviour
     public bool VineTrapped;   // rooted by Overgrowth (not a Stone Spikes pin), for its tier III feat
     public bool IsCharmed => charmTimer > 0f;
     public bool IsInfested => infestTimer > 0f;
+    public float BurnDps => IsBurning ? burnDps : 0f;
+    public float InfestDamage => IsInfested ? infestDamage : 0f;
+    public float CurseBonus => curseBonus;
     // Cached, since crowds read each other's positions thousands of times a frame; MoveTo keeps it in step with the transform.
     public Vector2 Position { get; private set; }
     public bool Hidden { get; private set; }   // burrowed: can't be hit or targeted
