@@ -79,6 +79,8 @@
   .runs .num { text-align: right; font-variant-numeric: tabular-nums; }
   .runs .wrap { white-space: normal; color: var(--muted); font-size: 12px; }
   .scroll { overflow-x: auto; }
+  .grid > .card { min-width: 0; }
+  .card.wide { grid-column: 1 / -1; }
   .outcome-win { color: var(--ok); } .outcome-death { color: var(--danger); } .outcome-quit, .outcome-unfinished { color: var(--muted); }
   .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
   .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 110px; }
@@ -420,6 +422,7 @@ function renderRun(box, id, lines) {
     c.className = "card";
     const offered = (o) => !o ? "" : o.tomes ? o.tomes.join(", ") : [...(o.runes || []), ...(o.tome ? ["tome " + o.tome] : []), ...(o.evolve || []).map((e) => "evolve " + e)].join(", ");
     const took = (p) => p.took === "rune" ? `${p.rune} → ${p.spell}${p.resonance ? " (resonance)" : ""}` : p.took === "evolve" ? `evolve ${p.spell} ${p.tier}` : p.took === "rest" ? "rest" : `tome ${p.spell}`;
+    c.className = "card wide scroll";   // the longest card: give it the whole row
     c.innerHTML = `<h3>Picks</h3><table class="runs"><tr><th class="num">Lv</th><th class="num">At</th><th>Took</th><th>Offered</th></tr>` + picks.map((p) => `<tr><td class="num">${p.level}</td><td class="num">${mmss(p.t)}</td><td>${esc(took(p))}</td><td class="wrap">${esc(offered(p.offered))}</td></tr>`).join("") + "</table>";
     grid.appendChild(c);
   }
