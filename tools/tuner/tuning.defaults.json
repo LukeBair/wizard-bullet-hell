@@ -305,6 +305,11 @@
         "kind": "count",
         "text": "Stay Sunlit for {goal}s in one run"
       },
+      "Cyclone": {
+        "goal": 40,
+        "kind": "max",
+        "text": "Pass {goal} conditions between foes with a single whirlwind"
+      },
       "Wisps": {
         "goal": 5,
         "kind": "max",
