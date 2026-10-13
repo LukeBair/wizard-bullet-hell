@@ -325,6 +325,16 @@ public class Wisps : Spell, IOrbiter
     readonly Dictionary<(int, int, int), WispState> states = new Dictionary<(int, int, int), WispState>();
     readonly List<Enemy> claimed = new List<Enemy>();
     int reactionsSeen;   // bitmask of the five reactions triggered this run (signature feat)
+    // Tier III kill credit: the wisp striking right now. Bonus wisps never earn more wisps (no runaway),
+    // and a kill by a wisp holding an element spawns a bonus wisp holding the same element.
+    bool strikerBonus;
+    int strikerElement;
+    readonly List<int> spawns = new List<int>();
+
+    void Credit(Enemy x)
+    {
+        if (Tier == 3 && !x.IsAlive && !strikerBonus) spawns.Add(strikerElement);
+    }
     float HuntEvery => T("huntEvery", 2.5f) * Cooldown;
     float HuntRange => T("huntRange", 4.5f) * (1f + 0.5f * (Area - 1f));
     int RingCount(int ring) => Count + (ring == 0 ? bonusWisps.Count : 0);
@@ -337,7 +347,7 @@ public class Wisps : Spell, IOrbiter
     public override string TierName(int tier) => tier == 2 ? "Twin Halo" : tier == 3 ? "Lifebloom Halo" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? $"+2 wisps. A wisp that sets off a reaction absorbs that element for {T("absorbHits", 3f):0} strikes or {T("absorbTime", 5f):0.#}s and repeats the reaction on any foe. After {T("quietSeconds_t2", 3f):0.#}s without striking, the wisps heal you {Pct(T("quietHeal_t2", 0.1f))}."
-                  : $"Twin Halo, and every foe the wisps kill adds a wisp for {T("bonusWispLife", 6f):0.#}s (up to {MaxBonusWisps} extra).";
+                  : $"Twin Halo, and every foe a wisp kills adds a wisp for {T("bonusWispLife", 6f):0.#}s (up to {MaxBonusWisps} extra), holding the killer's absorbed element. Added wisps' kills don't add more.";
 
     public override string RuneEffect(Rune r)
     {
@@ -391,7 +401,7 @@ public class Wisps : Spell, IOrbiter
         for (int r = 0; r < tracks.Count; r++) tracks[r].localScale = Vector3.one * (OrbitRadius(r) * 2f + OrbRadius);
         float hitEvery = T("hitEvery", 0.5f) / (1f + 0.3f * RuneCount(Rune.Pierce));
         bool hitSomething = false;
-        int kills = 0;
+        spawns.Clear();
         claimed.Clear();
         for (int i = 0; i < orbs.Count; i++)
         {
@@ -422,7 +432,9 @@ public class Wisps : Spell, IOrbiter
             }
             if (st.tint != st.absorbed) Tint(orb, st.tint = st.absorbed);
 
-            if (st.mode != Mode.Orbit && Hunt(st, world, dt, ref kills, ref hitSomething))
+            strikerBonus = ring == 0 && index >= Count;
+            strikerElement = st.absorbed;
+            if (st.mode != Mode.Orbit && Hunt(st, world, dt, ref hitSomething))
             {
                 orb.localPosition = st.pos - Owner.Position;
                 continue;
@@ -447,7 +459,7 @@ public class Wisps : Spell, IOrbiter
                 Sfx.Play(Sound.WispHit, 0.35f, 0.2f);
                 Fx.Ring(world, Color, OrbRadius * 1.5f, 0.2f);
                 Hit(e, Damage, local.normalized * 3f);
-                if (Tier == 3 && !e.IsAlive) kills++;
+                Credit(e);
             }
         }
         if (lastHit.Count > 200) lastHit.Clear();
@@ -469,16 +481,28 @@ public class Wisps : Spell, IOrbiter
             bonusWisps[i] -= dt;
             if (bonusWisps[i] <= 0f) bonusWisps.RemoveAt(i);
         }
-        for (int k = 0; k < kills; k++)
+        // Slots past the bonus wisps left are gone: drop their state so a new wisp there starts fresh.
+        var stale = new List<(int, int, int)>();
+        foreach (var k in states.Keys) if (k.Item1 == 0 && k.Item3 >= Count + bonusWisps.Count) stale.Add(k);
+        foreach (var k in stale) states.Remove(k);
+        foreach (int element in spawns)
         {
-            if (bonusWisps.Count < MaxBonusWisps) bonusWisps.Add(T("bonusWispLife", 6f));
-            else { bonusWisps.Sort(); bonusWisps[0] = T("bonusWispLife", 6f); }   // refresh the oldest
+            int slot;
+            if (bonusWisps.Count < MaxBonusWisps) { slot = bonusWisps.Count; bonusWisps.Add(T("bonusWispLife", 6f)); }
+            else { bonusWisps.Sort(); slot = 0; bonusWisps[0] = T("bonusWispLife", 6f); }   // refresh the oldest
+            for (int set = 0; set < Sets; set++)
+                states[(0, set, Count + slot)] = new WispState
+                {
+                    cool = 0.2f, absorbed = element,
+                    absorbHits = element != 0 ? Mathf.RoundToInt(T("absorbHits", 3f)) : 0,
+                    absorbTime = element != 0 ? T("absorbTime", 5f) : 0f,
+                };
         }
-        if (bonusWisps.Count != before) Rebuild();
+        if (spawns.Count > 0 || bonusWisps.Count != before) Rebuild();
     }
 
     // Moves a darting or returning wisp. Returns false once it is back in its orbit slot.
-    bool Hunt(WispState st, Vector2 home, float dt, ref int kills, ref bool hitSomething)
+    bool Hunt(WispState st, Vector2 home, float dt, ref bool hitSomething)
     {
         float step = T("huntSpeed", 11f) * Tuning.Pace * dt;
         if (st.mode == Mode.Dart)
@@ -489,7 +513,7 @@ public class Wisps : Spell, IOrbiter
             float reach = st.target.Radius + OrbRadius;
             if (to.magnitude > reach + step) { st.pos += to.normalized * step; return true; }
             hitSomething = true;
-            bool spent = Strike(st, st.target, st.pos, to.normalized, ref kills);
+            bool spent = Strike(st, st.target, st.pos, to.normalized);
             st.target = null;
             st.cool = HuntEvery;
             if (spent) { st.dead = T("respawnTime", 4f); st.mode = Mode.Orbit; return true; }
@@ -507,7 +531,7 @@ public class Wisps : Spell, IOrbiter
     // burning: the wisp explodes (big damage around it) and has to re-form; wet: lightning arcs to
     // other wet foes; chilled: heavy frostbite; infested: a weakened foe is devoured outright (its bugs burst);
     // trapped (rooted): it drains life back to you. Returns true if the wisp was used up.
-    bool Strike(WispState st, Enemy e, Vector2 at, Vector2 dir, ref int kills)
+    bool Strike(WispState st, Enemy e, Vector2 at, Vector2 dir)
     {
         bool burning = e.IsBurning, wet = e.IsWet, chilled = e.IsChilled, infested = e.IsInfested, rooted = e.IsRooted;
         // An absorbed element forces its reaction whatever the foe is suffering from, and nothing else.
@@ -520,7 +544,7 @@ public class Wisps : Spell, IOrbiter
         Sfx.Play(Sound.WispHit, 0.45f, 0.2f);
         Fx.Burst(at, Color, 1.2f);
         Hit(e, Damage * T("huntDamage", 1.5f), dir * 3f);
-        if (Tier == 3 && !e.IsAlive) kills++;
+        Credit(e);
         float power = Damage / Mathf.Max(0.01f, TT("damage", BaseDamage));   // potency, sunlit, overload
         int reaction = burning ? 1 : wet ? 2 : chilled ? 4 : infested ? 8 : rooted ? 16 : 0;
         if (Tier >= 2 && reaction != 0 && forced == 0)
@@ -546,7 +570,7 @@ public class Wisps : Spell, IOrbiter
             foreach (var x in EnemiesWithin(at, radius))
             {
                 Hit(x, T("flareDamage", 40f) * power, (x.Position - at).normalized * 5f);
-                if (Tier == 3 && !x.IsAlive) kills++;
+                Credit(x);
             }
             return st.absorbed == 0;   // a wisp holding fire keeps flying; otherwise it burns out and re-forms
         }
@@ -560,7 +584,7 @@ public class Wisps : Spell, IOrbiter
                 if (x == e || (!x.IsWet && forced == 0)) continue;   // absorbed water arcs to any foe
                 Fx.Bolt(from, x.Position, new Color(1f, 0.95f, 0.5f));
                 Hit(x, Damage * T("arcDamage", 1.5f));
-                if (Tier == 3 && !x.IsAlive) kills++;
+                Credit(x);
                 arcs--;
             }
             Sfx.Play(Sound.Lightning, 0.35f, 0.3f);
@@ -579,7 +603,7 @@ public class Wisps : Spell, IOrbiter
             {
                 Particles.Ants(at, 0.8f, false);
                 Hit(e, e.Health + 1f, dir * 3f);
-                if (Tier == 3 && !e.IsAlive) kills++;
+                Credit(e);
             }
             return false;
         }
