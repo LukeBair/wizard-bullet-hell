@@ -845,7 +845,7 @@
       "EarlyGame": false,
       "Bullets": 10,
       "BulletSpeed": 3.5,
-      "BulletDamage": 20
+      "BulletDamage": 14
     },
     "Mother Slime": {
       "Health": 90,
