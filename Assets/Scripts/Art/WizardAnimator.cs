@@ -17,6 +17,10 @@ public class WizardAnimator : MonoBehaviour
 
     public bool Moving { get; set; }
 
+    // Which way the sheet's clips face: "" (front), "_side" (right; the Player mirrors it for left)
+    // or "_up" (back). Clips without that variant fall back to the front one.
+    public string Facing { get; set; } = "";
+
     public static WizardAnimator Attach(SpriteRenderer sr, SpriteSheet sheet)
     {
         var a = sr.gameObject.AddComponent<WizardAnimator>();
@@ -26,8 +30,11 @@ public class WizardAnimator : MonoBehaviour
         return a;
     }
 
+    string Faced(string name) => sheet[name + Facing] != null ? name + Facing : name;
+
     void Play(string name, bool once = false)
     {
+        name = Faced(name);
         var c = sheet[name];
         if (c == null) return;
         clip = c;
@@ -61,7 +68,7 @@ public class WizardAnimator : MonoBehaviour
             else if (oneShot) { Play(Moving ? "walk" : "idle"); return; }
             else t %= clip.Length;
         }
-        else if (!oneShot && clipName != (Moving ? "walk" : "idle")) Play(Moving ? "walk" : "idle");
+        else if (!oneShot && clipName != Faced(Moving ? "walk" : "idle")) Play(Moving ? "walk" : "idle");
 
         float acc = 0f;
         for (int i = 0; i < clip.Frames.Length; i++)
