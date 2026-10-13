@@ -213,6 +213,7 @@ public static class Telemetry
             .Raw("healing", $"{{\"total\":{Num(healTotal)},\"bySource\":{Map(healBySource)}}}")
             .Raw("xp", $"{{\"dropped\":{xpDropped},\"collected\":{xpCollected},\"levelTimes\":[{string.Join(",", levelTimes)}]}}")
             .Raw("combos", IntMap(effects))
+            .Raw("feats", Map(Grimoire.RunFeats()))
             .Raw("fps", $"{{\"avg\":{Num(runFrameTime > 0f ? runFrames / runFrameTime : 0f)},\"worstTick\":{Num(fpsLow == float.MaxValue ? 0f : fpsLow)}}}")
             .Write();
         active = false;

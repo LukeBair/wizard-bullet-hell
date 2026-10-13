@@ -105,8 +105,9 @@ public class Vortex : MonoBehaviour
     Action<Vector2, List<Enemy>> swirl;
     Transform spinA, spinB;
 
-    // onSwirl (optional) gets every foe in the eye once per tick, after the hits (Cyclone passes
-    // conditions between them).
+    // onSwirl (optional) gets every foe in the eye once per tick, before the hits (Cyclone passes
+    // conditions between them; swirling first lets a foe just dragged in catch what the others carry,
+    // instead of the hit handing every foe the same conditions first).
     public static void Create(Vector2 at, float radius, float duration, float pull, Color color, Action<Enemy> onHit, Vector2 velocity = default, float tickEvery = 0.25f, Action<Vector2, List<Enemy>> onSwirl = null)
     {
         var go = new GameObject("Vortex");
@@ -153,8 +154,8 @@ public class Vortex : MonoBehaviour
         if (tickTimer > 0f) return;
         tickTimer = tickEvery;
         var eye = Spell.EnemiesWithin(c, radius * 0.6f);
-        foreach (var e in eye) hit(e);
         if (swirl != null && eye.Count > 1) swirl(c, eye);
+        foreach (var e in eye) hit(e);
     }
 }
 
