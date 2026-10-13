@@ -265,7 +265,7 @@ public class TidalLance : Spell
 
     public override string TierName(int tier) => tier == 2 ? "Torrent" : tier == 3 ? "Monsoon" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? "Sprays a wide cone instead of a beam, pushing foes back hard."
+        tier == 2 ? "Sprays a cone instead of a beam, slowly pushing foes back."
                   : $"The cone, plus every {Secs(T("pillarEvery_t3", 2.5f))} pillars of water erupt under foes for {T("pillarDuration_t3", 2f):0.#}s, leaving them Wet for {T("pillarWet_t3", 5f):0.#}s.";
 
     public override string RuneEffect(Rune r)
@@ -274,12 +274,14 @@ public class TidalLance : Spell
         {
             case Rune.Split: return Tier == 3 ? "+1 beam and +1 water pillar" : "+1 beam at an angle";
             case Rune.Pierce: return "Spray lasts 30% longer";
-            case Rune.Area: return $"+{Pct(AreaStep)} spray size";
+            case Rune.Area: return $"+{Pct(AreaStep * T("areaScale", 0.5f))} spray size";
             default: return base.RuneEffect(r);
         }
     }
 
     float pillarTimer = 2f;
+    // Area runes grow the spray at a reduced rate so a stacked cone doesn't cover the screen.
+    float SprayScale => 1f + T("areaScale", 0.5f) * (Area - 1f);
 
     protected override void Cast()
     {
@@ -292,7 +294,7 @@ public class TidalLance : Spell
         for (int i = 0; i < Count; i++)
         {
             float offset = (i - (Count - 1) * 0.5f) * (Tier >= 2 ? cone * 1.6f : 25f);
-            WaterBeam.Create(this, Owner, offset, duration, TT("length", 6.5f) * Area, T("width", 0.55f) * Area, cone, push, (e, p) => Hit(e, Damage, p));
+            WaterBeam.Create(this, Owner, offset, duration, TT("length", 6.5f) * SprayScale, T("width", 0.55f) * SprayScale, cone, push, (e, p) => Hit(e, Damage, p));
         }
     }
 
@@ -313,21 +315,24 @@ public class TidalLance : Spell
     }
 }
 
-// A whirlwind a few steps away that drags foes into it.
-// II: the whirlwind travels outward, away from you. III: it also ticks twice as fast, so rune effects land twice as often.
+// A whirlwind a few steps away that drags foes into it and passes their conditions around: every
+// tick, each foe in the eye catches whatever the others are suffering from (burn, chill, wet,
+// bugs, curse) and takes reaction damage for each one it catches. Mixing burn and chill this way
+// sets off Steam, wet and chill set off Deep Freeze.
+// II: the whirlwind travels outward, away from you. III: it ticks twice as fast and its reactions hit harder.
 public class Cyclone : Spell
 {
     public override string Name => "Cyclone";
     public override Element Element => Element.Wind;
-    public override string Blurb => "Summons a whirlwind that drags foes into it.";
+    public override string Blurb => "Summons a whirlwind that drags foes together and passes their conditions between them, dealing reaction damage.";
     public override bool CanEvolve => true;
-    protected override float BaseDamage => 4f;   // per tick
+    protected override float BaseDamage => 2.5f;   // per tick
     protected override float BaseCooldown => 6f;
 
     public override string TierName(int tier) => tier == 2 ? "Wandering Gale" : tier == 3 ? "Tempest" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "The whirlwind travels outward away from you, sweeping foes along."
-                  : "Travels, and hits twice as often, so rune effects apply twice as fast.";
+                  : $"Travels, hits twice as often, and each condition it passes deals {Pct(T("passDamage_t3", 4f) / T("passDamage", 3f) - 1f)} more reaction damage.";
 
     public override string RuneEffect(Rune r)
     {
@@ -336,6 +341,8 @@ public class Cyclone : Spell
             case Rune.Potency: return $"+{Pct(PotencyStep)} damage and pull strength";
             case Rune.Split: return "+1 whirlwind";
             case Rune.Pierce: return "Lasts 30% longer";
+            case Rune.Ember: case Rune.Frost: case Rune.Infest: case Rune.Curse:
+                return base.RuneEffect(r) + ", then the whirlwind passes it around";
             case Rune.Area: return $"+{Pct(AreaStep)} pull radius";
             default: return base.RuneEffect(r);
         }
@@ -352,7 +359,50 @@ public class Cyclone : Spell
         {
             Vector2 d = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 70f) * dir;
             Vector2 at = GameManager.Instance.Arena.PushOut(Owner.Position + d * T("distance", 4.5f), 0.5f);
-            Vortex.Create(at, T("radius", 3f) * Area, TT("duration", 2.5f) * (1f + 0.3f * RuneCount(Rune.Pierce)), T("pull", 9f) * Potency, Color, e => Hit(e, Damage), d * speed, tick);
+            Vortex.Create(at, T("radius", 3f) * Area, TT("duration", 2.5f) * (1f + 0.3f * RuneCount(Rune.Pierce)), T("pull", 9f) * Potency, Color, e => Hit(e, Damage), d * speed, tick, Swirl);
+        }
+    }
+
+    // Pools the strongest of each condition among the foes in the eye, then hands every foe the ones
+    // it doesn't have yet. Each condition caught deals reaction damage.
+    void Swirl(Vector2 eye, System.Collections.Generic.List<Enemy> foes)
+    {
+        float burn = 0f, bugs = 0f, curse = 0f;
+        bool chill = false, wet = false;
+        foreach (var e in foes)
+        {
+            if (!e.IsAlive) continue;
+            burn = Mathf.Max(burn, e.BurnDps);
+            bugs = Mathf.Max(bugs, e.InfestDamage);
+            curse = Mathf.Max(curse, e.CurseBonus);
+            chill |= e.IsChilled;
+            wet |= e.IsWet;
+        }
+        if (burn <= 0f && bugs <= 0f && curse <= 0f && !chill && !wet) return;
+
+        float lasts = T("passDuration", 2f);
+        float reaction = Damage * (Tier == 3 ? T("passDamage_t3", 4f) : T("passDamage", 3f));
+        int bolts = 0;
+        foreach (var e in foes)
+        {
+            if (!e.IsAlive) continue;
+            bool wasWet = e.IsWet, wasChilled = e.IsChilled;
+            int caught = 0;
+            if (burn > 0f && !e.IsBurning) { e.ApplyBurn(burn, lasts); caught++; }   // + chilled: Steam
+            if (chill && !e.IsChilled) { e.ApplyChill(lasts); caught++; }           // + burning: Steam
+            if (wet && !e.IsWet) { e.ApplyWet(lasts); caught++; }
+            if (bugs > 0f && !e.IsInfested) { e.Infest(bugs, lasts); caught++; }
+            if (curse > 0f && e.CurseBonus <= 0f) { e.MarkCurse(curse); caught++; }
+            if (caught == 0 || !e.IsAlive) continue;
+
+            // Wet meeting chill in the storm freezes solid (Deep Freeze), whichever one was passed on.
+            if ((wet && chill) && (!wasWet || !wasChilled))
+            {
+                e.AddFrostbite(T("deepFreezeFrostbite", 0.35f));
+                Interactions.Trigger(Interaction.DeepFreeze, e.Position);
+            }
+            if (bolts++ < 6) Fx.Bolt(eye, e.Position, Color.Lerp(Color, Color.white, 0.3f));
+            e.TakeDamage(reaction * caught, default, Color.Lerp(Color, Color.white, 0.4f));
         }
     }
 }

@@ -102,9 +102,12 @@ public class Vortex : MonoBehaviour
     float radius, life, pull, tickTimer, tickEvery;
     Vector2 velocity;
     Action<Enemy> hit;
+    Action<Vector2, List<Enemy>> swirl;
     Transform spinA, spinB;
 
-    public static void Create(Vector2 at, float radius, float duration, float pull, Color color, Action<Enemy> onHit, Vector2 velocity = default, float tickEvery = 0.25f)
+    // onSwirl (optional) gets every foe in the eye once per tick, after the hits (Cyclone passes
+    // conditions between them).
+    public static void Create(Vector2 at, float radius, float duration, float pull, Color color, Action<Enemy> onHit, Vector2 velocity = default, float tickEvery = 0.25f, Action<Vector2, List<Enemy>> onSwirl = null)
     {
         var go = new GameObject("Vortex");
         go.transform.position = at;
@@ -115,6 +118,7 @@ public class Vortex : MonoBehaviour
         v.hit = onHit;
         v.velocity = velocity;
         v.tickEvery = tickEvery;
+        v.swirl = onSwirl;
         SpriteFactory.Child(go.transform, "Area", SpriteFactory.Circle, new Color(color.r, color.g, color.b, 0.1f), Vector2.zero, radius * 2f, 2);
         v.spinA = SpriteFactory.Child(go.transform, "SpinA", SpriteFactory.Ring, new Color(color.r, color.g, color.b, 0.6f), Vector2.zero, radius * 1.2f, 74).transform;
         v.spinB = SpriteFactory.Child(go.transform, "SpinB", SpriteFactory.Ring, new Color(color.r, color.g, color.b, 0.4f), new Vector2(0.15f, 0f), radius * 0.6f, 74).transform;
@@ -148,7 +152,9 @@ public class Vortex : MonoBehaviour
         tickTimer -= dt;
         if (tickTimer > 0f) return;
         tickTimer = tickEvery;
-        foreach (var e in Spell.EnemiesWithin(c, radius * 0.6f)) hit(e);
+        var eye = Spell.EnemiesWithin(c, radius * 0.6f);
+        foreach (var e in eye) hit(e);
+        if (swirl != null && eye.Count > 1) swirl(c, eye);
     }
 }
 
@@ -208,11 +214,14 @@ public class Spike : MonoBehaviour
 {
     float radius, life;
     bool wall;
+    int hitsLeft;   // walls break after blocking this many bullets
+    Action<Enemy, Vector2> onErupt;
     Action<Vector2> onCrumble;
     Transform body;
     static readonly List<Projectile> scratch = new List<Projectile>();
 
-    public static void Create(Vector2 at, float radius, float duration, Color color, bool wall, Action<Enemy, Vector2> onErupt, Action<Vector2> onCrumble)
+    // A boss that walks into a wall takes the spike's hit and smashes it.
+    public static void Create(Vector2 at, float radius, float duration, Color color, bool wall, Action<Enemy, Vector2> onErupt, Action<Vector2> onCrumble, int wallHits = 0)
     {
         var go = new GameObject("Spike");
         go.transform.position = at;
@@ -221,11 +230,20 @@ public class Spike : MonoBehaviour
         s.life = duration;
         s.wall = wall;
         s.onCrumble = onCrumble;
+        s.onErupt = onErupt;
+        s.hitsLeft = wallHits > 0 ? wallHits : int.MaxValue;
         SpriteFactory.Child(go.transform, "Base", SpriteFactory.Circle, new Color(0.25f, 0.18f, 0.1f, 0.5f), Vector2.zero, radius * 2.2f, 40);
         s.body = SpriteFactory.Child(go.transform, "Body", SpriteFactory.Triangle, color, new Vector2(0f, radius * 0.4f), radius * 2.2f, 62).transform;
         SpriteFactory.Child(s.body, "Tip", SpriteFactory.Triangle, Color.Lerp(color, Color.white, 0.4f), new Vector2(0f, 0.15f), 0.45f, 63);
         Fx.Burst(at, color, radius * 2.5f);
         foreach (var e in Spell.EnemiesWithin(at, radius)) onErupt(e, at);
+    }
+
+    void Crumble()
+    {
+        Fx.Burst(transform.position, new Color(0.6f, 0.45f, 0.3f), radius * 2f);
+        onCrumble?.Invoke(transform.position);
+        Destroy(gameObject);
     }
 
     void Update()
@@ -234,14 +252,9 @@ public class Spike : MonoBehaviour
         if (gm.State != GameState.Playing) return;
         float dt = Time.deltaTime;
         life -= dt;
-        if (life <= 0f)
-        {
-            Fx.Burst(transform.position, new Color(0.6f, 0.45f, 0.3f), radius * 2f);
-            onCrumble?.Invoke(transform.position);
-            Destroy(gameObject);
-            return;
-        }
+        if (life <= 0f) { Crumble(); return; }
         // Plain spikes sink away as they expire; walls stay at full height.
+        if (hitsLeft < 4 && UnityEngine.Random.value < 0.1f) Fx.Burst(transform.position, new Color(0.6f, 0.45f, 0.3f), radius);   // cracking
         body.localScale = Vector3.one * radius * 2.2f * Mathf.Min(1f, 0.4f + (wall ? 1f : 0f) + life * 4f);
         if (!wall) return;
 
@@ -255,9 +268,16 @@ public class Spike : MonoBehaviour
             Fx.Burst(p.Position, new Color(0.8f, 0.65f, 0.45f), 0.6f);
             Grimoire.Feat(SpellId.StoneSpikes);
             p.Release();
+            if (--hitsLeft <= 0) { Crumble(); return; }
         }
         foreach (var e in Spell.EnemiesWithin(c, radius))
         {
+            if (e.IsBoss)
+            {
+                onErupt(e, c);
+                Crumble();
+                return;
+            }
             Vector2 away = e.Position - c;
             float d = Mathf.Max(0.05f, away.magnitude);
             e.Pull(away / d * Mathf.Max(0f, radius + e.Radius - d) / Mathf.Max(dt, 0.001f), dt);
