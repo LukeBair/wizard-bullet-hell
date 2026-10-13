@@ -91,6 +91,18 @@ public static class ArtStyle
     public static Sprite Enemy(EnemyLook look) => Get("enemy_" + look.ToString().ToLowerInvariant());
     public static float EnemyScale(EnemyLook look, float radius) => drawnRadius.TryGetValue(look, out var r) ? radius / r : 1f;
 
+    // Enemies with an animated walk sheet (enemy_<look>_sheet, made in PixelLab; Dusk only), and the
+    // enemy radius its frames were drawn for.
+    static readonly Dictionary<EnemyLook, float> sheetRadius = new Dictionary<EnemyLook, float>
+    {
+        { EnemyLook.Goblin, 0.58f }, { EnemyLook.Wizard, 0.53f }, { EnemyLook.Beast, 0.63f }, { EnemyLook.Mushroom, 0.66f },
+        { EnemyLook.Witch, 0.88f }, { EnemyLook.Headmaster, 0.86f },
+    };
+
+    public static SpriteSheet EnemySheet(EnemyLook look) =>
+        sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet") : null;
+    public static float EnemySheetScale(EnemyLook look, float radius) => sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
+
     public static string ObstacleSprite(ObstacleStyle style) =>
         style == ObstacleStyle.Pillar ? "obstacle_pillar" : style == ObstacleStyle.Rock ? "obstacle_rock" : "obstacle_tree";
 

@@ -1,9 +1,97 @@
 {
  "frames": [
   {
-   "filename": "wizard_pixellab_game 0.aseprite",
+   "filename": "0",
    "frame": {
     "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 260
+  },
+  {
+   "filename": "1",
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 200
+  },
+  {
+   "filename": "2",
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 260
+  },
+  {
+   "filename": "3",
+   "frame": {
+    "x": 144,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 200
+  },
+  {
+   "filename": "4",
+   "frame": {
+    "x": 192,
     "y": 0,
     "w": 48,
     "h": 48
@@ -23,9 +111,9 @@
    "duration": 220
   },
   {
-   "filename": "wizard_pixellab_game 1.aseprite",
+   "filename": "5",
    "frame": {
-    "x": 48,
+    "x": 240,
     "y": 0,
     "w": 48,
     "h": 48
@@ -45,95 +133,7 @@
    "duration": 220
   },
   {
-   "filename": "wizard_pixellab_game 2.aseprite",
-   "frame": {
-    "x": 96,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   },
-   "duration": 220
-  },
-  {
-   "filename": "wizard_pixellab_game 3.aseprite",
-   "frame": {
-    "x": 144,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   },
-   "duration": 100
-  },
-  {
-   "filename": "wizard_pixellab_game 4.aseprite",
-   "frame": {
-    "x": 192,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   },
-   "duration": 100
-  },
-  {
-   "filename": "wizard_pixellab_game 5.aseprite",
-   "frame": {
-    "x": 240,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   },
-   "duration": 100
-  },
-  {
-   "filename": "wizard_pixellab_game 6.aseprite",
+   "filename": "6",
    "frame": {
     "x": 288,
     "y": 0,
@@ -155,7 +155,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 7.aseprite",
+   "filename": "7",
    "frame": {
     "x": 336,
     "y": 0,
@@ -177,7 +177,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 8.aseprite",
+   "filename": "8",
    "frame": {
     "x": 0,
     "y": 48,
@@ -199,7 +199,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 9.aseprite",
+   "filename": "9",
    "frame": {
     "x": 48,
     "y": 48,
@@ -221,7 +221,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 10.aseprite",
+   "filename": "10",
    "frame": {
     "x": 96,
     "y": 48,
@@ -243,7 +243,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 11.aseprite",
+   "filename": "11",
    "frame": {
     "x": 144,
     "y": 48,
@@ -265,7 +265,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 12.aseprite",
+   "filename": "12",
    "frame": {
     "x": 192,
     "y": 48,
@@ -287,7 +287,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 13.aseprite",
+   "filename": "13",
    "frame": {
     "x": 240,
     "y": 48,
@@ -309,7 +309,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 14.aseprite",
+   "filename": "14",
    "frame": {
     "x": 288,
     "y": 48,
@@ -331,7 +331,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 15.aseprite",
+   "filename": "15",
    "frame": {
     "x": 336,
     "y": 48,
@@ -353,7 +353,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 16.aseprite",
+   "filename": "16",
    "frame": {
     "x": 0,
     "y": 96,
@@ -375,7 +375,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 17.aseprite",
+   "filename": "17",
    "frame": {
     "x": 48,
     "y": 96,
@@ -397,7 +397,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 18.aseprite",
+   "filename": "18",
    "frame": {
     "x": 96,
     "y": 96,
@@ -419,7 +419,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 19.aseprite",
+   "filename": "19",
    "frame": {
     "x": 144,
     "y": 96,
@@ -441,7 +441,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 20.aseprite",
+   "filename": "20",
    "frame": {
     "x": 192,
     "y": 96,
@@ -463,7 +463,7 @@
    "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 21.aseprite",
+   "filename": "21",
    "frame": {
     "x": 240,
     "y": 96,
@@ -482,10 +482,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 50
+   "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 22.aseprite",
+   "filename": "22",
    "frame": {
     "x": 288,
     "y": 96,
@@ -504,13 +504,79 @@
     "w": 48,
     "h": 48
    },
-   "duration": 50
+   "duration": 100
   },
   {
-   "filename": "wizard_pixellab_game 23.aseprite",
+   "filename": "23",
    "frame": {
     "x": 336,
     "y": 96,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 100
+  },
+  {
+   "filename": "24",
+   "frame": {
+    "x": 0,
+    "y": 144,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 50
+  },
+  {
+   "filename": "25",
+   "frame": {
+    "x": 48,
+    "y": 144,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 50
+  },
+  {
+   "filename": "26",
+   "frame": {
+    "x": 96,
+    "y": 144,
     "w": 48,
     "h": 48
    },
@@ -529,9 +595,9 @@
    "duration": 60
   },
   {
-   "filename": "wizard_pixellab_game 24.aseprite",
+   "filename": "27",
    "frame": {
-    "x": 0,
+    "x": 144,
     "y": 144,
     "w": 48,
     "h": 48
@@ -551,9 +617,9 @@
    "duration": 90
   },
   {
-   "filename": "wizard_pixellab_game 25.aseprite",
+   "filename": "28",
    "frame": {
-    "x": 48,
+    "x": 192,
     "y": 144,
     "w": 48,
     "h": 48
@@ -573,73 +639,7 @@
    "duration": 60
   },
   {
-   "filename": "wizard_pixellab_game 26.aseprite",
-   "frame": {
-    "x": 96,
-    "y": 144,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   },
-   "duration": 50
-  },
-  {
-   "filename": "wizard_pixellab_game 27.aseprite",
-   "frame": {
-    "x": 144,
-    "y": 144,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   },
-   "duration": 50
-  },
-  {
-   "filename": "wizard_pixellab_game 28.aseprite",
-   "frame": {
-    "x": 192,
-    "y": 144,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   },
-   "duration": 50
-  },
-  {
-   "filename": "wizard_pixellab_game 29.aseprite",
+   "filename": "29",
    "frame": {
     "x": 240,
     "y": 144,
@@ -661,7 +661,7 @@
    "duration": 50
   },
   {
-   "filename": "wizard_pixellab_game 30.aseprite",
+   "filename": "30",
    "frame": {
     "x": 288,
     "y": 144,
@@ -680,10 +680,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 60
+   "duration": 50
   },
   {
-   "filename": "wizard_pixellab_game 31.aseprite",
+   "filename": "31",
    "frame": {
     "x": 336,
     "y": 144,
@@ -702,12 +702,34 @@
     "w": 48,
     "h": 48
    },
-   "duration": 90
+   "duration": 50
   },
   {
-   "filename": "wizard_pixellab_game 32.aseprite",
+   "filename": "32",
    "frame": {
     "x": 0,
+    "y": 192,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 50
+  },
+  {
+   "filename": "33",
+   "frame": {
+    "x": 48,
     "y": 192,
     "w": 48,
     "h": 48
@@ -727,29 +749,7 @@
    "duration": 60
   },
   {
-   "filename": "wizard_pixellab_game 33.aseprite",
-   "frame": {
-    "x": 48,
-    "y": 192,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   },
-   "duration": 50
-  },
-  {
-   "filename": "wizard_pixellab_game 34.aseprite",
+   "filename": "34",
    "frame": {
     "x": 96,
     "y": 192,
@@ -768,10 +768,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 50
+   "duration": 90
   },
   {
-   "filename": "wizard_pixellab_game 35.aseprite",
+   "filename": "35",
    "frame": {
     "x": 144,
     "y": 192,
@@ -790,10 +790,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 50
+   "duration": 60
   },
   {
-   "filename": "wizard_pixellab_game 36.aseprite",
+   "filename": "36",
    "frame": {
     "x": 192,
     "y": 192,
@@ -815,7 +815,7 @@
    "duration": 50
   },
   {
-   "filename": "wizard_pixellab_game 37.aseprite",
+   "filename": "37",
    "frame": {
     "x": 240,
     "y": 192,
@@ -834,10 +834,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 60
+   "duration": 50
   },
   {
-   "filename": "wizard_pixellab_game 38.aseprite",
+   "filename": "38",
    "frame": {
     "x": 288,
     "y": 192,
@@ -856,10 +856,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 90
+   "duration": 50
   },
   {
-   "filename": "wizard_pixellab_game 39.aseprite",
+   "filename": "39",
    "frame": {
     "x": 336,
     "y": 192,
@@ -878,10 +878,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 60
+   "duration": 50
   },
   {
-   "filename": "wizard_pixellab_game 40.aseprite",
+   "filename": "40",
    "frame": {
     "x": 0,
     "y": 240,
@@ -900,10 +900,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 50
+   "duration": 60
   },
   {
-   "filename": "wizard_pixellab_game 41.aseprite",
+   "filename": "41",
    "frame": {
     "x": 48,
     "y": 240,
@@ -922,10 +922,10 @@
     "w": 48,
     "h": 48
    },
-   "duration": 50
+   "duration": 90
   },
   {
-   "filename": "wizard_pixellab_game 42.aseprite",
+   "filename": "42",
    "frame": {
     "x": 96,
     "y": 240,
@@ -944,13 +944,123 @@
     "w": 48,
     "h": 48
    },
-   "duration": 70
+   "duration": 60
   },
   {
-   "filename": "wizard_pixellab_game 43.aseprite",
+   "filename": "43",
    "frame": {
     "x": 144,
     "y": 240,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 50
+  },
+  {
+   "filename": "44",
+   "frame": {
+    "x": 192,
+    "y": 240,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 50
+  },
+  {
+   "filename": "45",
+   "frame": {
+    "x": 240,
+    "y": 240,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 60
+  },
+  {
+   "filename": "46",
+   "frame": {
+    "x": 288,
+    "y": 240,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 60
+  },
+  {
+   "filename": "47",
+   "frame": {
+    "x": 336,
+    "y": 240,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 80
+  },
+  {
+   "filename": "48",
+   "frame": {
+    "x": 0,
+    "y": 288,
     "w": 48,
     "h": 48
    },
@@ -969,10 +1079,120 @@
    "duration": 110
   },
   {
-   "filename": "wizard_pixellab_game 44.aseprite",
+   "filename": "49",
+   "frame": {
+    "x": 48,
+    "y": 288,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 120
+  },
+  {
+   "filename": "50",
+   "frame": {
+    "x": 96,
+    "y": 288,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 130
+  },
+  {
+   "filename": "51",
+   "frame": {
+    "x": 144,
+    "y": 288,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 140
+  },
+  {
+   "filename": "52",
    "frame": {
     "x": 192,
-    "y": 240,
+    "y": 288,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 150
+  },
+  {
+   "filename": "53",
+   "frame": {
+    "x": 240,
+    "y": 288,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   },
+   "duration": 160
+  },
+  {
+   "filename": "54",
+   "frame": {
+    "x": 288,
+    "y": 288,
     "w": 48,
     "h": 48
    },
@@ -992,92 +1212,78 @@
   }
  ],
  "meta": {
-  "app": "https://www.aseprite.org/",
-  "version": "1.3.18.6-dev",
+  "app": "pixellab+mksheet",
   "image": "player_sheet.png",
-  "format": "RGBA8888",
   "size": {
    "w": 384,
-   "h": 288
+   "h": 336
   },
-  "scale": "1",
   "frameTags": [
    {
     "name": "idle",
     "from": 0,
-    "to": 0,
-    "direction": "forward",
-    "color": "#000000ff"
+    "to": 3,
+    "direction": "forward"
    },
    {
     "name": "idle_side",
-    "from": 1,
-    "to": 1,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 4,
+    "to": 4,
+    "direction": "forward"
    },
    {
     "name": "idle_up",
-    "from": 2,
-    "to": 2,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 5,
+    "to": 5,
+    "direction": "forward"
    },
    {
     "name": "walk",
-    "from": 3,
-    "to": 8,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 6,
+    "to": 11,
+    "direction": "forward"
    },
    {
     "name": "walk_side",
-    "from": 9,
-    "to": 14,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 12,
+    "to": 17,
+    "direction": "forward"
    },
    {
     "name": "walk_up",
-    "from": 15,
-    "to": 20,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 18,
+    "to": 23,
+    "direction": "forward"
    },
    {
     "name": "cast",
-    "from": 21,
-    "to": 27,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 24,
+    "to": 30,
+    "direction": "forward"
    },
    {
     "name": "cast_side",
-    "from": 28,
-    "to": 34,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 31,
+    "to": 37,
+    "direction": "forward"
    },
    {
     "name": "cast_up",
-    "from": 35,
-    "to": 41,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 38,
+    "to": 44,
+    "direction": "forward"
    },
    {
     "name": "hit",
-    "from": 42,
-    "to": 43,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 45,
+    "to": 47,
+    "direction": "forward"
    },
    {
     "name": "death",
-    "from": 44,
-    "to": 44,
-    "direction": "forward",
-    "color": "#000000ff"
+    "from": 48,
+    "to": 54,
+    "direction": "forward"
    }
   ]
  }
