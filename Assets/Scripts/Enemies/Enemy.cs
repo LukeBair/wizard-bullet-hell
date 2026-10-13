@@ -462,9 +462,10 @@ public class Enemy : MonoBehaviour
                 switch (state)
                 {
                     case 0:
-                        if (stateTimer <= 0f && dist < 9f && !IsRooted && !IsCharmed)
+                        // A charmed burrower tunnels too, faster, so it erupts under other foes within the charm.
+                        if (stateTimer <= 0f && dist < 9f && !IsRooted)
                         {
-                            state = 1; stateTimer = 2.2f;
+                            state = 1; stateTimer = IsCharmed ? 1.2f : 2.2f;
                             SetHidden(true);
                             Fx.Burst(Position, Def.Color, 1.5f);
                             Sfx.Play(Sound.Burrow, 0.5f);
@@ -475,7 +476,7 @@ public class Enemy : MonoBehaviour
                         if (dist < 0.8f || stateTimer <= 0f)
                         {
                             state = 2; stateTimer = 0.8f;
-                            Hazard.Spawn(Position, 1.5f, 0.8f, Def.ContactDamage, Def.Accent);
+                            Hazard.Spawn(Position, 1.5f, 0.8f, Def.ContactDamage, Def.Accent, null, IsCharmed);
                         }
                         return dir * Def.Speed;
                     case 2:
@@ -963,6 +964,17 @@ public class Enemy : MonoBehaviour
     public void Charm(float duration, float power, float burstOnEnd)
     {
         if (IsBoss) return;
+        // Newly charmed foes act at once instead of finishing a cooldown or a wind-up aimed at the wizard,
+        // which often outlasted a short charm.
+        if (!IsCharmed)
+        {
+            fireTimer = Mathf.Min(fireTimer, 0.3f);
+            if (Def.Behavior == EnemyBehavior.Lunge || Def.Behavior == EnemyBehavior.Burrower)
+            {
+                if (state == 3 || (Def.Behavior == EnemyBehavior.Lunge && state == 1)) state = 0;
+                if (state == 0) stateTimer = 0f;
+            }
+        }
         charmTimer = duration;
         charmPower = power;
         charmBurst = burstOnEnd;
