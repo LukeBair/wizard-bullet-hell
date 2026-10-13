@@ -24,6 +24,7 @@ public class EffectCounter : MonoBehaviour
     {
         counts.TryGetValue(key, out int n);
         counts[key] = ++n;
+        Telemetry.Effect(key);
         if (!Tune.B("hud.effectCounters.enabled", true)) return;
 
         if (!live.TryGetValue(key, out var c) || c == null)

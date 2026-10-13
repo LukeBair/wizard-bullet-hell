@@ -62,6 +62,7 @@ public class Hazard : MonoBehaviour
         Fx.Ring(pos, color, radius);
         if (friendly)
         {
+            using (Telemetry.By("Enthrall"))
             foreach (var e in Spell.EnemiesWithin(pos, radius)) e.TakeDamage(damage * 2f);
             Destroy(gameObject);
             return;

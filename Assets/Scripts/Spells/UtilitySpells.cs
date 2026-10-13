@@ -87,7 +87,7 @@ public class Rejuvenate : Spell
         if (delay > 0f) yield return new WaitForSeconds(delay);
         float missing = 1f - Owner.Health / Owner.MaxHealth;
         float amount = Owner.MaxHealth * Damage * (1f + missing * 0.5f * (Area - 1f) * 5f);
-        Owner.Heal(amount);
+        Owner.Heal(amount, source: Id.ToString());
         Fx.Ring(Owner.Position, Color, 1.2f, 0.4f);
         Fx.Burst(Owner.Position, Color, 2f);
         DamageText.Spawn(Owner.Position + Vector2.up * 0.6f, amount, new Color(0.5f, 1f, 0.5f));
@@ -405,7 +405,7 @@ public class Cyclone : Spell
                 Interactions.Trigger(Interaction.DeepFreeze, e.Position);
             }
             if (bolts++ < 6) Fx.Bolt(eye, e.Position, Color.Lerp(Color, Color.white, 0.3f));
-            e.TakeDamage(reaction * caught, default, Color.Lerp(Color, Color.white, 0.4f));
+            using (Telemetry.By(Id.ToString())) e.TakeDamage(reaction * caught, default, Color.Lerp(Color, Color.white, 0.4f));
         }
         return passed;
     }

@@ -25,6 +25,18 @@ public static class Telemetry
     // The enemy whose Update is running, so bullets and hazards it creates know who fired them.
     public static string Actor;
 
+    // What is hurting enemies right now (a spell id, or Burn, Steam, Shatter...). Set it around a
+    // TakeDamage call with `using (Telemetry.By("Steam")) ...`; Enemy.TakeDamage credits it.
+    public static string DamageBy;
+    public static Scope By(string source) => new Scope(source);
+
+    public readonly struct Scope : IDisposable
+    {
+        readonly string previous;
+        public Scope(string source) { previous = DamageBy; DamageBy = source; }
+        public void Dispose() => DamageBy = previous;
+    }
+
     public static string RunId { get; private set; }
     static bool active;
     static readonly StringBuilder pending = new StringBuilder();
@@ -48,6 +60,17 @@ public static class Telemetry
     static Enemy boss;
     static float bossStart, bossDamage;
     static int bossHits;
+    static readonly Dictionary<string, float> dealtBySource = new Dictionary<string, float>();
+    static readonly Dictionary<string, int> killsBySource = new Dictionary<string, int>();
+    static readonly Dictionary<string, float> healBySource = new Dictionary<string, float>();
+    static readonly Dictionary<string, int> effects = new Dictionary<string, int>();
+    static readonly List<string> levelTimes = new List<string>();
+    static int xpDropped, xpCollected;
+    static float dealtTotal, healTotal, tickDealt, tickHealed;
+    // Frame rate: frames and real time since the last tick, the slowest frame, and per-tick averages.
+    static int frames;
+    static float frameTime, worstFrame, fpsLow = float.MaxValue, runFrameTime;
+    static int runFrames;
 
     static float T
     {
@@ -73,6 +96,16 @@ public static class Telemetry
         tomePicks.Clear();
         evolvePicks.Clear();
         rests = hurtCount = blocked = 0;
+        dealtBySource.Clear();
+        killsBySource.Clear();
+        healBySource.Clear();
+        effects.Clear();
+        levelTimes.Clear();
+        xpDropped = xpCollected = 0;
+        dealtTotal = healTotal = tickDealt = tickHealed = 0f;
+        frames = runFrames = 0;
+        frameTime = worstFrame = runFrameTime = 0f;
+        fpsLow = float.MaxValue;
         damageTotal = 0f;
         lastHitBy = null;
         offer = null;
@@ -176,6 +209,11 @@ public static class Telemetry
             .Raw("damageTaken", $"{{\"total\":{Num(damageTotal)},\"hits\":{hurtCount},\"blocked\":{blocked},\"bySource\":{Map(damageBySource)},\"byKind\":{Map(damageByKind)}}}")
             .Raw("picks", $"{{\"runes\":{IntMap(runePicks)},\"tomes\":{StrList(tomePicks)},\"evolves\":{StrList(evolvePicks)},\"rests\":{rests}}}")
             .Raw("aliveAtEnd", Map(aliveByType))
+            .Raw("damageDealt", $"{{\"total\":{Num(dealtTotal)},\"bySource\":{Map(dealtBySource)},\"killsBySource\":{IntMap(killsBySource)}}}")
+            .Raw("healing", $"{{\"total\":{Num(healTotal)},\"bySource\":{Map(healBySource)}}}")
+            .Raw("xp", $"{{\"dropped\":{xpDropped},\"collected\":{xpCollected},\"levelTimes\":[{string.Join(",", levelTimes)}]}}")
+            .Raw("combos", IntMap(effects))
+            .Raw("fps", $"{{\"avg\":{Num(runFrameTime > 0f ? runFrames / runFrameTime : 0f)},\"worstTick\":{Num(fpsLow == float.MaxValue ? 0f : fpsLow)}}}")
             .Write();
         active = false;
         gm.StartCoroutine(Flush());
@@ -185,9 +223,20 @@ public static class Telemetry
     public static void Update(GameManager gm)
     {
         if (!active) return;
+        if (gm.State == GameState.Playing)
+        {
+            float dt = Time.unscaledDeltaTime;
+            frames++;
+            frameTime += dt;
+            runFrames++;
+            runFrameTime += dt;
+            worstFrame = Mathf.Max(worstFrame, dt);
+        }
         if (gm.State == GameState.Playing && T >= nextSnapshot)
         {
             nextSnapshot = T + Mathf.Max(1f, SnapshotEvery);
+            float fps = frameTime > 0f ? frames / frameTime : 0f;
+            if (frameTime > 1f) fpsLow = Mathf.Min(fpsLow, fps);
             int chaff = 0, medium = 0;
             foreach (var e in Enemy.All)
                 if (e.Def.Tier == EnemyTier.Chaff) chaff++;
@@ -195,7 +244,12 @@ public static class Telemetry
             var p = gm.Player;
             Line("tick").N("hp", p.Health).N("maxHp", p.MaxHealth).I("level", p.Level).I("xp", p.Xp).I("xpToNext", p.XpToNext)
                 .I("chaff", chaff).I("medium", medium).I("bullets", EnemyBullets())
-                .I("gems", XpGem.All.Count).I("threat", gm.Director.Threat + 1).N("healthScale", gm.Director.HealthScale).Write();
+                .I("gems", XpGem.All.Count).I("threat", gm.Director.Threat + 1).N("healthScale", gm.Director.HealthScale)
+                .N("dealt", tickDealt).N("healed", tickHealed)
+                .N("fps", fps).N("fpsMin", worstFrame > 0f ? 1f / worstFrame : 0f).Write();
+            tickDealt = tickHealed = 0f;
+            frames = 0;
+            frameTime = worstFrame = 0f;
         }
         if (Time.unscaledTime >= nextFlush)
         {
@@ -248,6 +302,8 @@ public static class Telemetry
         float life = T - e.BornAt;
         var t = Get(e);
         t.killed++;
+        string by = e.LastHitBy ?? "Other";
+        killsBySource[by] = (killsBySource.TryGetValue(by, out var k) ? k : 0) + 1;
         t.lifeSum += life;
         if (e == boss)
         {
@@ -290,8 +346,37 @@ public static class Telemetry
 
     public static void LevelUp(int level)
     {
-        if (active) Line("levelup").I("level", level).Write();
+        if (!active) return;
+        levelTimes.Add(Num(T));
+        Line("levelup").I("level", level).Write();
     }
+
+    // Damage an enemy actually lost (overkill not counted), credited to whatever dealt it.
+    public static void Dealt(float amount, string by)
+    {
+        if (!active || amount <= 0f) return;
+        dealtTotal += amount;
+        tickDealt += amount;
+        dealtBySource[by] = (dealtBySource.TryGetValue(by, out var a) ? a : 0f) + amount;
+    }
+
+    // Health the wizard actually got back (overheal not counted).
+    public static void Healed(float amount, string source)
+    {
+        if (!active || amount <= 0f) return;
+        healTotal += amount;
+        tickHealed += amount;
+        healBySource[source] = (healBySource.TryGetValue(source, out var a) ? a : 0f) + amount;
+    }
+
+    // A combo or named effect went off (Steam, Conductive, Bug Burst...).
+    public static void Effect(string name)
+    {
+        if (active) effects[name] = (effects.TryGetValue(name, out var n) ? n : 0) + 1;
+    }
+
+    public static void XpDropped(int amount) { if (active) xpDropped += amount; }
+    public static void XpCollected(int amount) { if (active) xpCollected += amount; }
 
     // The level-up screen opened with these choices.
     public static void Offer(List<Rune> runes, SpellId? tome, List<Spell> evolves)

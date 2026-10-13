@@ -13,6 +13,7 @@ public class XpGem : MonoBehaviour
 
     public static void Spawn(Vector2 pos, int value)
     {
+        Telemetry.XpDropped(value);
         var go = new GameObject("Gem");
         go.transform.position = pos + Random.insideUnitCircle * 0.2f;
         var g = go.AddComponent<XpGem>();

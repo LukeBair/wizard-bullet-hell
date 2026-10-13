@@ -122,7 +122,7 @@ public class RuneSystem : UpgradeSystem
 
     void Rest()
     {
-        Player.Heal(999f);
+        Player.Heal(999f, source: "Rest");
         Telemetry.PickRest();
     }
 

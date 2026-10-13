@@ -34,6 +34,7 @@ public class Enemy : MonoBehaviour
     public bool Hidden { get; private set; }   // burrowed: can't be hit or targeted
     public int TelemetryId, TelemetryRun;   // set by Telemetry when a run is being logged
     public float BornAt;
+    public string LastHitBy;   // what last hurt it, for telemetry kill credit
 
     // Bigger enemies shrug off more frostbite.
     float FrostResist => Def.Tier == EnemyTier.Chaff ? Tune.F("status.frostbiteTakenChaff", 1f)
@@ -326,7 +327,7 @@ public class Enemy : MonoBehaviour
             // Bumped into a thorn-trapped foe.
             thornTick = 0.5f;
             if (thorns.thornSpread) Root(thorns.rootTimer, thorns.rootVuln, thorns.thornDps, true, thorns.rootDeathBloom);
-            TakeDamage(thorns.thornDps * Tune.F("status.thornBumpFactor", 1f), default, new Color(0.5f, 0.85f, 0.3f));
+            using (Telemetry.By("Thorns")) TakeDamage(thorns.thornDps * Tune.F("status.thornBumpFactor", 1f), default, new Color(0.5f, 0.85f, 0.3f));
             if (!IsAlive) return;
         }
 
@@ -350,7 +351,7 @@ public class Enemy : MonoBehaviour
             if (charmContact <= 0f && (prey.Position - pos).sqrMagnitude < r * r)
             {
                 charmContact = 0.5f;
-                prey.TakeDamage(Def.ContactDamage * 2f * charmPower, (prey.Position - pos).normalized * 4f, new Color(1f, 0.5f, 0.8f));
+                using (Telemetry.By("Enthrall")) prey.TakeDamage(Def.ContactDamage * 2f * charmPower, (prey.Position - pos).normalized * 4f, new Color(1f, 0.5f, 0.8f));
                 if (!prey.IsAlive) Grimoire.Feat(SpellId.Enthrall);
             }
         }
@@ -782,6 +783,7 @@ public class Enemy : MonoBehaviour
         if (burnTimer > 0f)
         {
             burnTimer -= dt;
+            Credit(burnDps * dt, "Burn");
             Health -= burnDps * dt;
             if (Health <= 0f) { Die(); return; }
         }
@@ -792,6 +794,7 @@ public class Enemy : MonoBehaviour
             rootTimer -= dt;
             if (thornDps > 0f)
             {
+                Credit(thornDps * dt, "Thorns");
                 Health -= thornDps * dt;
                 if (Health <= 0f) { Die(); return; }
             }
@@ -837,6 +840,7 @@ public class Enemy : MonoBehaviour
     {
         if (!IsAlive || Hidden) return;
         if (IsRooted) amount *= 1f + rootVuln;
+        if (amount > 0f) Credit(amount, Telemetry.DamageBy ?? "Other");
         Health -= amount;
         if (amount > 0f)
         {
@@ -847,6 +851,12 @@ public class Enemy : MonoBehaviour
         }
         if (!IsBoss && !IsRooted) knockback += push;
         if (Health <= 0f) Die();
+    }
+
+    void Credit(float amount, string by)
+    {
+        LastHitBy = by;
+        Telemetry.Dealt(Mathf.Min(amount, Health), by);
     }
 
     public void Pull(Vector2 velocity, float dt)
@@ -902,7 +912,7 @@ public class Enemy : MonoBehaviour
         Fx.Ring(Position, Color.white, Radius * 2f);
         Particles.Frost(Position, Radius * 2f);
         Sfx.Play(Sound.Lightning, 0.5f, 0.3f);
-        TakeDamage(dmg, default, new Color(0.7f, 0.95f, 1f));
+        using (Telemetry.By("Shatter")) TakeDamage(dmg, default, new Color(0.7f, 0.95f, 1f));
     }
 
     public void MarkCurse(float bonus) => curseBonus = Mathf.Max(curseBonus, bonus);
@@ -937,7 +947,7 @@ public class Enemy : MonoBehaviour
         {
             Fx.Burst(Position, new Color(1f, 0.4f, 0.75f), 3f);
             foreach (var e in Spell.EnemiesWithin(Position, 1.8f))
-                if (e != this) e.TakeDamage(charmBurst, (e.Position - Position).normalized * 5f, new Color(1f, 0.5f, 0.8f));
+                if (e != this) using (Telemetry.By("Enthrall")) e.TakeDamage(charmBurst, (e.Position - Position).normalized * 5f, new Color(1f, 0.5f, 0.8f));
         }
         charmBurst = 0f;
     }
@@ -950,6 +960,7 @@ public class Enemy : MonoBehaviour
         float dmg = Mathf.Min(Tune.F("combos.steamMaxDamage", 60f), Tune.F("combos.steamBaseDamage", 10f) + MaxHealth * Tune.F("combos.steamHealthFraction", 0.08f));
         Fx.Burst(Position, new Color(0.95f, 0.95f, 0.95f, 0.8f), 3f);
         Sfx.Play(Sound.FireballCast, 0.35f, 0.3f);
+        using (Telemetry.By("Steam"))
         foreach (var e in Spell.EnemiesWithin(Position, 1.6f))
             e.TakeDamage(dmg, (e.Position - Position).normalized * 3f, new Color(0.95f, 0.95f, 0.95f));
     }
@@ -971,7 +982,7 @@ public class Enemy : MonoBehaviour
             if (e == this) continue;
             if (fire) e.ApplyBurn(infestDamage * 0.4f, 2.5f);
             if (hex) e.MarkCurse(curseBonus);
-            e.TakeDamage(infestDamage, (e.Position - Position).normalized * 3f, c);
+            using (Telemetry.By(fire ? "Firebugs" : hex ? "Hex Swarm" : "Bug Burst")) e.TakeDamage(infestDamage, (e.Position - Position).normalized * 3f, c);
         }
     }
 
@@ -988,7 +999,7 @@ public class Enemy : MonoBehaviour
             float heal = Tune.Num(drop, "heal", 0f);
             if (heal > 0f)
             {
-                GameManager.Instance.Player.Heal(heal);
+                GameManager.Instance.Player.Heal(heal, source: "Drop");
                 DamageText.Spawn(Position, heal, new Color(0.5f, 1f, 0.5f));
             }
         }

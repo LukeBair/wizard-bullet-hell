@@ -184,6 +184,7 @@ public class Player : MonoBehaviour
 
     public void AddXp(int amount)
     {
+        Telemetry.XpCollected(amount);
         Xp += amount;
         while (Xp >= XpToNext)
         {
@@ -194,8 +195,10 @@ public class Player : MonoBehaviour
         }
     }
 
-    public void Heal(float amount, bool fx = true)
+    // source is for telemetry: the spell id, Siphon, Boss kill, Drop or Rest.
+    public void Heal(float amount, bool fx = true, string source = "Other")
     {
+        Telemetry.Healed(Mathf.Min(amount, MaxHealth - Health), source);
         Health = Mathf.Min(MaxHealth, Health + amount);
         if (fx && amount > 0f) Particles.Heal(Position, amount);
     }
@@ -238,6 +241,7 @@ public class Player : MonoBehaviour
     // Rejuvenate III: back to full health instead of dying.
     public void Revive()
     {
+        Telemetry.Healed(MaxHealth - Mathf.Max(0f, Health), "Revive");
         Health = MaxHealth;
         foreach (var r in renderers) r.enabled = true;
         Phase(2f);

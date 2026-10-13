@@ -333,14 +333,14 @@ public abstract class Spell
         float bless = RuneCount(Rune.Bless);
         if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
 
-        e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
+        using (Telemetry.By(Id.ToString())) e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
 
         float siphon = RuneCount(Rune.Siphon);
         if (siphon > 0f && siphonBank > 0f && Owner != null)
         {
             float heal = Mathf.Min(siphonBank, damage * Tune.F("runes.Siphon.healPerRune", 0.02f) * siphon);
             siphonBank -= heal;
-            Owner.Heal(heal, false);
+            Owner.Heal(heal, false, "Siphon");
         }
 
         float curse = RuneCount(Rune.Curse);

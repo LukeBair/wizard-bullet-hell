@@ -567,7 +567,7 @@ public class Wisps : Spell, IOrbiter
     void HealOwner(float fraction)
     {
         if (Owner.Health >= Owner.MaxHealth) return;
-        Owner.Heal(Owner.MaxHealth * fraction);
+        Owner.Heal(Owner.MaxHealth * fraction, source: Id.ToString());
         if (fraction >= 0.05f)
         {
             Fx.Burst(Owner.Position, Color, 2.5f);
