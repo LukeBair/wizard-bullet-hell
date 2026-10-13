@@ -21,13 +21,14 @@ public class Player : MonoBehaviour
 
     public int Level { get; private set; } = 1;
     public int Xp { get; private set; }
-    // Base curve (base + perLevel*L + L^2/quadDivisor), then x stepMultiplier for every stepEvery levels.
+    // Base curve (base + perLevel*L + L^2/quadDivisor), then x stepMultiplier for every stepEvery levels
+    // up to stepCapLevel; past that only the base curve grows.
     public int XpToNext
     {
         get
         {
             float raw = Tune.F("xp.base", 3f) + Level * Tune.F("xp.perLevel", 2f) + Level * Level / Mathf.Max(1f, Tune.F("xp.quadDivisor", 5f));
-            int steps = Level / Mathf.Max(1, Tune.I("xp.stepEvery", 5));
+            int steps = Mathf.Min(Level, Tune.I("xp.stepCapLevel", 999)) / Mathf.Max(1, Tune.I("xp.stepEvery", 5));
             return Mathf.Max(1, Mathf.RoundToInt(Mathf.Floor(raw) * Mathf.Pow(Tune.F("xp.stepMultiplier", 1.25f), steps)));
         }
     }

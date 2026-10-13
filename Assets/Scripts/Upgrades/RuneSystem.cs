@@ -69,7 +69,10 @@ public class RuneSystem : UpgradeSystem
         if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
             tome = unlearned[Random.Range(0, unlearned.Count)];
 
-        var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Sockets);
+        // Tier III also waits for tier3Bosses boss kills, so it can't land before the first boss.
+        int bosses = GameManager.Instance.Director.BossesDefeated;
+        var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Sockets
+            && (s.Tier + 1 < 3 || bosses >= Tune.I("runes.tier3Bosses", 1)));
         evolves.Clear();
         evolves.AddRange(ready);
         Telemetry.Offer(runeOffer, tome, evolves);
