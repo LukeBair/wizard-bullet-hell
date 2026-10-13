@@ -40,6 +40,7 @@ public class ArcaneMissile : Spell
         p.OnHit = (proj, e) =>
         {
             Hit(e, Damage, proj.Velocity.normalized * 2f);
+            Grimoire.Feat(SpellId.ArcaneMissile);
             if (Tier == 3 && canSplit)
             {
                 var next = Enemy.Nearest(e.Position, Range * T("followUpRange", 0.6f), new[] { e });
@@ -114,11 +115,13 @@ public class Fireball : Spell
         Fx.Burst(at, Color, radius * 2.2f);
         Fx.Ring(at, Color, radius);
         Sfx.Play(Sound.Explosion, 0.5f);
-        foreach (var e in EnemiesWithin(at, radius))
+        var caught = EnemiesWithin(at, radius);
+        foreach (var e in caught)
         {
             if (Tier >= 2) e.ApplyBurn(Damage * TT("burnFactor", 0.3f), TT("burnDuration", 2.5f));
             Hit(e, Damage, (e.Position - at).normalized * 4f);
         }
+        Grimoire.FeatMax(SpellId.Fireball, caught.Count);
         if (splits)
         {
             int n = Mathf.RoundToInt(T("shrapnelCount_t3", 6f));
@@ -224,6 +227,12 @@ public class ChainLightning : Spell
     {
         Sfx.Play(Sound.Lightning, 0.45f);
         var struck = new List<Enemy>();
+        Bolts(struck);
+        Grimoire.FeatMax(SpellId.ChainLightning, struck.Count);   // foes the lightning passed through this cast
+    }
+
+    void Bolts(List<Enemy> struck)
+    {
         for (int b = 0; b < Count; b++)
         {
             Vector2 from = Owner.Position;
@@ -289,7 +298,7 @@ public class Wisps : Spell, IOrbiter
 {
     public override string Name => "Forest Wisps";
     public override Element Element => Element.Nature;
-    public override string Blurb => "Spirits circle you, striking what they touch.";
+    public override string Blurb => "Spirits circle you and dart out at nearby foes. A foe's element changes the strike: burning foes make the wisp explode.";
     public override bool CanEvolve => true;
     protected override float BaseDamage => 9f;
     protected override float BaseCooldown => 1f;
@@ -304,7 +313,18 @@ public class Wisps : Spell, IOrbiter
     readonly Dictionary<Enemy, float> lastHit = new Dictionary<Enemy, float>();
     float angle;
     float quietTimer;
-    int MaxBonusWisps => Mathf.RoundToInt(T("maxBonusWisps_t3", 4f));
+    int MaxBonusWisps => Mathf.RoundToInt(T("maxBonusWisps", 4f));
+
+    // Hunting: each wisp darts at a nearby foe every so often, strikes it and flies back to its place
+    // in the orbit. What the foe is suffering from changes the strike (Strike). State is keyed by the
+    // wisp's slot so it survives Rebuild (bonus wisps come and go).
+    enum Mode { Orbit, Dart, Return }
+    class WispState { public Mode mode; public Enemy target; public Vector2 pos; public float cool, dead; }
+    readonly Dictionary<(int, int, int), WispState> states = new Dictionary<(int, int, int), WispState>();
+    readonly List<Enemy> claimed = new List<Enemy>();
+    int reactionsSeen;   // bitmask of the five reactions triggered this run (signature feat)
+    float HuntEvery => T("huntEvery", 2.5f) * Cooldown;
+    float HuntRange => T("huntRange", 4.5f) * (1f + 0.5f * (Area - 1f));
     int RingCount(int ring) => Count + (ring == 0 ? bonusWisps.Count : 0);
 
     public int OrbitRings => Tier >= 2 ? 2 : 1;
@@ -315,16 +335,16 @@ public class Wisps : Spell, IOrbiter
     public override string TierName(int tier) => tier == 2 ? "Twin Halo" : tier == 3 ? "Lifebloom Halo" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? $"Starts with two rings. After {T("quietSeconds_t2", 3f):0.#}s without striking anything, the wisps heal you {Pct(T("quietHeal_t2", 0.1f))}."
-                  : $"Two rings, and every foe the wisps kill adds a wisp to the inner ring for {T("bonusWispLife_t3", 6f):0.#}s (up to {MaxBonusWisps} extra).";
+                  : $"Two rings, and every foe the wisps kill adds a wisp to the inner ring for {T("bonusWispLife", 6f):0.#}s (up to {MaxBonusWisps} extra).";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
             case Rune.Split: return "+1 wisp in every set";
-            case Rune.Haste: return $"Wisps orbit {Pct(HastePerRune)} faster";
-            case Rune.Pierce: return "Strikes the same foe more often";
-            case Rune.Area: return $"+{Pct(AreaStep)} wisp size";
+            case Rune.Haste: return $"Wisps orbit and hunt {Pct(HastePerRune)} faster";
+            case Rune.Pierce: return "Strikes the same foe more often while orbiting";
+            case Rune.Area: return $"+{Pct(AreaStep)} wisp size, hunt range and blast size";
             case Rune.Echo: return "+1 set of wisps spinning the other way";
             case Rune.Ward: return "No effect: this spell never casts";
             default: return base.RuneEffect(r);
@@ -369,13 +389,45 @@ public class Wisps : Spell, IOrbiter
         float hitEvery = T("hitEvery", 0.5f) / (1f + 0.3f * RuneCount(Rune.Pierce));
         bool hitSomething = false;
         int kills = 0;
+        claimed.Clear();
         for (int i = 0; i < orbs.Count; i++)
         {
-            var (_, ring, set, index, ringCount) = orbs[i];
+            var (orb, ring, set, index, ringCount) = orbs[i];
             float a = Orbits.Angle(angle, ring, set, Sets, index, ringCount) * Mathf.Deg2Rad;
             Vector2 local = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * OrbitRadius(ring);
-            orbs[i].orb.localPosition = local;
             Vector2 world = Owner.Position + local;
+
+            var key = (ring, set, index);
+            if (!states.TryGetValue(key, out var st))
+                states[key] = st = new WispState { cool = HuntEvery * (0.3f + 0.7f * (index + set * 0.5f) / Mathf.Max(1, ringCount)) };
+
+            // A wisp that exploded is gone until it re-forms.
+            if (st.dead > 0f)
+            {
+                st.dead -= dt;
+                if (orb.gameObject.activeSelf) orb.gameObject.SetActive(false);
+                if (st.dead > 0f) continue;
+                orb.gameObject.SetActive(true);
+                Fx.Ring(world, Color, OrbRadius * 2f, 0.3f);
+                st.mode = Mode.Orbit;
+            }
+
+            if (st.mode != Mode.Orbit && Hunt(st, world, dt, ref kills, ref hitSomething))
+            {
+                orb.localPosition = st.pos - Owner.Position;
+                continue;
+            }
+
+            st.pos = world;
+            orb.localPosition = local;
+            st.cool -= dt;
+            if (st.cool <= 0f)
+            {
+                var prey = Enemy.Nearest(Owner.Position, HuntRange, claimed);
+                if (prey != null) { claimed.Add(prey); st.target = prey; st.mode = Mode.Dart; }
+                else st.cool = 0.25f;   // nothing in reach: look again shortly
+            }
+
             foreach (var e in EnemiesWithin(world, OrbRadius))
             {
                 if (lastHit.TryGetValue(e, out float t) && Time.time - t < hitEvery) continue;
@@ -409,10 +461,107 @@ public class Wisps : Spell, IOrbiter
         }
         for (int k = 0; k < kills; k++)
         {
-            if (bonusWisps.Count < MaxBonusWisps) bonusWisps.Add(T("bonusWispLife_t3", 6f));
-            else { bonusWisps.Sort(); bonusWisps[0] = T("bonusWispLife_t3", 6f); }   // refresh the oldest
+            if (bonusWisps.Count < MaxBonusWisps) bonusWisps.Add(T("bonusWispLife", 6f));
+            else { bonusWisps.Sort(); bonusWisps[0] = T("bonusWispLife", 6f); }   // refresh the oldest
         }
         if (bonusWisps.Count != before) Rebuild();
+    }
+
+    // Moves a darting or returning wisp. Returns false once it is back in its orbit slot.
+    bool Hunt(WispState st, Vector2 home, float dt, ref int kills, ref bool hitSomething)
+    {
+        float step = T("huntSpeed", 11f) * Tuning.Pace * dt;
+        if (st.mode == Mode.Dart)
+        {
+            if (st.target == null || !st.target.IsAlive || st.target.Hidden) { st.mode = Mode.Return; return true; }
+            claimed.Add(st.target);
+            Vector2 to = st.target.Position - st.pos;
+            float reach = st.target.Radius + OrbRadius;
+            if (to.magnitude > reach + step) { st.pos += to.normalized * step; return true; }
+            hitSomething = true;
+            bool spent = Strike(st.target, st.pos, to.normalized, ref kills);
+            st.target = null;
+            st.cool = HuntEvery;
+            if (spent) { st.dead = T("respawnTime", 4f); st.mode = Mode.Orbit; return true; }
+            st.mode = Mode.Return;
+            return true;
+        }
+        // Returning: fly back to wherever its orbit slot is now.
+        Vector2 back = home - st.pos;
+        if (back.magnitude <= step + 0.05f) { st.mode = Mode.Orbit; return false; }
+        st.pos += back.normalized * step * 1.3f;
+        return true;
+    }
+
+    // A darting wisp hits its target. The foe's strongest status picks the reaction:
+    // burning: the wisp explodes (big damage around it) and has to re-form; wet: lightning arcs to
+    // other wet foes; chilled: heavy frostbite; infested: a weakened foe is devoured outright (its bugs burst);
+    // trapped (rooted): it drains life back to you. Returns true if the wisp was used up.
+    bool Strike(Enemy e, Vector2 at, Vector2 dir, ref int kills)
+    {
+        bool burning = e.IsBurning, wet = e.IsWet, chilled = e.IsChilled, infested = e.IsInfested, rooted = e.IsRooted;
+        Sfx.Play(Sound.WispHit, 0.45f, 0.2f);
+        Fx.Burst(at, Color, 1.2f);
+        Hit(e, Damage * T("huntDamage", 1.5f), dir * 3f);
+        if (Tier == 3 && !e.IsAlive) kills++;
+        float power = Damage / Mathf.Max(0.01f, TT("damage", BaseDamage));   // potency, sunlit, overload
+        int reaction = burning ? 1 : wet ? 2 : chilled ? 4 : infested ? 8 : rooted ? 16 : 0;
+        if (reaction != 0 && (reactionsSeen & reaction) == 0)
+        {
+            reactionsSeen |= reaction;
+            int n = 0;
+            for (int bits = reactionsSeen; bits != 0; bits >>= 1) n += bits & 1;
+            Grimoire.FeatMax(SpellId.Wisps, n);
+        }
+
+        if (burning)
+        {
+            float radius = T("flareRadius", 1.6f) * Area;
+            Fx.Burst(at, new Color(1f, 0.55f, 0.2f), radius * 2.5f);
+            Fx.Ring(at, new Color(1f, 0.7f, 0.3f), radius, 0.4f);
+            Sfx.Play(Sound.Explosion, 0.5f, 0.2f);
+            foreach (var x in EnemiesWithin(at, radius))
+            {
+                Hit(x, T("flareDamage", 40f) * power, (x.Position - at).normalized * 5f);
+                if (Tier == 3 && !x.IsAlive) kills++;
+            }
+            return true;
+        }
+        if (wet)
+        {
+            int arcs = Mathf.RoundToInt(T("arcTargets", 3f));
+            Vector2 from = e.Position;
+            foreach (var x in EnemiesWithin(from, T("arcRange", 3.5f)))
+            {
+                if (arcs <= 0) break;
+                if (x == e || !x.IsWet) continue;
+                Fx.Bolt(from, x.Position, new Color(1f, 0.95f, 0.5f));
+                Hit(x, Damage * T("arcDamage", 1.5f));
+                if (Tier == 3 && !x.IsAlive) kills++;
+                arcs--;
+            }
+            Sfx.Play(Sound.Lightning, 0.35f, 0.3f);
+            return false;
+        }
+        if (chilled)
+        {
+            if (e.IsAlive) e.AddFrostbite(T("frostbite", 0.5f));
+            Particles.Frost(at, 1f);
+            return false;
+        }
+        if (infested)
+        {
+            // Devour: a weakened infested foe is eaten outright, so its bugs burst on the crowd.
+            if (e.IsAlive && !e.IsBoss && e.Health <= e.MaxHealth * T("devourBelow", 0.35f))
+            {
+                Particles.Ants(at, 0.8f, false);
+                Hit(e, e.Health + 1f, dir * 3f);
+                if (Tier == 3 && !e.IsAlive) kills++;
+            }
+            return false;
+        }
+        if (rooted) HealOwner(T("drainHeal", 0.02f));
+        return false;
     }
 
     void HealOwner(float fraction)

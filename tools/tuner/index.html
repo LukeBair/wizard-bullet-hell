@@ -229,7 +229,7 @@ function renderSave(main) {
 
   const t = document.createElement("table");
   t.className = "savetable";
-  t.innerHTML = `<tr><th>Spell</th><th class="c">Tome</th><th class="c">Feat II<br><span class="muted">bosses beaten</span></th><th class="c">Evolution II</th><th class="c">Feat III<br><span class="muted">won at tier II+</span></th><th class="c">Evolution III</th></tr>`;
+  t.innerHTML = `<tr><th>Spell</th><th class="c">Tome</th><th class="c">Feat II<br><span class="muted">bosses beaten</span></th><th class="c">Evolution II</th><th class="c">Feat III<br><span class="muted">signature feat</span></th><th class="c">Evolution III</th></tr>`;
   const box = (e, k, disabled) => {
     const i = document.createElement("input"); i.type = "checkbox"; i.checked = !!e[k]; i.disabled = !!disabled;
     i.onchange = () => { e[k] = i.checked; };

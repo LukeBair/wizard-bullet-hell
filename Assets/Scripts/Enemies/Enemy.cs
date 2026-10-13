@@ -23,6 +23,7 @@ public class Enemy : MonoBehaviour
     public bool IsBurning => burnTimer > 0f;
     public bool IsWet => wetTimer > 0f;
     public bool IsRooted => rootTimer > 0f;
+    public bool VineTrapped;   // rooted by Overgrowth (not a Stone Spikes pin), for its tier III feat
     public bool IsCharmed => charmTimer > 0f;
     public bool IsInfested => infestTimer > 0f;
     // Cached, since crowds read each other's positions thousands of times a frame; MoveTo keeps it in step with the transform.
@@ -347,6 +348,7 @@ public class Enemy : MonoBehaviour
             {
                 charmContact = 0.5f;
                 prey.TakeDamage(Def.ContactDamage * 2f * charmPower, (prey.Position - pos).normalized * 4f, new Color(1f, 0.5f, 0.8f));
+                if (!prey.IsAlive) Grimoire.Feat(SpellId.Enthrall);
             }
         }
     }
@@ -757,6 +759,7 @@ public class Enemy : MonoBehaviour
             // A charmed enemy's shots are ours now.
             p = Projectile.Spawn(from, v, Team.Player, new Color(1f, 0.5f, 0.8f), 0.14f);
             p.Damage = Def.BulletDamage * 1.5f * charmPower;
+            p.OnHit = (proj, e) => { if (!e.IsAlive) Grimoire.Feat(SpellId.Enthrall); };
         }
         else
         {
@@ -789,7 +792,7 @@ public class Enemy : MonoBehaviour
                 Health -= thornDps * dt;
                 if (Health <= 0f) { Die(); return; }
             }
-            if (rootTimer <= 0f) { thornDps = 0f; thornSpread = false; rootDeathBloom = null; }
+            if (rootTimer <= 0f) { thornDps = 0f; thornSpread = false; rootDeathBloom = null; VineTrapped = false; }
         }
         if (infestTimer > 0f) infestTimer -= dt;
         if (steamCooldown > 0f) steamCooldown -= dt;
@@ -890,6 +893,7 @@ public class Enemy : MonoBehaviour
                 if (e != this) e.AddFrostbite(shatterSpread, shatterSpread, shatterRadius);
             shatterChain--;
         }
+        Grimoire.Feat(SpellId.FrostNova);
         float dmg = Health * (IsBoss ? Tune.F("status.shatterBoss", 0.1f) : Tune.F("status.shatter", 0.3f));
         Fx.Burst(Position, new Color(0.7f, 0.95f, 1f), Radius * 4f);
         Fx.Ring(Position, Color.white, Radius * 2f);
@@ -1007,6 +1011,7 @@ public class Enemy : MonoBehaviour
         if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();
         if (IsRooted) rootDeathBloom?.Invoke(Position);
+        if (IsRooted && VineTrapped) Grimoire.Feat(SpellId.Overgrowth);
         Telemetry.Killed(this);   // before Died: a boss kill can end the run
         Died?.Invoke(this);
         if (Def.Behavior == EnemyBehavior.Splitter)

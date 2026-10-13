@@ -49,6 +49,8 @@ public class Rejuvenate : Spell
 
     protected override void OnTick(float dt)
     {
+        if (Owner != null && Owner.Health < Owner.MaxHealth * Tune.F("meta.feats.Rejuvenate.below", 0.25f))
+            Grimoire.Feat(SpellId.Rejuvenate, dt);   // tier III feat: time spent at low health, then win
         if (Tier < 3 || ReviveReady) return;
         reviveCharge += dt;
         if (ReviveReady)
@@ -146,6 +148,7 @@ public class Overgrowth : Spell
         foreach (var e in caught)
         {
             e.Root(RootTime, 0.15f * RuneCount(Rune.Pierce), ThornDps, Tier == 3, Tier == 3 ? new System.Action<Vector2>(DeathBloom) : null);
+            e.VineTrapped = true;
             Hit(e, Damage);
         }
         return caught;

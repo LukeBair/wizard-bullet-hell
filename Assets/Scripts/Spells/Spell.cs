@@ -314,12 +314,14 @@ public abstract class Spell
         {
             damage *= Tune.F("combos.conductiveMultiplier", 1.5f);
             Interactions.Trigger(Interaction.Conductive, e.Position);
+            Grimoire.Feat(SpellId.TidalLance);
         }
         if (Element == Element.Frost && e.IsWet)
         {
             e.ApplyChill(3f);
             e.AddFrostbite(0.35f);
             Interactions.Trigger(Interaction.DeepFreeze, e.Position);
+            Grimoire.Feat(SpellId.TidalLance);
         }
 
         float ember = RuneCount(Rune.Ember);

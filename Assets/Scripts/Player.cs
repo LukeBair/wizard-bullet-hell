@@ -119,7 +119,7 @@ public class Player : MonoBehaviour
 
         foreach (var spell in Spells) spell.Tick(dt);
 
-        if (sunTimer > 0f) sunTimer -= dt;
+        if (sunTimer > 0f) { sunTimer -= dt; Grimoire.Feat(SpellId.Sunspots, dt); }
         if (wardTimer > 0f) wardTimer -= dt;
         if (wards > MaxWards) wards = MaxWards;
         sunGlow.color = new Color(1f, 0.9f, 0.5f, IsSunlit ? 0.3f + 0.08f * Mathf.Sin(Time.time * 6f) : 0f);
@@ -256,7 +256,12 @@ public class Player : MonoBehaviour
     {
         if (!IsAlive || invulnTimer > 0f) return;
         var veil = GetSpell<Veil>();
-        if (veil != null && veil.TryAbsorb()) { Telemetry.Blocked("veil", source); return; }
+        if (veil != null && veil.TryAbsorb())
+        {
+            Telemetry.Blocked("veil", source);
+            if (amount >= Health) Grimoire.Feat(SpellId.Veil);   // tier III feat: a death blow avoided
+            return;
+        }
 
         Health -= amount;
         Telemetry.Hurt(amount, source, kind, Health);
