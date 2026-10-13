@@ -861,8 +861,11 @@
       "BulletSpeed": 3.2,
       "BulletDamage": 10,
       "SummonCount": 5,
-      "SummonAbove": 0.5,
-      "_SummonAbove": "Spawner boss: above this fraction of its health every other attack summons SummonCount chaff; below it, no more summons."
+      "SummonBelow": 0.5,
+      "BroodLobbers": 1,
+      "BroodMothers": 1,
+      "BroodSlimes": 4,
+      "_SummonBelow": "Its attacks cycle ring, summon SummonCount chaff, fans, hazards. Below this fraction of its health a fifth attack joins: a brood of BroodLobbers Spore Lobbers, BroodMothers Mother Slimes and BroodSlimes Moss Slimes."
     },
     "The Hedge Witch": {
       "Health": 3200,
