@@ -455,6 +455,9 @@
     "steamBaseDamage": 6,
     "steamHealthFraction": 0.05,
     "steamMaxDamage": 36,
+    "gauge": true,
+    "gaugeMax": 3,
+    "_gauge": "Elemental gauge: each burn, chill or wet application adds a unit (up to gaugeMax). Steam uses one burn and one chill unit (the element applied second is used up reacting), Conductive and Deep Freeze use one wet unit, and a status with no units left ends. false = old behaviour (statuses never used up).",
     "firebugsRadius": 2
   },
   "spells": {

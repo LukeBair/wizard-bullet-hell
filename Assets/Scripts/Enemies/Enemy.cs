@@ -67,6 +67,11 @@ public class Enemy : MonoBehaviour
     float aggroTimer;
     public static Enemy Acting;   // the enemy whose Update is running, so its hazards know who made them
     float steamCooldown;
+    // Elemental gauge (combos.gauge): each burn, chill or wet application adds a unit (up to combos.gaugeMax),
+    // and a reaction uses one unit of each side, so fire x2 then ice x1 leaves one fire, and 1 + 1 leaves nothing.
+    int burnUnits, chillUnits, wetUnits;
+    static bool Gauge => Tune.B("combos.gauge", true);
+    static int GaugeMax => Mathf.Max(1, Tune.I("combos.gaugeMax", 3));
     float dodgeTimer;
     float shardTimer;
     SpriteRenderer body;
@@ -928,18 +933,46 @@ public class Enemy : MonoBehaviour
 
     public void ApplyBurn(float dps, float duration)
     {
-        burnDps = Mathf.Max(burnDps * (burnTimer > 0f ? 1f : 0f), dps);
+        // Gauge: fire meeting ice reacts (Steam) and the two cancel one unit for one unit.
+        if (Gauge && IsChilled && steamCooldown <= 0f) { Steam(); UseChill(); return; }
+        bool had = burnTimer > 0f;
+        burnDps = Mathf.Max(had ? burnDps : 0f, dps);
         burnTimer = Mathf.Max(burnTimer, duration);
-        if (IsChilled) Steam();
+        burnUnits = Mathf.Min(GaugeMax, (had ? burnUnits : 0) + 1);
+        if (!Gauge && IsChilled) Steam();
     }
 
     public void ApplyChill(float duration)
     {
+        if (Gauge && IsBurning && steamCooldown <= 0f) { Steam(); UseBurn(); return; }
+        bool had = chillTimer > 0f;
         chillTimer = Mathf.Max(chillTimer, duration);
-        if (IsBurning) Steam();
+        chillUnits = Mathf.Min(GaugeMax, (had ? chillUnits : 0) + 1);
+        if (!Gauge && IsBurning) Steam();
     }
 
-    public void ApplyWet(float duration) => wetTimer = Mathf.Max(wetTimer, duration);
+    public void ApplyWet(float duration)
+    {
+        wetUnits = Mathf.Min(GaugeMax, (wetTimer > 0f ? wetUnits : 0) + 1);
+        wetTimer = Mathf.Max(wetTimer, duration);
+    }
+
+    // A reaction used up one unit of wet (Conductive, Deep Freeze). The last unit dries the foe off.
+    public void ConsumeWet()
+    {
+        if (!Gauge || wetTimer <= 0f) return;
+        if (--wetUnits <= 0) { wetUnits = 0; wetTimer = 0f; }
+    }
+
+    void UseBurn()
+    {
+        if (--burnUnits <= 0) { burnUnits = 0; burnTimer = 0f; burnDps = 0f; }
+    }
+
+    void UseChill()
+    {
+        if (--chillUnits <= 0) { chillUnits = 0; chillTimer = 0f; }
+    }
 
     public void Root(float duration, float vulnerability, float thornsDps = 0f, bool spreads = false, Action<Vector2> deathBloom = null)
     {

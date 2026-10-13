@@ -314,10 +314,12 @@ public abstract class Spell
         {
             damage *= Tune.F("combos.conductiveMultiplier", 1.5f);
             Interactions.Trigger(Interaction.Conductive, e.Position);
+            e.ConsumeWet();
             Grimoire.Feat(SpellId.TidalLance);
         }
         if (Element == Element.Frost && e.IsWet)
         {
+            e.ConsumeWet();
             e.ApplyChill(3f);
             e.AddFrostbite(0.35f);
             Interactions.Trigger(Interaction.DeepFreeze, e.Position);

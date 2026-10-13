@@ -407,6 +407,7 @@ public class Cyclone : Spell
             {
                 e.AddFrostbite(T("deepFreezeFrostbite", 0.35f));
                 Interactions.Trigger(Interaction.DeepFreeze, e.Position);
+                e.ConsumeWet();
             }
             if (bolts++ < 6) Fx.Bolt(eye, e.Position, Color.Lerp(Color, Color.white, 0.3f));
             using (Telemetry.By(Id.ToString())) e.TakeDamage(reaction * caught, default, Color.Lerp(Color, Color.white, 0.4f));
