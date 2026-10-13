@@ -162,7 +162,8 @@
     "quadDivisor": 5,
     "stepEvery": 5,
     "stepMultiplier": 1.25,
-    "_formula": "floor(base + perLevel*L + L^2/quadDivisor) * stepMultiplier^(L/stepEvery)"
+    "stepCapLevel": 19,
+    "_formula": "floor(base + perLevel*L + L^2/quadDivisor) * stepMultiplier^(min(L, stepCapLevel)/stepEvery). Past stepCapLevel the multiplier stops compounding, so later levels only grow with the quadratic."
   },
   "drops": {
     "xpMultiplier": 3,
@@ -204,8 +205,8 @@
     "swarmBase": 16,
     "swarmPerThreat": 6,
     "casterWeightPreBoss": 0.25,
-    "healthPerSwarm": 0.25,
-    "healthPerBossKill": 1,
+    "healthPerSwarm": 0.18,
+    "healthPerBossKill": 0.6,
     "bossHealthScaleRate": 0.5,
     "bossKillHeal": 50,
     "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) * chaffScale + chaffAdd, capped at chaffMax. chaffScale and chaffAdd come from the zone's row in zones (defaults 1 and run.zoneRateStep*zones cleared).",
@@ -649,6 +650,9 @@
       "duration": 2.5,
       "pull": 9,
       "distance": 4.5,
+      "minDistance": 2,
+      "frontOffset": 1,
+      "_distance": "The whirlwind lands frontOffset past the nearest foe, kept between minDistance and distance from the wizard.",
       "_damage": "Per tick (4 a second).",
       "passDamage": 2,
       "passDamage_t3": 4,
@@ -847,15 +851,18 @@
       "Xp": 4
     },
     "Elder Treant": {
-      "Health": 3000,
+      "Health": 2400,
       "Speed": 1.1,
       "Radius": 1.3,
       "ContactDamage": 25,
       "Xp": 60,
-      "FireInterval": 2.1,
+      "FireInterval": 2.6,
       "Bullets": 18,
       "BulletSpeed": 3.2,
-      "BulletDamage": 14
+      "BulletDamage": 10,
+      "SummonCount": 5,
+      "SummonAbove": 0.5,
+      "_SummonAbove": "Spawner boss: above this fraction of its health every other attack summons SummonCount chaff; below it, no more summons."
     },
     "The Hedge Witch": {
       "Health": 3200,

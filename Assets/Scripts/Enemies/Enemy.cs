@@ -497,14 +497,26 @@ public class Enemy : MonoBehaviour
 
     Vector2 BossTreant(Vector2 dir, float speed, float dt)
     {
+        // Spawner phase: while above SummonAbove of its health it alternates summons with rings.
+        // Below that it stops summoning (so the wizard can clear the adds) and fights with bullets.
         fireTimer -= dt;
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
+            if (Health > MaxHealth * Def.SummonAbove)
+            {
+                var chaff = GameManager.Instance.Arena.Biome.Roster.Chaff;
+                if (attackIndex++ % 2 == 0) Summon(chaff[(attackIndex / 2) % chaff.Length], Def.SummonCount);
+                else Ring(Position, Def.Bullets, Def.BulletSpeed, spinAngle += 10f);
+                return dir * speed;
+            }
             switch (attackIndex++ % 4)
             {
                 case 0: Ring(Position, Def.Bullets, Def.BulletSpeed, spinAngle += 10f); break;
-                case 1: Summon(GameManager.Instance.Arena.Biome.Roster.Chaff[0], 5); break;
+                case 1:
+                    if (Def.SummonAbove <= 0f) Summon(GameManager.Instance.Arena.Biome.Roster.Chaff[0], Def.SummonCount);
+                    else Ring(Position, Def.Bullets, Def.BulletSpeed, spinAngle += 10f);
+                    break;
                 case 2:
                     for (int i = 0; i < 3; i++)
                         Fan(Position, AngleTo(targetPos), 5, 12f, Def.BulletSpeed * (1f + i * 0.25f));

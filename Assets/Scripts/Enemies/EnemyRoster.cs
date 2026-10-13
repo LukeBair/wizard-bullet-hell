@@ -41,6 +41,10 @@ public class EnemyDef
     public float PreferredRange = 6f;
     public bool EarlyGame = true;   // false = only appears after the first swarm
     public int MaxAlive;            // mediums: the Director won't pick it while this many are alive (0 = no cap)
+
+    // Spawner bosses: minions per summon, and the health fraction it stops summoning below
+    public int SummonCount = 5;
+    public float SummonAbove = 0f;
 }
 
 // The enemies that appear in one biome, split by tier. The Director picks from these.
