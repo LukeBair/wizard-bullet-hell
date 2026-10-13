@@ -172,7 +172,7 @@ public class Projectile : MonoBehaviour
                 if ((enemy.Position - pos).sqrMagnitude >= r * r) continue;
 
                 hit.Add(enemy);
-                enemy.TakeDamage(Damage, Velocity.normalized * Knockback);
+                using (Telemetry.By(Damage > 0f ? "Enthrall" : Telemetry.DamageBy)) enemy.TakeDamage(Damage, Velocity.normalized * Knockback);   // only charmed shots carry damage
                 OnHit?.Invoke(this, enemy);
                 if (Pierce-- <= 0) { Release(); return; }
             }

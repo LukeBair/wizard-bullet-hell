@@ -371,7 +371,7 @@ function renderRun(box, id, lines) {
 
   if (sum) {
     const dt = sum.damageTaken || {};
-    box.insertAdjacentHTML("beforeend", `<div class="stats">${stat("outcome", sum.outcome)}${stat("time", mmss(sum.duration))}${stat("level", sum.level)}${stat("bosses", sum.bossesDefeated)}${stat("kills", sum.kills)}${stat("damage taken", `${Math.round(dt.total || 0)} in ${dt.hits || 0} hits`)}${stat("blocked", dt.blocked || 0)}${stat("gold", sum.gold)}${stat("killed by", sum.killer || "—")}</div>`);
+    box.insertAdjacentHTML("beforeend", `<div class="stats">${stat("outcome", sum.outcome)}${stat("time", mmss(sum.duration))}${stat("level", sum.level)}${stat("bosses", sum.bossesDefeated)}${stat("kills", sum.kills)}${stat("damage taken", `${Math.round(dt.total || 0)} in ${dt.hits || 0} hits`)}${stat("blocked", dt.blocked || 0)}${stat("gold", sum.gold)}${stat("killed by", sum.killer || "—")}${sum.damageDealt ? stat("damage dealt", Math.round(sum.damageDealt.total)) : ""}${sum.healing ? stat("healed", Math.round(sum.healing.total)) : ""}${sum.xp ? stat("xp collected", `${sum.xp.collected} of ${sum.xp.dropped}`) : ""}${sum.fps ? stat("fps", `${Math.round(sum.fps.avg)} avg · ${Math.round(sum.fps.worstTick)} worst`) : ""}</div>`);
   } else box.insertAdjacentHTML("beforeend", `<div class="tip">No summary: the run was cut off (app closed) or is still going. Showing what was logged.</div>`);
 
   // Timeline from the tick lines, with swarms and bosses marked.
@@ -390,10 +390,25 @@ function renderRun(box, id, lines) {
     charts.appendChild(lineChart({ title: "Health", sub: "Wizard HP over play time", x, xLabel: mmss, series: [{ name: "HP", y: ticks.map((l) => l.hp) }, { name: "Max HP", y: ticks.map((l) => l.maxHp) }], markers, markerLegend }));
     charts.appendChild(lineChart({ title: "On screen", sub: "Enemies alive and enemy bullets in flight", x, xLabel: mmss, series: [{ name: "Chaff", y: ticks.map((l) => l.chaff) }, { name: "Medium", y: ticks.map((l) => l.medium) }, { name: "Bullets", y: ticks.map((l) => l.bullets) }], markers, markerLegend }));
     charts.appendChild(lineChart({ title: "Level", sub: "Wizard level and enemy health multiplier", x, xLabel: mmss, series: [{ name: "Level", y: ticks.map((l) => l.level) }, { name: "Foe HP x", y: ticks.map((l) => l.healthScale) }], markers, markerLegend }));
+    if (ticks.some((l) => l.dealt !== undefined))
+      charts.appendChild(lineChart({ title: "Damage and healing", sub: "Per snapshot: damage your spells dealt, HP you healed", x, xLabel: mmss, series: [{ name: "Dealt", y: ticks.map((l) => l.dealt || 0) }, { name: "Healed", y: ticks.map((l) => l.healed || 0) }], markers, markerLegend }));
+    if (ticks.some((l) => l.fps !== undefined))
+      charts.appendChild(lineChart({ title: "Frame rate", sub: "Average and slowest frame per snapshot", x, xLabel: mmss, series: [{ name: "FPS", y: ticks.map((l) => l.fps || 0) }, { name: "Slowest frame", y: ticks.map((l) => l.fpsMin || 0) }], markers, markerLegend }));
   }
   const bySource = sum ? (sum.damageTaken || {}).bySource || {} : lines.filter((l) => l.ev === "hurt").reduce((m, l) => ((m[l.src] = (m[l.src] || 0) + l.amount), m), {});
   const srcBars = Object.entries(bySource).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([label, value]) => ({ label, value }));
   if (srcBars.length) charts.appendChild(barChart({ title: "Damage taken by source", sub: "Total HP lost to each enemy", bars: srcBars, unit: "" }));
+  const bars = (obj) => Object.entries(obj || {}).sort((a, b) => b[1] - a[1]).slice(0, 14).map(([label, value]) => ({ label, value }));
+  if (sum && sum.damageDealt) {
+    charts.appendChild(barChart({ title: "Damage dealt by source", sub: "Spells, plus statuses and combos (Burn, Steam...)", bars: bars(sum.damageDealt.bySource), unit: "" }));
+    charts.appendChild(barChart({ title: "Kills by source", sub: "Whatever landed the killing blow", bars: bars(sum.damageDealt.killsBySource), unit: "" }));
+  }
+  if (sum && sum.healing && Object.keys(sum.healing.bySource).length) charts.appendChild(barChart({ title: "Healing by source", sub: "HP restored (overheal not counted)", bars: bars(sum.healing.bySource), unit: "" }));
+  if (sum && sum.combos && Object.keys(sum.combos).length) charts.appendChild(barChart({ title: "Combos and effects", sub: "Times each went off", bars: bars(sum.combos), unit: "" }));
+  if (sum && sum.xp && sum.xp.levelTimes && sum.xp.levelTimes.length) {
+    const lt = sum.xp.levelTimes, gaps = lt.map((t, i) => ({ label: "Lv " + (i + 2), value: t - (i ? lt[i - 1] : 0) }));
+    charts.appendChild(barChart({ title: "Time per level", sub: "Seconds of play to reach each level", bars: gaps, unit: "s" }));
+  }
 
   // Enemies: per type totals.
   const foes = sum ? sum.enemies || {} : {};

@@ -356,7 +356,7 @@ public class Sunspots : Spell
     // Called by a pool every frame the wizard stands in it.
     public void Bask(float heal, float dt, bool burst)
     {
-        Owner.Heal(Owner.MaxHealth * heal * dt, false);
+        Owner.Heal(Owner.MaxHealth * heal * dt, false, Id.ToString());
         Owner.Sunlight(SunlitPower, SunlitTime * (burst ? 2f : 1f));
     }
 

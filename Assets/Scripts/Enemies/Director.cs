@@ -97,7 +97,7 @@ public class Director : MonoBehaviour
         XpGem.MagnetAll();
         Sfx.Play(Sound.BossDie, 1f, 0f);
         Haptics.Notification(Haptics.Notify.Success);
-        GameManager.Instance.Player.Heal(T("bossKillHeal", 30f));
+        GameManager.Instance.Player.Heal(T("bossKillHeal", 30f), source: "Boss kill");
         GameManager.Instance.Toast($"{e.Def.Name} defeated!");
         GameManager.Instance.BossDefeated(RunBosses > 0 && BossesDefeated >= RunBosses);
     }
