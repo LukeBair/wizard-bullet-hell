@@ -63,6 +63,9 @@ public class Enemy : MonoBehaviour
     float infestTimer, infestDamage;
     float blessChance;
     float charmTimer, charmPower, charmBurst, charmContact;
+    Enemy aggro;           // a charmed foe that hit this one: we fight it instead of the wizard for a while
+    float aggroTimer;
+    public static Enemy Acting;   // the enemy whose Update is running, so its hazards know who made them
     float steamCooldown;
     float dodgeTimer;
     float shardTimer;
@@ -88,6 +91,18 @@ public class Enemy : MonoBehaviour
         e.BuildVisual();
         Telemetry.Spawned(e, cause);
         return e;
+    }
+
+    // Charmed foes that can be hit (alive, above ground), gathered once per frame for enemy shots and hazards.
+    static readonly List<Enemy> thralls = new List<Enemy>();
+    static int thrallsFrame = -1;
+    public static List<Enemy> Thralls()
+    {
+        if (thrallsFrame == Time.frameCount) return thralls;
+        thrallsFrame = Time.frameCount;
+        thralls.Clear();
+        foreach (var e in All) if (e.IsAlive && e.IsCharmed && !e.Hidden) thralls.Add(e);
+        return thralls;
     }
 
     public static Enemy Nearest(Vector2 from, float maxRange, ICollection<Enemy> exclude = null)
@@ -281,6 +296,7 @@ public class Enemy : MonoBehaviour
         var player = gm.Player;
         if (player == null) return;
         Telemetry.Actor = Def.Name;   // bullets and hazards made below remember who fired them
+        Acting = this;
 
         float dt = Time.deltaTime;
         Vector2 pos = Position;
@@ -291,6 +307,11 @@ public class Enemy : MonoBehaviour
         {
             prey = Nearest(pos, 30f, self ??= new[] { this });
             targetPos = prey != null ? prey.Position : pos;
+        }
+        else if (Provoked)
+        {
+            aggroTimer -= dt;
+            targetPos = aggro.Position;
         }
         else targetPos = player.Position;
 
@@ -360,6 +381,18 @@ public class Enemy : MonoBehaviour
                 charmContact = 0.5f;
                 using (Telemetry.By("Enthrall")) prey.TakeDamage(Def.ContactDamage * 2f * charmPower, (prey.Position - pos).normalized * 4f, new Color(1f, 0.5f, 0.8f));
                 if (!prey.IsAlive) Grimoire.Feat(SpellId.Enthrall);
+                else prey.Provoke(this);
+            }
+        }
+        // A provoked foe fights back by touch too.
+        else if (Provoked && !Hidden && !IsRooted)
+        {
+            charmContact -= dt;
+            float r = Radius + aggro.Radius;
+            if (charmContact <= 0f && (aggro.Position - pos).sqrMagnitude < r * r)
+            {
+                charmContact = 0.5f;
+                using (Telemetry.By("Foes on thralls")) aggro.TakeDamage(Def.ContactDamage, (aggro.Position - pos).normalized * 4f);
             }
         }
     }
@@ -791,7 +824,7 @@ public class Enemy : MonoBehaviour
             // A charmed enemy's shots are ours now.
             p = Projectile.Spawn(from, v, Team.Player, new Color(1f, 0.5f, 0.8f), 0.14f);
             p.Damage = Def.BulletDamage * 1.5f * charmPower;
-            p.OnHit = (proj, e) => { if (!e.IsAlive) Grimoire.Feat(SpellId.Enthrall); };
+            p.OnHit = (proj, e) => { if (!e.IsAlive) Grimoire.Feat(SpellId.Enthrall); else e.Provoke(this); };
         }
         else
         {
@@ -961,9 +994,21 @@ public class Enemy : MonoBehaviour
 
     public void Bless(float chance) => blessChance = Mathf.Max(blessChance, chance);
 
+    bool Provoked => aggro != null && aggro.IsAlive && aggro.IsCharmed && aggroTimer > 0f;
+
+    // A charmed foe hit this one: it turns on that thrall (Enthrall's aggro) for spells.Enthrall.aggroTime.
+    // Bosses ignore thralls.
+    public void Provoke(Enemy by)
+    {
+        if (IsBoss || IsCharmed || by == null || by == this || !by.IsCharmed) return;
+        aggro = by;
+        aggroTimer = Tune.F("spells.Enthrall.aggroTime", 4f);
+    }
+
     public void Charm(float duration, float power, float burstOnEnd)
     {
         if (IsBoss) return;
+        aggro = null;
         // Newly charmed foes act at once instead of finishing a cooldown or a wind-up aimed at the wizard,
         // which often outlasted a short charm.
         if (!IsCharmed)

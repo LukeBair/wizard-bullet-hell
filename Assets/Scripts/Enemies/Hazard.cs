@@ -10,6 +10,7 @@ public class Hazard : MonoBehaviour
     bool lobbed;
     bool friendly;   // thrown by a charmed enemy: hurts enemies instead of the wizard
     string source;   // who made it, for telemetry
+    Enemy maker;     // a friendly hazard's charmed thrower, which the foes it hits turn on
     Transform fill, shell;
     SpriteRenderer edge;
 
@@ -24,6 +25,7 @@ public class Hazard : MonoBehaviour
         h.color = color;
         h.friendly = friendly;
         h.source = Telemetry.Actor;
+        h.maker = friendly ? Enemy.Acting : null;
         h.edge = SpriteFactory.Child(go.transform, "Edge", SpriteFactory.Ring, new Color(color.r, color.g, color.b, 0.8f), Vector2.zero, radius * 2f, 2);
         h.fill = SpriteFactory.Child(go.transform, "Fill", SpriteFactory.Circle, new Color(color.r, color.g, color.b, 0.3f), Vector2.zero, 0.01f, 1).transform;
         if (lobFrom.HasValue)
@@ -63,7 +65,7 @@ public class Hazard : MonoBehaviour
         if (friendly)
         {
             using (Telemetry.By("Enthrall"))
-            foreach (var e in Spell.EnemiesWithin(pos, radius)) e.TakeDamage(damage * 2f);
+            foreach (var e in Spell.EnemiesWithin(pos, radius)) { e.TakeDamage(damage * 2f); if (e.IsAlive) e.Provoke(maker); }
             Destroy(gameObject);
             return;
         }
@@ -73,6 +75,10 @@ public class Hazard : MonoBehaviour
             float r = radius + Player.HitRadius;
             if ((player.Position - pos).sqrMagnitude < r * r) player.TakeDamage(damage, source, "hazard");
         }
+        // Enemy hazards hurt thralls caught in them too.
+        foreach (var e in Enemy.Thralls())
+            if (e.IsAlive && (e.Position - pos).sqrMagnitude < (radius + e.Radius) * (radius + e.Radius))
+                using (Telemetry.By("Foes on thralls")) e.TakeDamage(damage);
         Destroy(gameObject);
     }
 }

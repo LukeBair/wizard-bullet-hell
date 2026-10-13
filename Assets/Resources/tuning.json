@@ -680,7 +680,9 @@
       "burstRadius_t2": 2.5,
       "burstRadius_t3": 2.5,
       "maxThralls_t3": 12,
-      "_maxThralls_t3": "Tier III: most permanently charmed foes at once."
+      "_maxThralls_t3": "Tier III: most permanently charmed foes at once.",
+      "aggroTime": 4,
+      "_aggroTime": "Seconds a foe hit by a charmed foe turns on it instead of the wizard (bosses ignore thralls). Enemy shots and hazards also hurt thralls."
     },
     "MirrorWard": {
       "damage": 12,
