@@ -19,11 +19,12 @@
     "_fontScale": "Text size multiplier for the pixel font (Dusk and CRT); VT323 draws small for its point size.",
     "effectCounters": {
       "enabled": true,
-      "size": 0.035,
+      "size": 0.061,
+      "nameSize": 0.7,
       "offset": 0.6,
       "life": 0.9,
       "rise": 0.6,
-      "_about": "The small x### tallies over combos and bug bursts. size = text scale (damage numbers are 0.05), offset = units above the trigger spot, life in seconds, rise in units/s."
+      "_about": "The combo name with an x### tally under it, over combos and bug bursts. size = text scale (damage numbers are 0.05), nameSize = name size relative to the tally, offset = units above the trigger spot, life in seconds, rise in units/s."
     }
   },
   "fx": {

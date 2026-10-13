@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Small "x12" tallies that pop up where a combo or bug burst goes off, counting how many times
-// that effect has fired this run. One label per effect: a new trigger while it is still showing
+// "x12" tallies, with the effect's name above, that pop up where a combo or bug burst goes off,
+// counting how many times that effect has fired this run. One label per effect: a new trigger while it is still showing
 // moves it to the new spot and bumps the number instead of stacking another label.
 public class EffectCounter : MonoBehaviour
 {
@@ -35,7 +35,9 @@ public class EffectCounter : MonoBehaviour
             var font = UI.Font != null ? UI.Font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             c.text.font = font;
             c.text.fontSize = 48;
-            c.text.anchor = TextAnchor.MiddleCenter;
+            c.text.anchor = TextAnchor.LowerCenter;   // the name grows upward, the tally stays put
+            c.text.alignment = TextAlignment.Center;
+            c.text.richText = true;
             c.text.fontStyle = UI.Font != null ? FontStyle.Normal : FontStyle.Bold;
             var mr = go.GetComponent<MeshRenderer>();
             mr.sharedMaterial = font.material;
@@ -43,8 +45,9 @@ public class EffectCounter : MonoBehaviour
             live[key] = c;
         }
         c.transform.position = at + new Vector2(0f, Tune.F("hud.effectCounters.offset", 0.6f));
-        c.text.characterSize = Tune.F("hud.effectCounters.size", 0.035f) * UI.FontScale;
-        c.text.text = "x" + n;
+        c.text.characterSize = Tune.F("hud.effectCounters.size", 0.061f) * UI.FontScale;
+        int nameSize = Mathf.RoundToInt(c.text.fontSize * Tune.F("hud.effectCounters.nameSize", 0.7f));
+        c.text.text = $"<size={nameSize}>{key}</size>\nx{n}";
         c.color = color;
         c.maxLife = c.life = Tune.F("hud.effectCounters.life", 0.9f);
     }
