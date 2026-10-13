@@ -359,13 +359,15 @@ public class Cyclone : Spell
         {
             Vector2 d = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 70f) * dir;
             Vector2 at = GameManager.Instance.Arena.PushOut(Owner.Position + d * T("distance", 4.5f), 0.5f);
-            Vortex.Create(at, T("radius", 3f) * Area, TT("duration", 2.5f) * (1f + 0.3f * RuneCount(Rune.Pierce)), T("pull", 9f) * Potency, Color, e => Hit(e, Damage), d * speed, tick, Swirl);
+            int reactions = 0;   // conditions passed by this one whirlwind, for the signature feat
+            Vortex.Create(at, T("radius", 3f) * Area, TT("duration", 2.5f) * (1f + 0.3f * RuneCount(Rune.Pierce)), T("pull", 9f) * Potency, Color, e => Hit(e, Damage), d * speed, tick,
+                (eye, foes) => { reactions += Swirl(eye, foes); Grimoire.FeatMax(SpellId.Cyclone, reactions); });
         }
     }
 
     // Pools the strongest of each condition among the foes in the eye, then hands every foe the ones
-    // it doesn't have yet. Each condition caught deals reaction damage.
-    void Swirl(Vector2 eye, System.Collections.Generic.List<Enemy> foes)
+    // it doesn't have yet. Each condition caught deals reaction damage. Returns how many were passed.
+    int Swirl(Vector2 eye, System.Collections.Generic.List<Enemy> foes)
     {
         float burn = 0f, bugs = 0f, curse = 0f;
         bool chill = false, wet = false;
@@ -378,11 +380,11 @@ public class Cyclone : Spell
             chill |= e.IsChilled;
             wet |= e.IsWet;
         }
-        if (burn <= 0f && bugs <= 0f && curse <= 0f && !chill && !wet) return;
+        if (burn <= 0f && bugs <= 0f && curse <= 0f && !chill && !wet) return 0;
 
         float lasts = T("passDuration", 2f);
         float reaction = Damage * (Tier == 3 ? T("passDamage_t3", 4f) : T("passDamage", 2f));
-        int bolts = 0;
+        int bolts = 0, passed = 0;
         foreach (var e in foes)
         {
             if (!e.IsAlive) continue;
@@ -393,6 +395,7 @@ public class Cyclone : Spell
             if (wet && !e.IsWet) { e.ApplyWet(lasts); caught++; }
             if (bugs > 0f && !e.IsInfested) { e.Infest(bugs, lasts); caught++; }
             if (curse > 0f && e.CurseBonus <= 0f) { e.MarkCurse(curse); caught++; }
+            passed += caught;
             if (caught == 0 || !e.IsAlive) continue;
 
             // Wet meeting chill in the storm freezes solid (Deep Freeze), whichever one was passed on.
@@ -404,6 +407,7 @@ public class Cyclone : Spell
             if (bolts++ < 6) Fx.Bolt(eye, e.Position, Color.Lerp(Color, Color.white, 0.3f));
             e.TakeDamage(reaction * caught, default, Color.Lerp(Color, Color.white, 0.4f));
         }
+        return passed;
     }
 }
 
