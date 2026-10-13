@@ -497,21 +497,33 @@ public class Enemy : MonoBehaviour
 
     Vector2 BossTreant(Vector2 dir, float speed, float dt)
     {
+        // Below SummonBelow of its health a fifth attack joins the cycle: a brood of a Spore Lobber,
+        // a Mother Slime and Moss Slimes (counts from tuning).
         fireTimer -= dt;
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
-            switch (attackIndex++ % 4)
+            var roster = GameManager.Instance.Arena.Biome.Roster;
+            bool brood = Health < MaxHealth * Def.SummonBelow;
+            switch (attackIndex++ % (brood ? 5 : 4))
             {
                 case 0: Ring(Position, Def.Bullets, Def.BulletSpeed, spinAngle += 10f); break;
-                case 1: Summon(GameManager.Instance.Arena.Biome.Roster.Chaff[0], 5); break;
+                case 1: Summon(roster.Chaff[0], Def.SummonCount); break;
                 case 2:
                     for (int i = 0; i < 3; i++)
                         Fan(Position, AngleTo(targetPos), 5, 12f, Def.BulletSpeed * (1f + i * 0.25f));
                     break;
-                default:
+                case 3:
                     for (int i = 0; i < 5; i++)
                         Hazard.Spawn(targetPos + Random.insideUnitCircle * 3f, 1.4f, 1.4f, 20f, Def.Accent, Position);
+                    break;
+                default:
+                    var defs = new System.Collections.Generic.List<EnemyDef>();
+                    void Add(EnemyDef d, int n) { if (d != null) for (int i = 0; i < n; i++) defs.Add(d); }
+                    Add(System.Array.Find(roster.Medium, d => d.Name == "Spore Lobber"), Def.BroodLobbers);
+                    Add(System.Array.Find(roster.Medium, d => d.Name == "Mother Slime"), Def.BroodMothers);
+                    Add(roster.Chaff[0], Def.BroodSlimes);
+                    Summon(defs);
                     break;
             }
         }
@@ -731,10 +743,18 @@ public class Enemy : MonoBehaviour
 
     void Summon(EnemyDef def, int count)
     {
-        for (int i = 0; i < count; i++)
+        var defs = new System.Collections.Generic.List<EnemyDef>();
+        for (int i = 0; i < count; i++) defs.Add(def);
+        Summon(defs);
+    }
+
+    // Spawns the given enemies evenly around this one.
+    void Summon(System.Collections.Generic.List<EnemyDef> defs)
+    {
+        for (int i = 0; i < defs.Count; i++)
         {
-            float a = i * Mathf.PI * 2f / count;
-            Spawn(def, Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (Radius + 0.8f), GameManager.Instance.Director.HealthScale);
+            float a = i * Mathf.PI * 2f / defs.Count;
+            Spawn(defs[i], Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (Radius + 0.8f), GameManager.Instance.Director.HealthScale);
         }
         Fx.Burst(Position, Def.Accent, Radius * 4f);
     }

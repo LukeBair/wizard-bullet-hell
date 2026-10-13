@@ -41,6 +41,11 @@ public class EnemyDef
     public float PreferredRange = 6f;
     public bool EarlyGame = true;   // false = only appears after the first swarm
     public int MaxAlive;            // mediums: the Director won't pick it while this many are alive (0 = no cap)
+
+    // Elder Treant: chaff per summon; below SummonBelow of its health it also summons a brood
+    public int SummonCount = 5;
+    public float SummonBelow = 0f;
+    public int BroodLobbers, BroodMothers, BroodSlimes;
 }
 
 // The enemies that appear in one biome, split by tier. The Director picks from these.

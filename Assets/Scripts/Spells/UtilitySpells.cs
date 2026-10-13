@@ -352,13 +352,17 @@ public class Cyclone : Spell
     {
         var target = Enemy.Nearest(Owner.Position, Range);
         Vector2 dir = target != null ? (target.Position - Owner.Position).normalized : Random.insideUnitCircle.normalized;
+        // Land just past the nearest foe so a chasing pack gets grabbed by its front, not its middle.
+        float dist = T("distance", 4.5f);
+        if (target != null)
+            dist = Mathf.Clamp(Vector2.Distance(Owner.Position, target.Position) + T("frontOffset", 1f), T("minDistance", 2f), dist);
         Sfx.Play(Sound.Burrow, 0.4f, 0.3f);
         float tick = Tier == 3 ? T("tickEvery_t3", 0.125f) : T("tickEvery", 0.25f);
         float speed = Tier >= 2 ? TT("travelSpeed", 2.5f) : 0f;
         for (int i = 0; i < Count; i++)
         {
             Vector2 d = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 70f) * dir;
-            Vector2 at = GameManager.Instance.Arena.PushOut(Owner.Position + d * T("distance", 4.5f), 0.5f);
+            Vector2 at = GameManager.Instance.Arena.PushOut(Owner.Position + d * dist, 0.5f);
             int reactions = 0;   // conditions passed by this one whirlwind, for the signature feat
             Vortex.Create(at, T("radius", 3f) * Area, TT("duration", 2.5f) * (1f + 0.3f * RuneCount(Rune.Pierce)), T("pull", 9f) * Potency, Color, e => Hit(e, Damage), d * speed, tick,
                 (eye, foes) => { reactions += Swirl(eye, foes); Grimoire.FeatMax(SpellId.Cyclone, reactions); });

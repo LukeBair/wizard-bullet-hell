@@ -78,6 +78,14 @@ public static class Grimoire
     // Signature feats not done yet, with their goal and whether they need a win; read once per run.
     static readonly Dictionary<SpellId, (float goal, bool needsWin)> openFeats = new Dictionary<SpellId, (float, bool)>();
 
+    // This run's progress on open signature feats, for the run log.
+    public static Dictionary<string, float> RunFeats()
+    {
+        var m = new Dictionary<string, float>();
+        foreach (var kv in runFeat) m[kv.Key.ToString()] = kv.Value;
+        return m;
+    }
+
     static bool HasSignatureFeat(SpellId id) => Tune.Has($"meta.feats.{id}.goal");
     static float SignatureGoal(SpellId id) => Tune.F($"meta.feats.{id}.goal", 1f);
     static string FeatKind(SpellId id) => Tune.S($"meta.feats.{id}.kind", "count");
