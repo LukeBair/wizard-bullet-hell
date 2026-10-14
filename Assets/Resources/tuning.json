@@ -209,6 +209,7 @@
     "healthPerBossKill": 0.6,
     "bossHealthScaleRate": 0.5,
     "bossKillHeal": 50,
+    "_damageScale": "A zone row's damageScale multiplies all damage enemies deal to the wizard there (default 1).",
     "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) * chaffScale + chaffAdd, capped at chaffMax. chaffScale and chaffAdd come from the zone's row in zones (defaults 1 and run.zoneRateStep*zones cleared).",
     "zones": [
       {
@@ -225,6 +226,7 @@
       },
       {
         "_name": "Zone 3: lots of chaff, medium packs",
+        "damageScale": 1.15,
         "chaffAdd": 1.32,
         "mediumEvery": 8.0,
         "packMin": 2,
@@ -235,6 +237,7 @@
       },
       {
         "_name": "Zone 4: lots of chaff, bigger medium packs",
+        "damageScale": 1.15,
         "chaffAdd": 2.64,
         "mediumEvery": 6.8,
         "packMin": 2,
@@ -368,8 +371,11 @@
     "tomeEveryLevels": 2,
     "resonanceCount": 3,
     "evolveRetain": 0.5,
-    "tier3Bosses": 1,
-    "_tier3Bosses": "Boss kills needed before any spell can evolve to tier III.",
+    "restHeal": 0.25,
+    "_restHeal": "Once every spell is fully socketed and nothing else is offered, level-ups pick Rest on their own and heal this fraction of max health.",
+    "tier2Bosses": 1,
+    "tier3Bosses": 2,
+    "_tier3Bosses": "Boss kills needed before any spell can evolve to tier II (tier2Bosses) or tier III (tier3Bosses).",
     "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
     "Potency": {
       "weight": 10
@@ -380,7 +386,7 @@
       "_castSpeedPerRune": "Each Haste rune adds this much cast speed (cooldown / (1 + this x runes)), so it doesn't compound."
     },
     "Split": {
-      "weight": 2.5
+      "weight": 1.75
     },
     "Pierce": {
       "weight": 10
@@ -389,7 +395,7 @@
       "weight": 10
     },
     "Echo": {
-      "weight": 2.5
+      "weight": 1.75
     },
     "Ember": {
       "weight": 10,
@@ -426,15 +432,15 @@
       "_about": "Every Nth cast of the spell is overloaded: damage (or healing) x (1 + bonusPerRune x runes) until the next cast."
     },
     "Siphon": {
-      "weight": 10,
+      "weight": 6,
       "healPerRune": 0.02,
       "capPerRune": 2,
       "_about": "Hits heal healPerRune x damage per rune, at most capPerRune HP a second per rune."
     },
     "Ward": {
       "weight": 10,
-      "cooldown": 3,
-      "_about": "Each cast of the spell grants a ward that blocks one enemy bullet. Max wards = Ward runes across all spells; at most one new ward every cooldown seconds."
+      "cooldown": 5,
+      "_about": "Each cast of the spell grants a ward that blocks one hit of any kind (bullet, contact, hazard). Max wards = Ward runes across all spells; at most one new ward every cooldown seconds."
     },
     "_weight": "Relative chance to be offered. Under 5 shows as RARE. (Spell tomes: spells.<Id>.tomeWeight, default 1.)"
   },
@@ -455,6 +461,9 @@
     "steamBaseDamage": 6,
     "steamHealthFraction": 0.05,
     "steamMaxDamage": 36,
+    "gauge": true,
+    "gaugeMax": 3,
+    "_gauge": "Elemental gauge: each burn, chill or wet application adds a unit (up to gaugeMax). Steam uses one burn and one chill unit (the element applied second is used up reacting), Conductive and Deep Freeze use one wet unit, and a status with no units left ends. false = old behaviour (statuses never used up).",
     "firebugsRadius": 2
   },
   "spells": {
@@ -565,6 +574,12 @@
       "devourBelow": 0.35,
       "_devourBelow": "Dart into an infested non-boss foe at or below this fraction of max HP: it dies outright and its bugs burst.",
       "drainHeal": 0.02,
+      "count_t2": 4,
+      "count_t3": 4,
+      "_count_t2": "Tier II+ adds 2 wisps to every set (Split and Echo still add on top).",
+      "absorbHits": 3,
+      "absorbTime": 5,
+      "_absorbHits": "Tier II+: a wisp that sets off a reaction absorbs that element for absorbHits strikes or absorbTime seconds, whichever ends first, and repeats the reaction on any foe. A wisp holding fire doesn't burn out.",
       "_drainHeal": "Dart into a rooted foe: heals this fraction of max HP.",
       "potencyPerRune": 0.3,
       "areaPerRune": 0.15
@@ -680,17 +695,21 @@
       "burstRadius_t2": 2.5,
       "burstRadius_t3": 2.5,
       "maxThralls_t3": 12,
-      "_maxThralls_t3": "Tier III: most permanently charmed foes at once."
+      "_maxThralls_t3": "Tier III: most permanently charmed foes at once.",
+      "aggroTime": 4,
+      "_aggroTime": "Seconds a foe hit by a charmed foe turns on it instead of the wizard (bosses ignore thralls). Enemy shots and hazards also hurt thralls."
     },
     "MirrorWard": {
       "damage": 12,
       "cooldown": 1,
       "count": 1,
-      "shardLength": 1,
-      "shardThickness": 0.16,
+      "shardLength": 1.3,
+      "shardThickness": 0.2,
       "_shardLength": "Each mirror shard is a curved bar along its ring: length along the ring and thickness, in world units (Area scales both).",
       "spinSpeed": 160,
       "boltSpeed": 10,
+      "reflectScale": 2,
+      "_reflectScale": "A reflected bolt deals damage + the reflected bullet's damage x reflectScale (Potency scales the bullet part).",
       "homing_t2": 300,
       "homing_t3": 300,
       "splitCount_t3": 3,
@@ -845,7 +864,7 @@
       "EarlyGame": false,
       "Bullets": 10,
       "BulletSpeed": 3.5,
-      "BulletDamage": 20
+      "BulletDamage": 14
     },
     "Mother Slime": {
       "Health": 90,

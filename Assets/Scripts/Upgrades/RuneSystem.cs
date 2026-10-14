@@ -86,10 +86,10 @@ public class RuneSystem : UpgradeSystem
         if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
             tome = WeightedTome(unlearned);
 
-        // Tier III also waits for tier3Bosses boss kills, so it can't land before the first boss.
+        // Evolving also waits for boss kills: tier2Bosses for tier II, tier3Bosses for tier III.
         int bosses = GameManager.Instance.Director.BossesDefeated;
         var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Sockets
-            && (s.Tier + 1 < 3 || bosses >= Tune.I("runes.tier3Bosses", 1)));
+            && bosses >= (s.Tier + 1 < 3 ? Tune.I("runes.tier2Bosses", 0) : Tune.I("runes.tier3Bosses", 1)));
         evolves.Clear();
         evolves.AddRange(ready);
         Telemetry.Offer(runeOffer, tome, evolves);
@@ -140,10 +140,19 @@ public class RuneSystem : UpgradeSystem
         Telemetry.PickTome(id);
     }
 
+    // Everything is maxed out: heal runes.restHeal of max health instead of a choice.
     void Rest()
     {
-        Player.Heal(999f, source: "Rest");
+        Player.Heal(Player.MaxHealth * Tune.F("runes.restHeal", 0.25f), source: "Rest");
         Telemetry.PickRest();
+    }
+
+    public override bool TryAutoResolve()
+    {
+        bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
+        if (anyRoom || tome.HasValue || evolve != null) return false;
+        Rest();
+        return true;
     }
 
     public override bool Draw() => held == null ? DrawRuneChoice() : DrawSocketChoice();
@@ -198,7 +207,7 @@ public class RuneSystem : UpgradeSystem
 
         if (!anyRoom && !tome.HasValue && evolve == null)
         {
-            if (UI.Card(new Rect(col.x, y, col.width, h), "Rest", "All sockets are full. Heal fully instead.", new Color(1f, 0.4f, 0.55f)))
+            if (UI.Card(new Rect(col.x, y, col.width, h), "Rest", "All sockets are full. Heal instead.", new Color(1f, 0.4f, 0.55f)))
             {
                 Rest();
                 return true;
@@ -286,7 +295,7 @@ public class RuneSystem : UpgradeSystem
             case Rune.Infest: return $"Infests foes for {Tune.F("runes.Infest.duration", 1f):0.#}s. If they die, bugs burst out and hurt others.";
             case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th cast is overloaded: +{Tune.F("runes.Overload.bonusPerRune", 1.5f) * 100f:0}% damage or effect.";
             case Rune.Siphon: return "Hits heal you a little, up to a few HP a second.";
-            case Rune.Ward: return "Casting grants a ward that blocks one enemy bullet.";
+            case Rune.Ward: return "Casting grants a ward that blocks one hit.";
             default: return "Foes it hits may drop a big XP gem when they die.";
         }
     }

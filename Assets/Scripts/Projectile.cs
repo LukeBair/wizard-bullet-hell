@@ -179,14 +179,23 @@ public class Projectile : MonoBehaviour
         }
         else
         {
+            // Enemy shots hit thralls (charmed foes) in their way, so provoked foes can fight back.
+            foreach (var thrall in Enemy.Thralls())
+            {
+                if (!thrall.IsAlive) continue;
+                float tr = Radius + thrall.Radius;
+                if ((thrall.Position - pos).sqrMagnitude >= tr * tr) continue;
+                using (Telemetry.By("Foes on thralls")) thrall.TakeDamage(Damage, Velocity.normalized * Knockback);
+                Release();
+                return;
+            }
             var player = gm.Player;
             if (player != null && player.IsAlive)
             {
                 float r = Radius + Player.HitRadius;
                 if ((player.Position - pos).sqrMagnitude < r * r)
                 {
-                    if (player.BlockBullet()) Telemetry.Blocked("ward", Source);
-                    else player.TakeDamage(Damage, Source, "bullet");
+                    player.TakeDamage(Damage, Source, "bullet");   // a ward may still block it
                     Release();
                 }
             }

@@ -7,7 +7,7 @@ public class MirrorWard : Spell, IOrbiter
 {
     public override string Name => "Mirror Ward";
     public override Element Element => Element.Light;
-    public override string Blurb => "A mirror shard circles you, reflecting enemy bullets back at foes.";
+    public override string Blurb => "A mirror shard circles you, reflecting enemy bullets back at foes. Harder bullets reflect harder.";
     public override bool CanEvolve => true;
     protected override float BaseDamage => 12f;   // per reflected bolt
     protected override float BaseCooldown => 1f;  // only sets the spin speed (Haste spins faster)
@@ -135,6 +135,8 @@ public class MirrorWard : Spell, IOrbiter
     void Reflect(Projectile bullet, Vector2 at)
     {
         Vector2 back = -bullet.Velocity;
+        // Bolts hit harder off harder bullets, so the ward keeps up late and against bosses.
+        float damage = Damage + bullet.Damage * T("reflectScale", 2f) * Potency;
         bullet.Release();   // leaves Projectile.All at once, so no other shard takes it
         Fx.Burst(at, Color, 1f);
         Sfx.Play(Sound.WispHit, 0.3f, 0.3f);
@@ -149,7 +151,7 @@ public class MirrorWard : Spell, IOrbiter
             var p = Shoot(at, d, T("boltSpeed", 10f), 0.14f);
             p.Homing = Tier >= 2 ? TT("homing", 300f) : 0f;
             p.Lifetime = 1.5f;
-            p.OnHit = (proj, e) => Hit(e, Damage, proj.Velocity.normalized * 2f);
+            p.OnHit = (proj, e) => Hit(e, damage, proj.Velocity.normalized * 2f);
         }
     }
 }

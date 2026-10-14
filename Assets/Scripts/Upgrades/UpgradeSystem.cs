@@ -65,6 +65,10 @@ public abstract class UpgradeSystem
     // Makes a random choice without UI (used by the autoplay soak test).
     public abstract void AutoPick();
 
+    // After Open: settles the level-up on its own when there is nothing to choose (e.g. only Rest is left).
+    // Returns true if it did, so no screen needs to show.
+    public virtual bool TryAutoResolve() => false;
+
     // Optional extra HUD (e.g. element levels).
     public virtual void DrawHud(Rect area) { }
 
