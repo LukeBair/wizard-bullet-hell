@@ -263,6 +263,8 @@ public class Player : MonoBehaviour
     public void TakeDamage(float amount, string source = null, string kind = "other")
     {
         if (!IsAlive || invulnTimer > 0f) return;
+        var director = GameManager.Instance != null ? GameManager.Instance.Director : null;
+        if (director != null) amount *= director.DamageScale;
         if (BlockWithWard()) { Telemetry.Blocked("ward", source); return; }   // wards go before Veil's longer recharge
         var veil = GetSpell<Veil>();
         if (veil != null && veil.TryAbsorb())

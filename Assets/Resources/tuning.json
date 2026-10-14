@@ -209,6 +209,7 @@
     "healthPerBossKill": 0.6,
     "bossHealthScaleRate": 0.5,
     "bossKillHeal": 50,
+    "_damageScale": "A zone row's damageScale multiplies all damage enemies deal to the wizard there (default 1).",
     "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) * chaffScale + chaffAdd, capped at chaffMax. chaffScale and chaffAdd come from the zone's row in zones (defaults 1 and run.zoneRateStep*zones cleared).",
     "zones": [
       {
@@ -225,6 +226,7 @@
       },
       {
         "_name": "Zone 3: lots of chaff, medium packs",
+        "damageScale": 1.15,
         "chaffAdd": 1.32,
         "mediumEvery": 8.0,
         "packMin": 2,
@@ -235,6 +237,7 @@
       },
       {
         "_name": "Zone 4: lots of chaff, bigger medium packs",
+        "damageScale": 1.15,
         "chaffAdd": 2.64,
         "mediumEvery": 6.8,
         "packMin": 2,

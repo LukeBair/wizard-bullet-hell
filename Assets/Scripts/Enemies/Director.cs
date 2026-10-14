@@ -42,6 +42,8 @@ public class Director : MonoBehaviour
 
     // A number from this zone's row, or the fallback when the row doesn't set it.
     float Z(string key, float fallback) => zoneRow != null ? Tune.Num(zoneRow, key, fallback) : fallback;
+    // Multiplier on all damage enemies deal to the wizard in the current zone (its row's damageScale).
+    public float DamageScale => Z("damageScale", 1f);
     bool ZoneHas(string key) => zoneRow != null && zoneRow.ContainsKey(key);
 
     public void ResetRun(Biome b)
