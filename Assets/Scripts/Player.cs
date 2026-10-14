@@ -226,15 +226,17 @@ public class Player : MonoBehaviour
     {
         if (wardTimer > 0f || wards >= MaxWards) return;
         wards++;
-        wardTimer = Tune.F("runes.Ward.cooldown", 3f);
+        wardTimer = Tune.F("runes.Ward.cooldown", 5f);
         Fx.Ring(Position, new Color(0.75f, 0.9f, 1f), 0.7f, 0.3f);
     }
 
-    // An enemy bullet is about to hit: a ward eats it. Returns true if blocked.
-    public bool BlockBullet()
+    // Any hit (bullet, contact or hazard) is about to land: a ward eats it, with the usual
+    // after-hit grace so contact doesn't land on the next frame. Returns true if blocked.
+    bool BlockWithWard()
     {
         if (invulnTimer > 0f || wards <= 0) return false;
         wards--;
+        invulnTimer = InvulnTime;
         Fx.Burst(Position, new Color(0.75f, 0.9f, 1f), 1.5f);
         Sfx.Play(Sound.Select, 0.5f, 0.2f);
         return true;
@@ -261,6 +263,7 @@ public class Player : MonoBehaviour
     public void TakeDamage(float amount, string source = null, string kind = "other")
     {
         if (!IsAlive || invulnTimer > 0f) return;
+        if (BlockWithWard()) { Telemetry.Blocked("ward", source); return; }   // wards go before Veil's longer recharge
         var veil = GetSpell<Veil>();
         if (veil != null && veil.TryAbsorb())
         {

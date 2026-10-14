@@ -436,8 +436,8 @@
     },
     "Ward": {
       "weight": 10,
-      "cooldown": 3,
-      "_about": "Each cast of the spell grants a ward that blocks one enemy bullet. Max wards = Ward runes across all spells; at most one new ward every cooldown seconds."
+      "cooldown": 5,
+      "_about": "Each cast of the spell grants a ward that blocks one hit of any kind (bullet, contact, hazard). Max wards = Ward runes across all spells; at most one new ward every cooldown seconds."
     },
     "_weight": "Relative chance to be offered. Under 5 shows as RARE. (Spell tomes: spells.<Id>.tomeWeight, default 1.)"
   },

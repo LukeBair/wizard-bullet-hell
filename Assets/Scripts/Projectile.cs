@@ -195,8 +195,7 @@ public class Projectile : MonoBehaviour
                 float r = Radius + Player.HitRadius;
                 if ((player.Position - pos).sqrMagnitude < r * r)
                 {
-                    if (player.BlockBullet()) Telemetry.Blocked("ward", Source);
-                    else player.TakeDamage(Damage, Source, "bullet");
+                    player.TakeDamage(Damage, Source, "bullet");   // a ward may still block it
                     Release();
                 }
             }

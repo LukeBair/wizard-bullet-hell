@@ -258,7 +258,7 @@ public abstract class Spell
     public static bool IsStatusRune(Rune r) => r == Rune.Ember || r == Rune.Frost || r == Rune.Curse || r == Rune.Infest || r == Rune.Bless || r == Rune.Siphon;
 
     protected static string OverloadEffect => $"Every {Tune.I("runes.Overload.every", 4)}th cast is {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} stronger";
-    protected static string WardEffect => $"Casting grants a ward that blocks one bullet (at most one every {Tune.F("runes.Ward.cooldown", 3f):0.#}s)";
+    protected static string WardEffect => $"Casting grants a ward that blocks one hit (at most one every {Tune.F("runes.Ward.cooldown", 5f):0.#}s)";
     protected virtual bool HitsFoes => true;
 
     protected static string StatusRuneEffect(Rune r)
