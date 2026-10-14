@@ -429,7 +429,7 @@
       "_about": "Every Nth cast of the spell is overloaded: damage (or healing) x (1 + bonusPerRune x runes) until the next cast."
     },
     "Siphon": {
-      "weight": 10,
+      "weight": 6,
       "healPerRune": 0.02,
       "capPerRune": 2,
       "_about": "Hits heal healPerRune x damage per rune, at most capPerRune HP a second per rune."
