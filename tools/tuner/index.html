@@ -206,9 +206,12 @@ function renderSave(main) {
   tip.className = "tip";
   const spells = phoneSave.spells || {};
   if (!Object.keys(spells).length) {
-    tip.innerHTML = "<b>No save yet.</b> Open the game (phone on the same Wi‑Fi, tuner running): it reports its save at the title screen and after every run. Then press Refresh.";
+    tip.innerHTML = phoneSave.pending && phoneSave.reset
+      ? "<b>Reset waiting for the phone.</b> Its save is wiped at the next check-in: go to the title screen, or finish a run."
+      : "<b>No save yet.</b> Open the game (phone on the same Wi‑Fi, tuner running): it reports its save at the title screen and after every run. Then press Refresh.";
     main.appendChild(tip);
     const b = document.createElement("button"); b.textContent = "Refresh"; b.onclick = refreshSave; main.appendChild(b);
+    const r = resetSaveButton(); r.style.marginLeft = "8px"; main.appendChild(r);
     return;
   }
   tip.innerHTML = phoneSave.pending
@@ -272,9 +275,26 @@ function renderSave(main) {
   };
   const refresh = document.createElement("button");
   refresh.textContent = "Refresh"; refresh.onclick = refreshSave;
-  bar.append(send, refresh);
+  const reset = resetSaveButton();
+  reset.style.marginLeft = "auto";
+  bar.append(send, refresh, reset);
   c.appendChild(bar);
   main.appendChild(c);
+}
+
+// Wipes the phone's progress (gold, tomes, feats, evolutions, wins, best time) at its next check-in.
+function resetSaveButton() {
+  const b = document.createElement("button");
+  b.textContent = "Reset save";
+  b.title = "Start the phone from a fresh save";
+  b.onclick = async () => {
+    if (!confirm("Reset the phone's save? Gold, unlocked tomes, feats, evolutions, wins and best time are wiped at its next check-in (title screen or after a run). This can't be undone.")) return;
+    const body = { reset: true, revision: Date.now() };
+    const r = await fetch("/save.json", { method: "PUT", body: JSON.stringify(body) }).then((x) => x.json()).catch((e) => ({ ok: false, error: e.message }));
+    if (!r.ok) { alert("Reset failed: " + r.error); return; }
+    refreshSave();
+  };
+  return b;
 }
 
 // ---------------------------------------------------------------- Runs (telemetry)
