@@ -249,10 +249,26 @@ public class GameManager : MonoBehaviour
 
         if (State == GameState.Playing && pendingLevelUps > 0)
         {
+            // Level-ups with nothing to choose (fully built: Rest only) resolve without stopping play.
+            Upgrades.Open();
+            bool rested = false;
+            while (pendingLevelUps > 0 && Upgrades.TryAutoResolve())
+            {
+                rested = true;
+                if (--pendingLevelUps > 0) Upgrades.Open();
+            }
+            if (rested && pendingLevelUps == 0)
+            {
+                Toast("Fully built: rested");
+                Sfx.Play(Sound.LevelUp, 0.5f, 0f);
+                if (Player != null) Particles.LevelUp(Player.Position);
+            }
+        }
+        if (State == GameState.Playing && pendingLevelUps > 0)
+        {
             State = GameState.LevelUp;
             Time.timeScale = 0f;
             Joystick.Blocked = true;
-            Upgrades.Open();
             Sfx.Play(Sound.LevelUp, 0.8f, 0f);
             if (Player != null) Particles.LevelUp(Player.Position);
             Haptics.Notification(Haptics.Notify.Success);

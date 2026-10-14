@@ -140,10 +140,19 @@ public class RuneSystem : UpgradeSystem
         Telemetry.PickTome(id);
     }
 
+    // Everything is maxed out: heal runes.restHeal of max health instead of a choice.
     void Rest()
     {
-        Player.Heal(999f, source: "Rest");
+        Player.Heal(Player.MaxHealth * Tune.F("runes.restHeal", 0.25f), source: "Rest");
         Telemetry.PickRest();
+    }
+
+    public override bool TryAutoResolve()
+    {
+        bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
+        if (anyRoom || tome.HasValue || evolve != null) return false;
+        Rest();
+        return true;
     }
 
     public override bool Draw() => held == null ? DrawRuneChoice() : DrawSocketChoice();
@@ -198,7 +207,7 @@ public class RuneSystem : UpgradeSystem
 
         if (!anyRoom && !tome.HasValue && evolve == null)
         {
-            if (UI.Card(new Rect(col.x, y, col.width, h), "Rest", "All sockets are full. Heal fully instead.", new Color(1f, 0.4f, 0.55f)))
+            if (UI.Card(new Rect(col.x, y, col.width, h), "Rest", "All sockets are full. Heal instead.", new Color(1f, 0.4f, 0.55f)))
             {
                 Rest();
                 return true;

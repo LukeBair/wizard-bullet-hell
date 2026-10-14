@@ -368,6 +368,8 @@
     "tomeEveryLevels": 2,
     "resonanceCount": 3,
     "evolveRetain": 0.5,
+    "restHeal": 0.25,
+    "_restHeal": "Once every spell is fully socketed and nothing else is offered, level-ups pick Rest on their own and heal this fraction of max health.",
     "tier2Bosses": 1,
     "tier3Bosses": 2,
     "_tier3Bosses": "Boss kills needed before any spell can evolve to tier II (tier2Bosses) or tier III (tier3Bosses).",
