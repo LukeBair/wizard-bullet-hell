@@ -1023,6 +1023,14 @@ public class Enemy : MonoBehaviour
         witherTimer = Mathf.Max(witherTimer, duration);
     }
 
+    // Water meeting fire (a Soak rune on Comet Trail): Steam, the same as fire meeting ice.
+    public void Scald()
+    {
+        if (!IsBurning || !IsWet || steamCooldown > 0f) return;
+        Steam();
+        ConsumeWet();
+    }
+
     public void ApplyWet(float duration)
     {
         wetUnits = Mathf.Min(GaugeMax, (wetTimer > 0f ? wetUnits : 0) + 1);

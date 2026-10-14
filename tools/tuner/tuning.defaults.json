@@ -423,10 +423,10 @@
     },
     "Wither": {
       "weight": 10,
-      "weakenPerRune": 0.12,
-      "maxWeaken": 0.36,
-      "slowPerRune": 0.1,
-      "maxSlow": 0.3,
+      "weakenPerRune": 0.1,
+      "maxWeaken": 0.3,
+      "slowPerRune": 0.08,
+      "maxSlow": 0.24,
       "duration": 3,
       "_about": "Foes hit deal weakenPerRune x runes less damage (bullets, contact, hazards) and fire slowPerRune x runes slower, for duration seconds."
     },

@@ -417,6 +417,7 @@ public class CometTrail : Spell
             case Rune.Haste: return $"Patches burn {Pct(HastePerRune)} faster";
             case Rune.Area: return $"+{Pct(AreaStep)} trail width";
             case Rune.Echo: return "Drops a second patch a moment later";
+            case Rune.Soak: return base.RuneEffect(r) + ", and the trail's fire boils it off as Steam";
             case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th patch is {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} stronger";
             default: return base.RuneEffect(r);
         }
@@ -443,6 +444,9 @@ public class CometTrail : Spell
     {
         e.ApplyBurn(damage * T("burnShare", 0.5f), T("burnTime", 1.5f));
         Hit(e, damage);
+        // Every element rune reacts with the trail's fire: Frost (Steam), Infest (Firebugs) and
+        // Static (Storm sparks) already do through Hit; Soak's water sets off Steam too.
+        if (RuneCount(Rune.Soak) > 0f && e.IsAlive) e.Scald();
         if (e.IsAlive) burned[e] = Time.time;
     }
 
@@ -493,6 +497,8 @@ public class Banish : Spell
     float Duration => (T("duration", 4f) * Potency + T("durationPerPierce", 1f) * PierceCount) * (Overloaded ? T("overloadDuration", 2f) : 1f);
     // Area grows the Exile circle at a reduced rate so it doesn't swallow the screen.
     float ExileRadius => T("exileRadius_t2", 0.9f) * (1f + T("areaScale", 0.5f) * (Area - 1f));
+    // Oblivion already wipes out whole groups; bug bursts on top would be too much.
+    protected override bool Infests => Tier < 3;
 
     public override string TierName(int tier) => tier == 2 ? "Exile" : tier == 3 ? "Oblivion" : Name;
     public override string TierDescription(int tier) =>
@@ -501,6 +507,7 @@ public class Banish : Spell
 
     public override string RuneEffect(Rune r)
     {
+        if (r == Rune.Infest && Tier == 3) return "No effect on Oblivion";
         if ((r == Rune.Static || r == Rune.Siphon) && Tier < 3) return "No effect until Oblivion (only its return hit deals damage)";
         if (IsStatusRune(r) && r != Rune.Midas && r != Rune.Static && r != Rune.Siphon) return base.RuneEffect(r).Replace("Hits", "Banished foes").Replace("Foes it hits", "Banished foes") + " (as they return)";
         switch (r)

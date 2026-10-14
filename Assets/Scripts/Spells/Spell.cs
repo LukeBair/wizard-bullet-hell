@@ -264,6 +264,7 @@ public abstract class Spell
     protected static string OverloadEffect => $"Every {Tune.I("runes.Overload.every", 4)}th cast is {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} stronger";
     protected static string WardEffect => $"Casting grants a ward that blocks one hit (at most one every {Tune.F("runes.Ward.cooldown", 5f):0.#}s)";
     protected virtual bool HitsFoes => true;
+    protected virtual bool Infests => true;   // false where Infest would be too strong (Oblivion)
     protected virtual bool CastAnimates => HitsFoes;   // false for spells that "cast" constantly (Comet Trail)
 
     protected static string StatusRuneEffect(Rune r)
@@ -277,7 +278,7 @@ public abstract class Spell
             case Rune.Siphon: return $"Hits heal you {Pct(Tune.F("runes.Siphon.healPerRune", 0.02f))} of their damage (up to {Tune.F("runes.Siphon.capPerRune", 2f):0.#} HP a second)";
             case Rune.Soak: return $"Hits make foes Wet for {Tune.F("runes.Soak.durationBase", 2f) + Tune.F("runes.Soak.durationPerRune", 1f):0.#}s";
             case Rune.Static: return $"Hits spark to a nearby foe for {Pct(Tune.F("runes.Static.damagePerRune", 0.2f))} of the damage, as a Storm hit";
-            case Rune.Wither: return $"Foes it hits deal {Pct(Tune.F("runes.Wither.weakenPerRune", 0.12f))} less damage and shoot {Pct(Tune.F("runes.Wither.slowPerRune", 0.1f))} slower for {Tune.F("runes.Wither.duration", 3f):0.#}s";
+            case Rune.Wither: return $"Foes it hits deal {Pct(Tune.F("runes.Wither.weakenPerRune", 0.1f))} less damage and shoot {Pct(Tune.F("runes.Wither.slowPerRune", 0.08f))} slower for {Tune.F("runes.Wither.duration", 3f):0.#}s";
             case Rune.Midas: return $"Foes it kills have a {Pct(Tune.F("runes.Midas.chancePerRune", 0.04f))} chance to drop gold";
             default: return $"Foes it hits have a {Pct(Tune.F("runes.Bless.chancePerRune", 0.15f))} chance to drop a big XP gem when they die";
         }
@@ -376,14 +377,14 @@ public abstract class Spell
         float frost = RuneCount(Rune.Frost);
         if (frost > 0) e.ApplyChill(Tune.F("runes.Frost.chillBase", 1f) + Tune.F("runes.Frost.chillPerRune", 0.6f) * frost);
         float infest = RuneCount(Rune.Infest);
-        if (infest > 0) e.Infest(Damage * Tune.F("runes.Infest.burstPerRune", 0.5f) * infest, Tune.F("runes.Infest.duration", 1f));
+        if (infest > 0 && Infests) e.Infest(Damage * Tune.F("runes.Infest.burstPerRune", 0.5f) * infest, Tune.F("runes.Infest.duration", 1f));
         float bless = RuneCount(Rune.Bless);
         if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
         float soak = RuneCount(Rune.Soak);
         if (soak > 0) e.ApplyWet(Tune.F("runes.Soak.durationBase", 2f) + Tune.F("runes.Soak.durationPerRune", 1f) * soak);
         float wither = RuneCount(Rune.Wither);
-        if (wither > 0) e.Wither(Mathf.Min(Tune.F("runes.Wither.maxWeaken", 0.36f), Tune.F("runes.Wither.weakenPerRune", 0.12f) * wither),
-                                 Mathf.Min(Tune.F("runes.Wither.maxSlow", 0.3f), Tune.F("runes.Wither.slowPerRune", 0.1f) * wither),
+        if (wither > 0) e.Wither(Mathf.Min(Tune.F("runes.Wither.maxWeaken", 0.3f), Tune.F("runes.Wither.weakenPerRune", 0.1f) * wither),
+                                 Mathf.Min(Tune.F("runes.Wither.maxSlow", 0.24f), Tune.F("runes.Wither.slowPerRune", 0.08f) * wither),
                                  Tune.F("runes.Wither.duration", 3f));
         if (curse) MarkCurse(e);
     }
