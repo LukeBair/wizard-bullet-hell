@@ -5,6 +5,7 @@
 // /save.json mirrors the phone's progress (gold, Grimoire unlocks, feats): the phone POSTs its save
 // whenever it fetches tuning, the tuner page PUTs edits with pending: true, and the phone applies a
 // pending edit the next time it checks in (title screen or after a run).
+// A PUT with reset: true makes the phone wipe its progress instead (the tuner's Reset save button).
 // /telemetry stores gameplay logs: the phone POSTs JSON Lines for a run to /telemetry/<run> during and
 // after it, and they're appended to telemetry/<run>.jsonl. telemetry/runs.json is an index with one
 // summary per run (newest first). The format is in telemetry/README.md.

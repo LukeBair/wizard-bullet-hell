@@ -10,8 +10,8 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
     public static float UiScale => Mathf.Min(Screen.width / 720f, Screen.height / 1280f);
 
-    const string BestKey = "best_time_Runes";
-    const string WinsKey = "wins";
+    public const string BestKey = "best_time_Runes";
+    public const string WinsKey = "wins";
     const string DebugUiKey = "debug_ui";
 
     // Developer readouts (threat, enemy scaling, fps, tuning source). Toggled on the title screen.

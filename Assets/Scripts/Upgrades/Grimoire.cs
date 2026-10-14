@@ -214,6 +214,8 @@ public static class Grimoire
         long revision = root.TryGetValue("revision", out var r) && r is double d ? (long)d : 0;
         if (revision <= AppliedRevision) return;
 
+        bool reset = root.TryGetValue("reset", out var rs) && rs is bool b && b;
+        if (reset) Wipe();
         if (root.TryGetValue("gold", out var g) && g is double gold) PlayerPrefs.SetInt("gold", Mathf.Max(0, (int)gold));
         if (root.TryGetValue("spells", out var sp) && sp is Dictionary<string, object> spells)
             foreach (var kv in spells)
@@ -227,7 +229,25 @@ public static class Grimoire
             }
         PlayerPrefs.SetString(RevisionKey, revision.ToString(CultureInfo.InvariantCulture));
         PlayerPrefs.Save();
-        GameManager.Instance.Toast("Save updated from the tuner");
+        GameManager.Instance.Toast(reset ? "Save reset from the tuner" : "Save updated from the tuner");
+    }
+
+    // Back to a fresh install's progress: no gold, only the free tomes, no feats or evolutions, no wins
+    // or best time. Settings (art style, debug UI) are kept.
+    static void Wipe()
+    {
+        PlayerPrefs.DeleteKey("gold");
+        foreach (var id in Spell.AllIds)
+        {
+            PlayerPrefs.DeleteKey($"tome.{id}");
+            for (int tier = 2; tier <= 3; tier++)
+            {
+                PlayerPrefs.DeleteKey($"feat.{id}.{tier}");
+                PlayerPrefs.DeleteKey($"evo.{id}.{tier}");
+            }
+        }
+        PlayerPrefs.DeleteKey(GameManager.WinsKey);
+        PlayerPrefs.DeleteKey(GameManager.BestKey);
     }
 
     static void SetFlag(Dictionary<string, object> e, string field, string key)
