@@ -422,3 +422,52 @@ public class SunPool : MonoBehaviour
         foreach (var e in Spell.EnemiesWithin(c, radius)) spell.Burn(e);
     }
 }
+
+// A patch of burning ground (Comet Trail). Hurts foes standing in it every tickEvery seconds, and
+// can burst when it burns out (onExpire).
+public class FlamePatch : MonoBehaviour
+{
+    float radius, life, maxLife, tickEvery, tickTimer;
+    Action<Enemy> hit;
+    Action<Vector2> onExpire;
+    SpriteRenderer fill;
+    Color color;
+
+    public static void Create(Vector2 at, float radius, float duration, float tickEvery, Color color, Action<Enemy> onHit, Action<Vector2> onExpire)
+    {
+        var go = new GameObject("FlamePatch");
+        go.transform.position = at;
+        var p = go.AddComponent<FlamePatch>();
+        p.radius = radius;
+        p.life = p.maxLife = duration;
+        p.tickEvery = tickEvery;
+        p.hit = onHit;
+        p.onExpire = onExpire;
+        p.color = color;
+        p.fill = SpriteFactory.Child(go.transform, "Fill", SpriteFactory.Glow, new Color(color.r, color.g, color.b, 0.55f), Vector2.zero, radius * 2.6f, 2);
+    }
+
+    void Update()
+    {
+        var gm = GameManager.Instance;
+        if (gm.State != GameState.Playing) return;
+        float dt = Time.deltaTime;
+        life -= dt;
+        Vector2 c = transform.position;
+        if (life <= 0f)
+        {
+            onExpire?.Invoke(c);
+            Destroy(gameObject);
+            return;
+        }
+        float fade = Mathf.Clamp01(life / (maxLife * 0.4f));
+        float flicker = 0.85f + 0.15f * Mathf.Sin(Time.time * 18f + c.x * 3f);
+        fill.color = new Color(color.r, color.g, color.b, 0.55f * fade * flicker);
+        fill.transform.localScale = Vector3.one * radius * 2.6f * (0.8f + 0.2f * fade);
+
+        tickTimer -= dt;
+        if (tickTimer > 0f) return;
+        tickTimer = tickEvery;
+        foreach (var e in Spell.EnemiesWithin(c, radius)) hit(e);
+    }
+}

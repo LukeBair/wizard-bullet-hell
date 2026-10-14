@@ -379,3 +379,191 @@ public class Sunspots : Spell
             Hit(e, T("burstDamage_t3", 80f) * Potency * (Owner != null ? Owner.DamageMultiplier : 1f), (e.Position - at).normalized * 6f);
     }
 }
+
+// While you move, you leave a trail of flame patches that burn foes standing in them. Standing
+// still leaves nothing. II (Afterburner): a flat move speed buff and a wider trail.
+// III (Phoenix Path): each patch bursts when it burns out.
+public class CometTrail : Spell
+{
+    public override string Name => "Comet Trail";
+    public override Element Element => Element.Fire;
+    public override string Blurb => "While you move, you leave a trail of fire that burns foes standing in it.";
+    public override bool CanEvolve => true;
+    protected override float BaseDamage => 3f;      // per tick
+    protected override float BaseCooldown => 0.15f; // a patch can drop this often (if you've moved far enough)
+    protected override bool CastAnimates => false;
+
+    Vector2 lastDrop;
+    bool hasDropped;
+    readonly Dictionary<Enemy, float> burned = new Dictionary<Enemy, float>();   // trail-burned foes, for the feat
+    float featTimer;
+
+    float Spacing => T("spacing", 0.6f);
+    float PatchRadius => T("patchRadius", 0.45f) * Area * (Tier >= 2 ? 1f + T("widen_t2", 0.3f) : 1f);
+    float PatchLife => T("patchLife", 1.5f) * (1f + T("lifePerPierce", 0.3f) * PierceCount);
+    float TickEvery => T("tickEvery", 0.5f) * HasteFactor;
+
+    public override string TierName(int tier) => tier == 2 ? "Afterburner" : tier == 3 ? "Phoenix Path" : Name;
+    public override string TierDescription(int tier) =>
+        tier == 2 ? $"+{Pct(T("moveBuff_t2", 0.08f))} move speed, and the trail is {Pct(T("widen_t2", 0.3f))} wider."
+                  : $"Afterburner, and each patch bursts when it burns out for {T("burstDamage_t3", 1.5f):0.#}x damage.";
+
+    public override string RuneEffect(Rune r)
+    {
+        switch (r)
+        {
+            case Rune.Split: return "+1 parallel trail";
+            case Rune.Pierce: return $"Patches last {Pct(T("lifePerPierce", 0.3f))} longer";
+            case Rune.Haste: return $"Patches burn {Pct(HastePerRune)} faster";
+            case Rune.Area: return $"+{Pct(AreaStep)} trail width";
+            case Rune.Echo: return "Drops a second patch a moment later";
+            case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th patch is {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} stronger";
+            default: return base.RuneEffect(r);
+        }
+    }
+
+    protected override bool Ready() => !hasDropped || (Owner.Position - lastDrop).sqrMagnitude >= Spacing * Spacing;
+
+    protected override void Cast()
+    {
+        Vector2 at = Owner.Position;
+        Vector2 dir = hasDropped && (at - lastDrop).sqrMagnitude > 0.0001f ? (at - lastDrop).normalized : Vector2.up;
+        Vector2 side = new Vector2(-dir.y, dir.x);
+        lastDrop = at;
+        hasDropped = true;
+        float damage = Damage;   // fixed at drop time, so an Overloaded patch stays strong
+        for (int i = 0; i < Count; i++)
+        {
+            Vector2 p = at + side * (i - (Count - 1) * 0.5f) * T("splitGap", 0.8f);
+            FlamePatch.Create(p, PatchRadius, PatchLife, TickEvery, Color, e => Burn(e, damage), Tier == 3 ? new System.Action<Vector2>(c => Burst(c, damage)) : null);
+        }
+    }
+
+    void Burn(Enemy e, float damage)
+    {
+        e.ApplyBurn(damage * T("burnShare", 0.5f), T("burnTime", 1.5f));
+        Hit(e, damage);
+        if (e.IsAlive) burned[e] = Time.time;
+    }
+
+    // Phoenix Path: a patch bursting as it burns out.
+    void Burst(Vector2 at, float damage)
+    {
+        if (Owner == null) return;
+        float r = T("burstRadius_t3", 0.8f) * Area;
+        Fx.Burst(at, Color, r * 2f);
+        foreach (var e in EnemiesWithin(at, r)) Hit(e, damage * T("burstDamage_t3", 1.5f));
+    }
+
+    protected override void OnTick(float dt)
+    {
+        if (Owner == null) return;
+        Owner.BonusMove = Tier >= 2 ? T("moveBuff_t2", 0.08f) : 0f;
+
+        // Feat: foes burning from the trail at the same moment.
+        featTimer -= dt;
+        if (featTimer > 0f || burned.Count == 0) return;
+        featTimer = 0.25f;
+        int n = 0;
+        var gone = new List<Enemy>();
+        foreach (var kv in burned)
+        {
+            if (kv.Key == null || !kv.Key.IsAlive || Time.time - kv.Value > 3f) gone.Add(kv.Key);
+            else if (kv.Key.IsBurning) n++;
+        }
+        foreach (var e in gone) burned.Remove(e);
+        Grimoire.FeatMax(SpellId.CometTrail, n);
+    }
+}
+
+// Banishes the most dangerous non-boss foe nearby for a few seconds; it comes back where it was,
+// briefly dazed, and the spell's status runes land on it as it returns. Bosses can't be banished
+// and are dazed instead. II (Exile): every foe in a small circle around the target goes too.
+// III (Oblivion): chaff never come back (no bug burst), and others return missing max health.
+public class Banish : Spell
+{
+    public override string Name => "Banish";
+    public override Element Element => Element.Shadow;
+    public override string Blurb => $"Banishes the most dangerous foe nearby for {T("duration", 4f):0.#}s. Bosses are dazed instead.";
+    public override bool CanEvolve => true;
+    protected override float BaseDamage => 6f;   // only feeds status runes and Oblivion
+    protected override float BaseCooldown => 6f;
+    protected override float PotencyPerRune => 0.1f;
+
+    float Duration => (T("duration", 4f) * Potency + T("durationPerPierce", 1f) * PierceCount) * (Overloaded ? T("overloadDuration", 2f) : 1f);
+    // Area grows the Exile circle at a reduced rate so it doesn't swallow the screen.
+    float ExileRadius => T("exileRadius_t2", 0.9f) * (1f + T("areaScale", 0.5f) * (Area - 1f));
+
+    public override string TierName(int tier) => tier == 2 ? "Exile" : tier == 3 ? "Oblivion" : Name;
+    public override string TierDescription(int tier) =>
+        tier == 2 ? $"Banishes every foe within {T("exileRadius_t2", 0.9f):0.#} of the target too."
+                  : $"Exile, and banished chaff never come back. Others return missing {Pct(T("oblivionLoss_t3", 0.25f))} of their max health.";
+
+    public override string RuneEffect(Rune r)
+    {
+        if ((r == Rune.Static || r == Rune.Siphon) && Tier < 3) return "No effect until Oblivion (only its return hit deals damage)";
+        if (IsStatusRune(r) && r != Rune.Midas && r != Rune.Static && r != Rune.Siphon) return base.RuneEffect(r).Replace("Hits", "Banished foes").Replace("Foes it hits", "Banished foes") + " (as they return)";
+        switch (r)
+        {
+            case Rune.Potency: return $"+{Pct(PotencyStep)} banish time";
+            case Rune.Split: return "+1 foe banished";
+            case Rune.Pierce: return $"+{T("durationPerPierce", 1f):0.#}s banish time";
+            case Rune.Area: return Tier >= 2 ? $"+{Pct(AreaStep * T("areaScale", 0.5f))} Exile circle" : "No effect until Exile";
+            case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th cast banishes for {T("overloadDuration", 2f):0.#}x as long";
+            default: return base.RuneEffect(r);
+        }
+    }
+
+    protected override void Cast()
+    {
+        var targets = new List<Enemy>();
+        for (int i = 0; i < Count; i++)
+        {
+            var t = Pick(targets);
+            if (t == null) break;
+            targets.Add(t);
+        }
+        if (targets.Count == 0)
+        {
+            // Only bosses around: daze the nearest one.
+            var boss = Enemy.Nearest(Owner.Position, Range);
+            if (boss != null && boss.IsBoss) { boss.Daze(T("bossDaze", 1f)); Fx.Ring(boss.Position, Color, boss.Radius * 1.5f, 0.3f); }
+            return;
+        }
+        Sfx.Play(Sound.Teleport, 0.4f, 0.3f);
+        float duration = Duration;
+        foreach (var t in targets)
+        {
+            Fx.Ring(t.Position, Color, Tier >= 2 ? ExileRadius : t.Radius * 1.5f, 0.35f);
+            if (Tier >= 2) foreach (var x in EnemiesWithin(t.Position, ExileRadius)) Send(x, duration);
+            else Send(t, duration);
+        }
+        Grimoire.FeatMax(SpellId.Banish, Enemy.BanishedCount());
+    }
+
+    void Send(Enemy e, float duration) => e.Banish(duration, Tier == 3 && e.Def.Tier == EnemyTier.Chaff, Returned);
+
+    void Returned(Enemy e)
+    {
+        if (!e.IsAlive) { Killed(e); return; }   // Oblivion erased it
+        if (Tier == 3) Hit(e, e.MaxHealth * T("oblivionLoss_t3", 0.25f));
+        else ApplyStatusRunes(e, true);
+    }
+
+    // Shooters and mediums first, then the toughest.
+    Enemy Pick(List<Enemy> taken)
+    {
+        Enemy best = null;
+        float bestScore = 0f, range = Range * Range;
+        foreach (var e in Enemy.All)
+        {
+            if (!e.IsAlive || e.Hidden || e.IsCharmed || e.IsBoss || taken.Contains(e)) continue;
+            if ((e.Position - Owner.Position).sqrMagnitude > range) continue;
+            var b = e.Def.Behavior;
+            bool shooter = b != EnemyBehavior.Chase && b != EnemyBehavior.Flutter && b != EnemyBehavior.Lunge && b != EnemyBehavior.Splitter;
+            float score = e.MaxHealth * (shooter ? 2f : 1f) * (e.Def.Tier == EnemyTier.Medium ? 3f : 1f);
+            if (score > bestScore) { bestScore = score; best = e; }
+        }
+        return best;
+    }
+}

@@ -353,6 +353,16 @@
         "goal": 5,
         "kind": "max",
         "text": "Trigger all {goal} wisp reactions in one run (burning, wet, chilled, infested, rooted foes)"
+      },
+      "CometTrail": {
+        "goal": 30,
+        "kind": "max",
+        "text": "Have {goal} foes burning from your trail at the same moment"
+      },
+      "Banish": {
+        "goal": 25,
+        "kind": "max",
+        "text": "Have {goal} foes banished at the same moment"
       }
     }
   },
@@ -441,6 +451,36 @@
       "weight": 10,
       "cooldown": 5,
       "_about": "Each cast of the spell grants a ward that blocks one hit of any kind (bullet, contact, hazard). Max wards = Ward runes across all spells; at most one new ward every cooldown seconds."
+    },
+    "Soak": {
+      "weight": 10,
+      "durationBase": 2,
+      "durationPerRune": 1,
+      "_about": "Hits make foes Wet for durationBase + durationPerRune x runes seconds (one wet gauge unit per hit)."
+    },
+    "Static": {
+      "weight": 10,
+      "damagePerRune": 0.2,
+      "range": 2.5,
+      "cooldown": 0.1,
+      "_about": "Each hit sparks to the nearest other foe within range for damagePerRune x runes of the hit, as a Storm hit (Conductive on Wet foes). At most one spark per spell every cooldown seconds."
+    },
+    "Wither": {
+      "weight": 10,
+      "weakenPerRune": 0.12,
+      "maxWeaken": 0.36,
+      "slowPerRune": 0.1,
+      "maxSlow": 0.3,
+      "duration": 3,
+      "_about": "Foes hit deal weakenPerRune x runes less damage (bullets, contact, hazards) and fire slowPerRune x runes slower, for duration seconds."
+    },
+    "Midas": {
+      "weight": 6,
+      "chancePerRune": 0.04,
+      "maxChance": 0.16,
+      "gold": 1,
+      "bossBonus": 5,
+      "_about": "Foes this spell kills have chancePerRune x runes (up to maxChance) to drop gold (+bossBonus on bosses), added to the run's gold."
     },
     "_weight": "Relative chance to be offered. Under 5 shows as RARE. (Spell tomes: spells.<Id>.tomeWeight, default 1.)"
   },
@@ -752,6 +792,45 @@
       "afterimageDelay_t3": 0.4,
       "afterimageDamage_t3": 0.5,
       "_damage": "Damage each time a blade passes through a foe (out and back are separate passes)."
+    },
+    "CometTrail": {
+      "damage": 3,
+      "cooldown": 0.15,
+      "count": 1,
+      "_damage": "Per tick to foes standing in a flame patch.",
+      "spacing": 0.6,
+      "_spacing": "You drop a patch each time you've moved this far (and the cooldown is up).",
+      "patchRadius": 0.45,
+      "patchLife": 1.5,
+      "tickEvery": 0.5,
+      "burnShare": 0.5,
+      "burnTime": 1.5,
+      "_burnShare": "Each tick also sets a burn of damage x burnShare per second for burnTime seconds.",
+      "lifePerPierce": 0.3,
+      "splitGap": 0.8,
+      "moveBuff_t2": 0.08,
+      "widen_t2": 0.3,
+      "burstRadius_t3": 0.8,
+      "burstDamage_t3": 1.5,
+      "_burstDamage_t3": "Phoenix Path: each patch bursts when it burns out for damage x this in burstRadius_t3."
+    },
+    "Banish": {
+      "damage": 6,
+      "cooldown": 6,
+      "count": 1,
+      "_damage": "Banish deals no damage itself; this feeds status runes (Ember, Infest) and nothing else.",
+      "duration": 4,
+      "potencyPerRune": 0.1,
+      "durationPerPierce": 1,
+      "overloadDuration": 2,
+      "bossDaze": 1,
+      "returnDaze": 0.5,
+      "_bossDaze": "Bosses can't be banished; they can't shoot for this many seconds instead. Returning foes can't shoot for returnDaze.",
+      "exileRadius_t2": 0.9,
+      "areaScale": 0.5,
+      "_exileRadius_t2": "Exile banishes every foe this close to the target. Area runes grow it at areaScale of their normal rate.",
+      "oblivionLoss_t3": 0.25,
+      "_oblivionLoss_t3": "Oblivion: banished chaff never return (no bug burst); others return missing this share of max health."
     },
     "Sunspots": {
       "damage": 0.02,

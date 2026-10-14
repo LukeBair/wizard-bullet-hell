@@ -31,7 +31,26 @@ public class Enemy : MonoBehaviour
     public float CurseBonus => curseBonus;
     // Cached, since crowds read each other's positions thousands of times a frame; MoveTo keeps it in step with the transform.
     public Vector2 Position { get; private set; }
-    public bool Hidden { get; private set; }   // burrowed: can't be hit or targeted
+    public bool Hidden { get; private set; }   // burrowed or banished: can't be hit or targeted
+
+    // Banish: the foe is gone (hidden and frozen) for a while, then returns where it was, briefly
+    // dazed. eraseOnReturn (Oblivion) makes it die instead of returning, without a bug burst.
+    public bool IsBanished => banishTimer > 0f;
+    public static int BanishedCount()
+    {
+        int n = 0;
+        foreach (var e in All) if (e.IsAlive && e.IsBanished) n++;
+        return n;
+    }
+    float banishTimer, dazeTimer;
+    bool eraseOnReturn;
+    Action<Enemy> onReturn;
+    // Wither: the foe deals less damage and shoots less often for a while.
+    float witherTimer, witherAmount, witherSlow;
+    float Weak => witherTimer > 0f ? 1f - witherAmount : 1f;
+    public float WitherAmount => witherTimer > 0f ? witherAmount : 0f;
+    public float WitherSlow => witherTimer > 0f ? witherSlow : 0f;
+    float FireRate => witherTimer > 0f ? 1f - witherSlow : 1f;
     public int TelemetryId, TelemetryRun;   // set by Telemetry when a run is being logged
     public float BornAt;
     public string LastHitBy;   // what last hurt it, for telemetry kill credit
@@ -288,6 +307,7 @@ public class Enemy : MonoBehaviour
         grid.Clear();
         foreach (var e in All)
         {
+            if (e.IsBanished) continue;   // banished foes aren't there to bump into
             int key = CellKey(Cell(e.Position.x), Cell(e.Position.y));
             if (!grid.TryGetValue(key, out var cell)) grid[key] = cell = spareCells.Count > 0 ? spareCells.Pop() : new List<Enemy>();
             cell.Add(e);
@@ -304,6 +324,14 @@ public class Enemy : MonoBehaviour
         Acting = this;
 
         float dt = Time.deltaTime;
+        if (banishTimer > 0f)
+        {
+            banishTimer -= dt;
+            if (banishTimer <= 0f) Return();
+            return;
+        }
+        if (dazeTimer > 0f) { dazeTimer -= dt; fireTimer = Mathf.Max(fireTimer, dazeTimer); }
+        if (witherTimer > 0f) witherTimer -= dt;
         Vector2 pos = Position;
 
         // Pick a target: the wizard, or the nearest other enemy while charmed.
@@ -375,7 +403,7 @@ public class Enemy : MonoBehaviour
         // Contact damage. Rooted and charmed enemies never hurt the wizard by touch.
         float hit = Radius * 0.85f + Player.BodyRadius;
         if (!Hidden && !IsRooted && !IsCharmed && (player.Position - pos).sqrMagnitude < hit * hit)
-            player.TakeDamage(Def.ContactDamage, Def.Name, "contact");
+            player.TakeDamage(Def.ContactDamage * Weak, Def.Name, "contact");
 
         if (IsCharmed && prey != null)
         {
@@ -467,7 +495,7 @@ public class Enemy : MonoBehaviour
                 TickFire(dt, dist, () =>
                 {
                     Vector2 lead = IsCharmed ? Vector2.zero : Joystick.Direction * GameManager.Instance.Player.MoveSpeed * Tuning.Pace * 0.6f;
-                    Hazard.Spawn(targetPos + lead + Random.insideUnitCircle * 0.5f, 1.3f, 1.2f, Def.BulletDamage, Def.Accent, Position, IsCharmed);
+                    Hazard.Spawn(targetPos + lead + Random.insideUnitCircle * 0.5f, 1.3f, 1.2f, Def.BulletDamage * Weak, Def.Accent, Position, IsCharmed);
                 });
                 return KeepRange(dir, dist, speed);
 
@@ -514,7 +542,7 @@ public class Enemy : MonoBehaviour
                         if (dist < 0.8f || stateTimer <= 0f)
                         {
                             state = 2; stateTimer = 0.8f;
-                            Hazard.Spawn(Position, 1.5f, 0.8f, Def.ContactDamage, Def.Accent, null, IsCharmed);
+                            Hazard.Spawn(Position, 1.5f, 0.8f, Def.ContactDamage * Weak, Def.Accent, null, IsCharmed);
                         }
                         return dir * Def.Speed;
                     case 2:
@@ -545,7 +573,7 @@ public class Enemy : MonoBehaviour
     {
         // Below SummonBelow of its health a fifth attack joins the cycle: a brood of a Spore Lobber,
         // a Mother Slime and Moss Slimes (counts from tuning).
-        fireTimer -= dt;
+        fireTimer -= dt * FireRate;
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
@@ -586,7 +614,7 @@ public class Enemy : MonoBehaviour
             stateTimer = state == 0 ? 4f : state == 1 ? 3f : 0.6f;
             if (state == 2) Blink(Def.PreferredRange);
         }
-        fireTimer -= dt;
+        fireTimer -= dt * FireRate;
         if (fireTimer <= 0f)
         {
             if (state == 0)
@@ -624,7 +652,7 @@ public class Enemy : MonoBehaviour
             books[i].localPosition = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 2f;
         }
 
-        fireTimer -= dt;
+        fireTimer -= dt * FireRate;
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate;
@@ -745,7 +773,7 @@ public class Enemy : MonoBehaviour
 
     void TickFire(float dt, float dist, Action fire)
     {
-        fireTimer -= dt;
+        fireTimer -= dt * FireRate;
         if (fireTimer > 0f) return;
         fireTimer = Def.FireInterval * Tuning.CastRate;
         if (dist < 11f && (!IsCharmed || dist > 0.01f)) fire();
@@ -834,7 +862,7 @@ public class Enemy : MonoBehaviour
         else
         {
             p = Projectile.Spawn(from, v, Team.Enemy, Def.Accent, 0.14f);
-            p.Damage = Def.BulletDamage;
+            p.Damage = Def.BulletDamage * Weak;
         }
         p.Lifetime = 6f;
         if (IsBoss) Particles.Muzzle(from, v, ArtStyle.EnemyBullet(Def.Accent));
@@ -949,6 +977,50 @@ public class Enemy : MonoBehaviour
         chillTimer = Mathf.Max(chillTimer, duration);
         chillUnits = Mathf.Min(GaugeMax, (had ? chillUnits : 0) + 1);
         if (!Gauge && IsBurning) Steam();
+    }
+
+    public void Banish(float duration, bool erase, Action<Enemy> returned)
+    {
+        if (!IsAlive || Hidden || IsBanished) return;
+        if (IsBoss) { Daze(Tune.F("spells.Banish.bossDaze", 1f)); return; }
+        banishTimer = duration;
+        eraseOnReturn = erase;
+        onReturn = returned;
+        knockback = Vector2.zero;
+        Particles.Death(Position, Def.Look, Radius, Def.Tier);
+        Fx.Ring(Position, new Color(0.55f, 0.25f, 0.75f), Radius * 2f, 0.3f);
+        SetHidden(true);
+    }
+
+    void Return()
+    {
+        if (eraseOnReturn)
+        {
+            infestTimer = 0f;   // erased foes leave nothing behind, not even bugs
+            Fx.Burst(Position, new Color(0.55f, 0.25f, 0.75f), Radius * 2f);
+            Die();
+            onReturn?.Invoke(this);
+            return;
+        }
+        SetHidden(false);
+        Fx.Ring(Position, new Color(0.55f, 0.25f, 0.75f), Radius * 2f, 0.3f);
+        Daze(Tune.F("spells.Banish.returnDaze", 0.5f));
+        onReturn?.Invoke(this);
+        onReturn = null;
+    }
+
+    // A dazed foe can't shoot.
+    public void Daze(float duration)
+    {
+        dazeTimer = Mathf.Max(dazeTimer, duration);
+        fireTimer = Mathf.Max(fireTimer, duration);
+    }
+
+    public void Wither(float amount, float slow, float duration)
+    {
+        witherAmount = witherTimer > 0f ? Mathf.Max(witherAmount, amount) : amount;
+        witherSlow = witherTimer > 0f ? Mathf.Max(witherSlow, slow) : slow;
+        witherTimer = Mathf.Max(witherTimer, duration);
     }
 
     public void ApplyWet(float duration)

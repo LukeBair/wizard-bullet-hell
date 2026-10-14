@@ -5,13 +5,13 @@ public enum SpellId
 {
     ArcaneMissile, Fireball, FrostNova, ChainLightning, Wisps,
     Rejuvenate, Overgrowth, Veil, TidalLance, Cyclone, Enthrall,
-    MirrorWard, StoneSpikes, SpectralBlades, Sunspots,
+    MirrorWard, StoneSpikes, SpectralBlades, Sunspots, CometTrail, Banish,
 }
 
 public enum Element { Arcane, Fire, Frost, Storm, Nature, Water, Wind, Light, Shadow, Earth }
 
 // Modifiers socketed into spells. Split and Echo are rare; the rest are common.
-public enum Rune { Potency, Haste, Split, Pierce, Area, Echo, Ember, Frost, Curse, Infest, Bless, Overload, Siphon, Ward }
+public enum Rune { Potency, Haste, Split, Pierce, Area, Echo, Ember, Frost, Curse, Infest, Bless, Overload, Siphon, Ward, Soak, Static, Wither, Midas }
 
 // A spell the wizard casts automatically. Subclasses define the base numbers and what a cast does;
 // runes stack on top and are read through the computed properties below. Some spells can Evolve
@@ -136,6 +136,8 @@ public abstract class Spell
             case SpellId.StoneSpikes: s = new StoneSpikes(); break;
             case SpellId.SpectralBlades: s = new SpectralBlades(); break;
             case SpellId.Sunspots: s = new Sunspots(); break;
+            case SpellId.CometTrail: s = new CometTrail(); break;
+            case SpellId.Banish: s = new Banish(); break;
             default: s = new Enthrall(); break;
         }
         s.Id = id;
@@ -210,7 +212,7 @@ public abstract class Spell
             Sfx.Play(Sound.Lightning, 0.35f, 0.3f);
         }
         Cast();
-        if (HitsFoes) Owner?.CastAnim();
+        if (CastAnimates) Owner?.CastAnim();
         if (RuneCount(Rune.Ward) > 0f) Owner.GainWard();
         if (EchoRecasts)
             for (int i = 1; i <= Echoes; i++) echoes.Add(0.22f * i);
@@ -225,6 +227,7 @@ public abstract class Spell
     int castCount;
     bool overloaded;
     protected virtual bool Overloadable => true;
+    protected bool Overloaded => overloaded;
     float OverloadMultiplier => 1f + Tune.F("runes.Overload.bonusPerRune", 1.5f) * RuneCount(Rune.Overload);
 
     // Siphon: hits heal a share of their damage, from a bank that refills at the per-second cap.
@@ -255,11 +258,13 @@ public abstract class Spell
     }
 
     // Ember, Frost, Curse, Infest and Bless all ride on Hit(), so they only work on spells that hit foes.
-    public static bool IsStatusRune(Rune r) => r == Rune.Ember || r == Rune.Frost || r == Rune.Curse || r == Rune.Infest || r == Rune.Bless || r == Rune.Siphon;
+    public static bool IsStatusRune(Rune r) => r == Rune.Ember || r == Rune.Frost || r == Rune.Curse || r == Rune.Infest || r == Rune.Bless || r == Rune.Siphon
+        || r == Rune.Soak || r == Rune.Static || r == Rune.Wither || r == Rune.Midas;
 
     protected static string OverloadEffect => $"Every {Tune.I("runes.Overload.every", 4)}th cast is {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} stronger";
     protected static string WardEffect => $"Casting grants a ward that blocks one hit (at most one every {Tune.F("runes.Ward.cooldown", 5f):0.#}s)";
     protected virtual bool HitsFoes => true;
+    protected virtual bool CastAnimates => HitsFoes;   // false for spells that "cast" constantly (Comet Trail)
 
     protected static string StatusRuneEffect(Rune r)
     {
@@ -270,6 +275,10 @@ public abstract class Spell
             case Rune.Curse: return $"Foes it hits take +{Pct(Tune.F("runes.Curse.bonusPerRune", 0.5f))} from the next spell that hits them";
             case Rune.Infest: return $"Foes it hits burst into bugs if they die within {Tune.F("runes.Infest.duration", 1f):0.#}s";
             case Rune.Siphon: return $"Hits heal you {Pct(Tune.F("runes.Siphon.healPerRune", 0.02f))} of their damage (up to {Tune.F("runes.Siphon.capPerRune", 2f):0.#} HP a second)";
+            case Rune.Soak: return $"Hits make foes Wet for {Tune.F("runes.Soak.durationBase", 2f) + Tune.F("runes.Soak.durationPerRune", 1f):0.#}s";
+            case Rune.Static: return $"Hits spark to a nearby foe for {Pct(Tune.F("runes.Static.damagePerRune", 0.2f))} of the damage, as a Storm hit";
+            case Rune.Wither: return $"Foes it hits deal {Pct(Tune.F("runes.Wither.weakenPerRune", 0.12f))} less damage and shoot {Pct(Tune.F("runes.Wither.slowPerRune", 0.1f))} slower for {Tune.F("runes.Wither.duration", 3f):0.#}s";
+            case Rune.Midas: return $"Foes it kills have a {Pct(Tune.F("runes.Midas.chancePerRune", 0.04f))} chance to drop gold";
             default: return $"Foes it hits have a {Pct(Tune.F("runes.Bless.chancePerRune", 0.15f))} chance to drop a big XP gem when they die";
         }
     }
@@ -299,25 +308,33 @@ public abstract class Spell
             case Rune.Siphon: return new Color(0.85f, 0.15f, 0.3f);
             case Rune.Ward: return new Color(0.75f, 0.9f, 1f);
             case Rune.Bless: return new Color(1f, 0.95f, 0.6f);
+            case Rune.Soak: return new Color(0.3f, 0.6f, 1f);
+            case Rune.Static: return new Color(1f, 1f, 0.45f);
+            case Rune.Wither: return new Color(0.55f, 0.5f, 0.45f);
+            case Rune.Midas: return new Color(1f, 0.8f, 0.2f);
             default: return new Color(1f, 0.95f, 0.6f);
         }
     }
 
     // Everything that happens when this spell damages an enemy: curse marks, rune statuses and
     // element interactions with whatever the enemy is already suffering from.
-    protected void Hit(Enemy e, float damage, Vector2 push = default)
+    protected void Hit(Enemy e, float damage, Vector2 push = default) => Strike(e, damage, push, Element, true);
+
+    // One hit of the given element. runes = false for secondary hits (Static sparks), which don't
+    // re-apply the spell's runes or spark again.
+    void Strike(Enemy e, float damage, Vector2 push, Element element, bool runes)
     {
         if (e == null || !e.IsAlive || e.Hidden) return;
 
         damage *= 1f + e.ConsumeCurse();
-        if (Element == Element.Storm && e.IsWet)
+        if (element == Element.Storm && e.IsWet)
         {
             damage *= Tune.F("combos.conductiveMultiplier", 1.5f);
             Interactions.Trigger(Interaction.Conductive, e.Position);
             e.ConsumeWet();
             Grimoire.Feat(SpellId.TidalLance);
         }
-        if (Element == Element.Frost && e.IsWet)
+        if (element == Element.Frost && e.IsWet)
         {
             e.ConsumeWet();
             e.ApplyChill(3f);
@@ -326,16 +343,10 @@ public abstract class Spell
             Grimoire.Feat(SpellId.TidalLance);
         }
 
-        float ember = RuneCount(Rune.Ember);
-        if (ember > 0) e.ApplyBurn(Damage * Tune.F("runes.Ember.burnPerRune", 0.2f) * ember, Tune.F("runes.Ember.duration", 2.5f));
-        float frost = RuneCount(Rune.Frost);
-        if (frost > 0) e.ApplyChill(Tune.F("runes.Frost.chillBase", 1f) + Tune.F("runes.Frost.chillPerRune", 0.6f) * frost);
-        float infest = RuneCount(Rune.Infest);
-        if (infest > 0) e.Infest(Damage * Tune.F("runes.Infest.burstPerRune", 0.5f) * infest, Tune.F("runes.Infest.duration", 1f));
-        float bless = RuneCount(Rune.Bless);
-        if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
+        if (runes) ApplyStatusRunes(e, false);
 
-        using (Telemetry.By(Id.ToString())) e.TakeDamage(damage, push, Color.Lerp(Color, Color.white, 0.4f));
+        using (Telemetry.By(Id.ToString())) e.TakeDamage(damage, push, Color.Lerp(element == Element ? Color : ElementColor(element), Color.white, 0.4f));
+        if (!runes) return;
 
         float siphon = RuneCount(Rune.Siphon);
         if (siphon > 0f && siphonBank > 0f && Owner != null)
@@ -345,8 +356,67 @@ public abstract class Spell
             Owner.Heal(heal, false, "Siphon");
         }
 
+        if (!e.IsAlive) { Killed(e); return; }
+        MarkCurse(e);
+        Spark(e, damage);
+    }
+
+    void MarkCurse(Enemy e)
+    {
         float curse = RuneCount(Rune.Curse);
         if (curse > 0 && e.IsAlive) e.MarkCurse(Mathf.Min(Tune.F("runes.Curse.maxBonus", 1f), Tune.F("runes.Curse.bonusPerRune", 0.5f) * curse));
+    }
+
+    // The statuses this spell's runes put on a foe. curse = true also marks it (normally that happens
+    // after the hit, so a spell doesn't use up its own mark); Banish uses this when a foe returns.
+    protected void ApplyStatusRunes(Enemy e, bool curse)
+    {
+        float ember = RuneCount(Rune.Ember);
+        if (ember > 0) e.ApplyBurn(Damage * Tune.F("runes.Ember.burnPerRune", 0.2f) * ember, Tune.F("runes.Ember.duration", 2.5f));
+        float frost = RuneCount(Rune.Frost);
+        if (frost > 0) e.ApplyChill(Tune.F("runes.Frost.chillBase", 1f) + Tune.F("runes.Frost.chillPerRune", 0.6f) * frost);
+        float infest = RuneCount(Rune.Infest);
+        if (infest > 0) e.Infest(Damage * Tune.F("runes.Infest.burstPerRune", 0.5f) * infest, Tune.F("runes.Infest.duration", 1f));
+        float bless = RuneCount(Rune.Bless);
+        if (bless > 0) e.Bless(Mathf.Min(Tune.F("runes.Bless.maxChance", 0.8f), Tune.F("runes.Bless.chancePerRune", 0.15f) * bless));
+        float soak = RuneCount(Rune.Soak);
+        if (soak > 0) e.ApplyWet(Tune.F("runes.Soak.durationBase", 2f) + Tune.F("runes.Soak.durationPerRune", 1f) * soak);
+        float wither = RuneCount(Rune.Wither);
+        if (wither > 0) e.Wither(Mathf.Min(Tune.F("runes.Wither.maxWeaken", 0.36f), Tune.F("runes.Wither.weakenPerRune", 0.12f) * wither),
+                                 Mathf.Min(Tune.F("runes.Wither.maxSlow", 0.3f), Tune.F("runes.Wither.slowPerRune", 0.1f) * wither),
+                                 Tune.F("runes.Wither.duration", 3f));
+        if (curse) MarkCurse(e);
+    }
+
+    // A foe this spell killed. Midas: a chance to drop gold.
+    protected void Killed(Enemy e)
+    {
+        float midas = RuneCount(Rune.Midas);
+        if (midas <= 0f || GameManager.Instance == null) return;
+        float chance = Mathf.Min(Tune.F("runes.Midas.maxChance", 0.16f), Tune.F("runes.Midas.chancePerRune", 0.04f) * midas);
+        if (Random.value >= chance) return;
+        float gold = Tune.F("runes.Midas.gold", 1f) + (e.IsBoss ? Tune.F("runes.Midas.bossBonus", 5f) : 0f);
+        GameManager.Instance.AddRunGold(gold, e.Position);
+    }
+
+    // Static: a hit sparks to one other foe nearby as a Storm hit (Conductive on Wet foes).
+    float nextSpark;
+    void Spark(Enemy from, float damage)
+    {
+        float stat = RuneCount(Rune.Static);
+        if (stat <= 0f || Time.time < nextSpark) return;
+        Enemy to = null;
+        float best = float.MaxValue;
+        foreach (var x in EnemiesWithin(from.Position, Tune.F("runes.Static.range", 2.5f)))
+        {
+            if (x == from) continue;
+            float d = (x.Position - from.Position).sqrMagnitude;
+            if (d < best) { best = d; to = x; }
+        }
+        if (to == null) return;
+        nextSpark = Time.time + Tune.F("runes.Static.cooldown", 0.1f);
+        Fx.Bolt(from.Position, to.Position, ElementColor(Element.Storm));
+        Strike(to, damage * Tune.F("runes.Static.damagePerRune", 0.2f) * stat, default, Element.Storm, false);
     }
 
     protected Projectile Shoot(Vector2 from, Vector2 dir, float speed, float radius)
