@@ -702,6 +702,8 @@
       "_shardLength": "Each mirror shard is a curved bar along its ring: length along the ring and thickness, in world units (Area scales both).",
       "spinSpeed": 160,
       "boltSpeed": 10,
+      "reflectScale": 2,
+      "_reflectScale": "A reflected bolt deals damage + the reflected bullet's damage x reflectScale (Potency scales the bullet part).",
       "homing_t2": 300,
       "homing_t3": 300,
       "splitCount_t3": 3,
