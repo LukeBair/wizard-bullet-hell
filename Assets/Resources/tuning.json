@@ -368,8 +368,9 @@
     "tomeEveryLevels": 2,
     "resonanceCount": 3,
     "evolveRetain": 0.5,
-    "tier3Bosses": 1,
-    "_tier3Bosses": "Boss kills needed before any spell can evolve to tier III.",
+    "tier2Bosses": 1,
+    "tier3Bosses": 2,
+    "_tier3Bosses": "Boss kills needed before any spell can evolve to tier II (tier2Bosses) or tier III (tier3Bosses).",
     "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
     "Potency": {
       "weight": 10
