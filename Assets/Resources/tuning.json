@@ -383,7 +383,7 @@
       "_castSpeedPerRune": "Each Haste rune adds this much cast speed (cooldown / (1 + this x runes)), so it doesn't compound."
     },
     "Split": {
-      "weight": 2.5
+      "weight": 1.75
     },
     "Pierce": {
       "weight": 10
@@ -392,7 +392,7 @@
       "weight": 10
     },
     "Echo": {
-      "weight": 2.5
+      "weight": 1.75
     },
     "Ember": {
       "weight": 10,
