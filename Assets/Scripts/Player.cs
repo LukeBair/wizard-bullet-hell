@@ -42,7 +42,8 @@ public class Player : MonoBehaviour
     float sunTimer, sunPower;
     public bool IsSunlit => sunTimer > 0f;
     float SunlitPower => IsSunlit ? sunPower : 0f;
-    public float MoveMultiplier => 1f + Tune.F("spells.Sunspots.moveBuff", 0.2f) * SunlitPower;
+    public float MoveMultiplier => 1f + Tune.F("spells.Sunspots.moveBuff", 0.2f) * SunlitPower + BonusMove;
+    public float BonusMove;   // flat move speed from spells (Comet Trail's Afterburner)
     public float CastSpeedMultiplier => 1f + Tune.F("spells.Sunspots.castBuff", 0.15f) * SunlitPower;
     public float DamageMultiplier => 1f + Tune.F("spells.Sunspots.damageBuff", 0.2f) * SunlitPower;
     SpriteRenderer sunGlow;

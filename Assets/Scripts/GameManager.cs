@@ -93,6 +93,15 @@ public class GameManager : MonoBehaviour
                  : Tune.F("meta.goldPerKill", 0.1f);
     }
 
+    // Bonus gold picked up mid-run (Midas rune).
+    public void AddRunGold(float gold, Vector2 at)
+    {
+        if (State != GameState.Playing || gold <= 0f) return;
+        runGold += gold;
+        DamageText.Spawn(at + Vector2.up * 0.4f, gold, GoldColor);
+        Fx.Ring(at, GoldColor, 0.6f, 0.3f);
+    }
+
     // Pays out the run's gold once: pickups plus time survived, plus the win bonus.
     void BankGold(bool won)
     {

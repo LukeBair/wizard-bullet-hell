@@ -296,6 +296,10 @@ public class RuneSystem : UpgradeSystem
             case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th cast is overloaded: +{Tune.F("runes.Overload.bonusPerRune", 1.5f) * 100f:0}% damage or effect.";
             case Rune.Siphon: return "Hits heal you a little, up to a few HP a second.";
             case Rune.Ward: return "Casting grants a ward that blocks one hit.";
+            case Rune.Soak: return "Hits make foes Wet, setting up Conductive and Deep Freeze.";
+            case Rune.Static: return "Hits spark to a nearby foe as a Storm hit (Conductive on Wet foes).";
+            case Rune.Wither: return "Foes it hits deal less damage and shoot slower for a few seconds.";
+            case Rune.Midas: return "Foes it kills may drop gold for the Grimoire.";
             default: return "Foes it hits may drop a big XP gem when they die.";
         }
     }

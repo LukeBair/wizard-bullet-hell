@@ -317,7 +317,7 @@ public class TidalLance : Spell
 
 // A whirlwind a few steps away that drags foes into it and passes their conditions around: every
 // tick, each foe in the eye catches whatever the others are suffering from (burn, chill, wet,
-// bugs, curse) and takes reaction damage for each one it catches. Mixing burn and chill this way
+// bugs, curse, wither) and takes reaction damage for each one it catches. Mixing burn and chill this way
 // sets off Steam, wet and chill set off Deep Freeze.
 // II: the whirlwind travels outward, away from you. III: it ticks twice as fast and its reactions hit harder.
 public class Cyclone : Spell
@@ -373,7 +373,7 @@ public class Cyclone : Spell
     // it doesn't have yet. Each condition caught deals reaction damage. Returns how many were passed.
     int Swirl(Vector2 eye, System.Collections.Generic.List<Enemy> foes)
     {
-        float burn = 0f, bugs = 0f, curse = 0f;
+        float burn = 0f, bugs = 0f, curse = 0f, wither = 0f, witherSlow = 0f;
         bool chill = false, wet = false;
         foreach (var e in foes)
         {
@@ -381,10 +381,12 @@ public class Cyclone : Spell
             burn = Mathf.Max(burn, e.BurnDps);
             bugs = Mathf.Max(bugs, e.InfestDamage);
             curse = Mathf.Max(curse, e.CurseBonus);
+            wither = Mathf.Max(wither, e.WitherAmount);
+            witherSlow = Mathf.Max(witherSlow, e.WitherSlow);
             chill |= e.IsChilled;
             wet |= e.IsWet;
         }
-        if (burn <= 0f && bugs <= 0f && curse <= 0f && !chill && !wet) return 0;
+        if (burn <= 0f && bugs <= 0f && curse <= 0f && wither <= 0f && !chill && !wet) return 0;
 
         float lasts = T("passDuration", 2f);
         float reaction = Damage * (Tier == 3 ? T("passDamage_t3", 4f) : T("passDamage", 2f));
@@ -399,6 +401,7 @@ public class Cyclone : Spell
             if (wet && !e.IsWet) { e.ApplyWet(lasts); caught++; }
             if (bugs > 0f && !e.IsInfested) { e.Infest(bugs, lasts); caught++; }
             if (curse > 0f && e.CurseBonus <= 0f) { e.MarkCurse(curse); caught++; }
+            if (wither > 0f && e.WitherAmount <= 0f) { e.Wither(wither, witherSlow, lasts); caught++; }
             passed += caught;
             if (caught == 0 || !e.IsAlive) continue;
 
