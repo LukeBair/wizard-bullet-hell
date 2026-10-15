@@ -548,13 +548,14 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // Bottom-left button on the title screen and pause menu.
-    void DrawDebugToggle()
+    // Bottom-left button on the title screen, top-left on the pause menu. Development builds only.
+    void DrawDebugToggle(bool top = false)
     {
         if (!DebugAllowed) return;
         float s = UiScale;
         Rect safe = Screen.safeArea;
-        var r = new Rect(safe.xMin + 20f * s, Screen.height - safe.yMin - 84f * s, 200f * s, 64f * s);
+        float y = top ? Screen.height - safe.yMax + 20f * s : Screen.height - safe.yMin - 84f * s;
+        var r = new Rect(safe.xMin + 20f * s, y, 200f * s, 64f * s);
         if (UI.Button(r, DebugUi ? "Debug: On" : "Debug: Off", DebugUi ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.5f, 0.5f, 0.6f)))
             DebugUi = !DebugUi;
     }
@@ -596,16 +597,17 @@ public class GameManager : MonoBehaviour
             DrawPauseSpell(spell, new Rect(col.x, y, col.width, h));
             y += h + gap;
         }
-        if (Player.Spells.Count == 0) y += 40f * s;
 
-        y += 14f * s;
+        // The buttons sit at the bottom of the screen however many spells there are, with room under
+        // them for the "tap again" line.
+        float bw = (col.width - gap) / 2f, bh = 90f * s;
+        y = col.yMax - 38f * s - bh - gap - bh - 16f * s - 110f * s;
         if (UI.Button(new Rect(col.x + col.width * 0.1f, y, col.width * 0.8f, 110f * s), "Resume", new Color(0.6f, 0.45f, 1f)))
         {
             Resume();
             return;
         }
         y += 126f * s;
-        float bw = (col.width - gap) / 2f, bh = 90f * s;
         if (UI.Button(new Rect(col.x, y, bw, bh), "Spellbook", GoldColor))
         {
             confirming = null;
@@ -635,7 +637,7 @@ public class GameManager : MonoBehaviour
         }
         if (confirming != null)
             UI.Text(new Rect(col.x, y + bh + 8f * s, col.width, 30f * s), $"Tap again to {confirming.ToLower()}. This run ends and its gold is banked.", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
-        DrawDebugToggle();
+        DrawDebugToggle(top: true);   // the bottom is taken by the buttons
     }
 
     // One spell: name, tier and level, its socketed runes and any power kept from evolving.
