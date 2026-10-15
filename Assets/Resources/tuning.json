@@ -16,7 +16,7 @@
     "music": {
       "volume": 0.6,
       "fade": 1.5,
-      "_about": "Zone music. volume multiplies audio.volume; fade = crossfade seconds on zone changes and when a run starts or ends."
+      "_about": "Zone music. volume multiplies audio.volume and the player's Settings volume; fade = crossfade seconds on zone changes and when a run starts or ends."
     }
   },
   "settings": {

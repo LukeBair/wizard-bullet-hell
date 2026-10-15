@@ -26,7 +26,7 @@ public class Music : MonoBehaviour
         string wanted = WantedTrack();
         if (wanted != playing) Switch(wanted);
 
-        float target = Tune.F("audio.volume", 1f) * Tune.F("audio.music.volume", 0.6f);
+        float target = Tune.F("audio.volume", 1f) * Tune.F("audio.music.volume", 0.6f) * Settings.Volume;
         float step = Time.unscaledDeltaTime / Mathf.Max(0.01f, Tune.F("audio.music.fade", 1.5f));
         for (int i = 0; i < sources.Length; i++)
         {
