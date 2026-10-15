@@ -20,7 +20,11 @@ public class Biome
     public EnemyRoster Roster;
     public string[] Favored = new string[0];   // medium enemies that are more common here
     public bool Final;                         // the last zone of a run
-    public string Music;                       // looping track in Resources/Music/, or null for silence
+    public string[] Music = new string[0];     // takes of this zone's track in Resources/Music/; none = silence
+    string track;
+
+    // The take this zone plays, picked once per visit (each run and zone change makes a new Biome).
+    public string Track => track ??= Music.Length == 0 ? null : Music[UnityEngine.Random.Range(0, Music.Length)];
 
     // The zones of one run: the three regular ones shuffled, then the final zone.
     public static List<Biome> RunZones()
@@ -58,7 +62,7 @@ public class Biome
         ObstacleSize = new Vector2(0.7f, 1.4f),
         Roster = EnemyRoster.Standard("Elder Treant"),
         Favored = new[] { "Thornback Wolf", "Root Burrower", "Mother Slime" },
-        Music = "music_forest",
+        Music = new[] { "music_forest_1", "music_forest_2" },
     };
 
     public static Biome Academy => new Biome
@@ -74,7 +78,7 @@ public class Biome
         ObstacleSize = new Vector2(0.7f, 1.0f),
         Roster = EnemyRoster.Standard("Headmaster Vexley"),
         Favored = new[] { "Goblin Hexer", "Rogue Apprentice", "Pixie Trickster" },
-        Music = "music_wizard_school",
+        Music = new[] { "music_wizard_school_1", "music_wizard_school_2" },
     };
 
     public static Biome Caves => new Biome
@@ -90,6 +94,7 @@ public class Biome
         ObstacleSize = new Vector2(0.6f, 1.5f),
         Roster = EnemyRoster.Standard("Crystal Golem"),
         Favored = new[] { "Root Burrower", "Spore Lobber", "Mother Slime" },
+        Music = new[] { "music_caves_1", "music_caves_2" },
     };
 
     // Final zone: a dark swamp wood, home of the Hedge Witch.
@@ -106,6 +111,7 @@ public class Biome
         ObstacleSize = new Vector2(0.6f, 1.3f),
         Roster = EnemyRoster.Standard("The Hedge Witch"),
         Favored = new[] { "Spore Lobber", "Pixie Trickster", "Goblin Hexer" },
+        Music = new[] { "music_witchs_hollow_1", "music_witchs_hollow_2" },
         Final = true,
     };
 }

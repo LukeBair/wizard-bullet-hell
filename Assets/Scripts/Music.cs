@@ -1,8 +1,8 @@
 using UnityEngine;
 
-// Looping zone music. Each biome can name a track in Assets/Resources/Music/; it plays while a run is
-// in that zone and crossfades on zone changes. The title, game over and victory screens are silent.
-// Zones without a track are silent too.
+// Looping zone music. Each biome names one or more takes in Assets/Resources/Music/; one plays while a
+// run is in that zone, straight through its boss fight, and crossfades on zone changes. The title,
+// game over and victory screens are silent. Zones without a track are silent too.
 public class Music : MonoBehaviour
 {
     AudioSource[] sources;
@@ -50,7 +50,7 @@ public class Music : MonoBehaviour
             case GameState.Playing:
             case GameState.LevelUp:
             case GameState.Paused:
-                return string.IsNullOrEmpty(gm.Arena.Biome.Music) ? null : gm.Arena.Biome.Music;
+                return gm.Arena.Biome.Track;
             default:
                 return null;
         }
