@@ -17,7 +17,7 @@ public class DamageText : MonoBehaviour
 
     public static void Spawn(Vector2 pos, float amount, Color color)
     {
-        if (live >= MaxLive || amount < 0.5f) return;
+        if (live >= MaxLive || amount < 0.5f || !Settings.DamageNumbers) return;
         if (builtin == null) builtin = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         var font = UI.Font != null ? UI.Font : builtin;
 
