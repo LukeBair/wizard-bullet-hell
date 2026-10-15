@@ -20,6 +20,7 @@ public class Biome
     public EnemyRoster Roster;
     public string[] Favored = new string[0];   // medium enemies that are more common here
     public bool Final;                         // the last zone of a run
+    public string Music;                       // looping track in Resources/Music/, or null for silence
 
     // The zones of one run: the three regular ones shuffled, then the final zone.
     public static List<Biome> RunZones()
@@ -57,6 +58,7 @@ public class Biome
         ObstacleSize = new Vector2(0.7f, 1.4f),
         Roster = EnemyRoster.Standard("Elder Treant"),
         Favored = new[] { "Thornback Wolf", "Root Burrower", "Mother Slime" },
+        Music = "music_forest",
     };
 
     public static Biome Academy => new Biome
@@ -72,6 +74,7 @@ public class Biome
         ObstacleSize = new Vector2(0.7f, 1.0f),
         Roster = EnemyRoster.Standard("Headmaster Vexley"),
         Favored = new[] { "Goblin Hexer", "Rogue Apprentice", "Pixie Trickster" },
+        Music = "music_wizard_school",
     };
 
     public static Biome Caves => new Biome

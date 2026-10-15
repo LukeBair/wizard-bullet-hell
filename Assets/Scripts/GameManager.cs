@@ -64,6 +64,7 @@ public class GameManager : MonoBehaviour
         Director = gameObject.AddComponent<Director>();
         gameObject.AddComponent<Joystick>();
         gameObject.AddComponent<Sfx>();
+        gameObject.AddComponent<Music>();
         gameObject.AddComponent<ArtOverlay>();
         // The HUD only uses GUI.* (never GUILayout), so skip IMGUI's extra Layout pass every frame.
         foreach (var b in GetComponents<MonoBehaviour>()) b.useGUILayout = false;
