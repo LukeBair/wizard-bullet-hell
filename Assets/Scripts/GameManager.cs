@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum GameState { Title, Grimoire, TomePick, Playing, LevelUp, Paused, GameOver, Victory }
+public enum GameState { Title, Grimoire, Settings, Credits, TomePick, Playing, LevelUp, Paused, GameOver, Victory }
 
 // Owns the run: title screen, camera, starting tome, level-up flow, zone changes, game over, victory
 // and the HUD.
@@ -14,10 +14,12 @@ public class GameManager : MonoBehaviour
     public const string WinsKey = "wins";
     const string DebugUiKey = "debug_ui";
 
-    // Developer readouts (threat, enemy scaling, fps, tuning source). Toggled on the title screen.
+    // Developer readouts (threat, enemy scaling, fps, tuning source). Toggled on the title screen,
+    // which only offers the toggle in development builds (or with ui.debugToggle in the tuner).
+    public static bool DebugAllowed => Debug.isDebugBuild || Tune.B("ui.debugToggle", false);
     public static bool DebugUi
     {
-        get => PlayerPrefs.GetInt(DebugUiKey, 0) == 1;
+        get => DebugAllowed && PlayerPrefs.GetInt(DebugUiKey, 0) == 1;
         set { PlayerPrefs.SetInt(DebugUiKey, value ? 1 : 0); PlayerPrefs.Save(); }
     }
     float fps = 60f;
@@ -49,6 +51,7 @@ public class GameManager : MonoBehaviour
     int bankedGold = -1;     // what the last run paid out (-1 = not banked yet)
     int grimoirePage;
     GameState grimoireReturn;   // where Back goes: the title, or the death / victory screen
+    GameState settingsReturn;   // the title or the pause menu
     readonly List<(string text, float until)> toasts = new List<(string, float)>();
 
     void Awake()
@@ -70,8 +73,14 @@ public class GameManager : MonoBehaviour
         StartCoroutine(Tune.FetchFromMac());
     }
 
-    // Going to the background may be the last we see of this run: keep its log on the device.
-    void OnApplicationPause(bool paused) { if (paused) Telemetry.SaveToDevice(); }
+    // Going to the background may be the last we see of this run: keep its log on the device, and
+    // stop the run so the player comes back to the pause menu instead of a fight in progress.
+    void OnApplicationPause(bool paused)
+    {
+        if (!paused) return;
+        Telemetry.SaveToDevice();
+        if (State == GameState.Playing && !Autoplay) Pause();
+    }
 
     void OnEnable() => Enemy.Died += OnEnemyDied;
     void OnDisable() => Enemy.Died -= OnEnemyDied;
@@ -219,7 +228,7 @@ public class GameManager : MonoBehaviour
 
     public void Toast(string text) => toasts.Add((text, Time.unscaledTime + 2.5f));
 
-    public void Shake(float amount) => shake = Mathf.Max(shake, amount);
+    public void Shake(float amount) { if (Settings.ScreenShake) shake = Mathf.Max(shake, amount); }
 
     public void GameOver()
     {
@@ -310,6 +319,11 @@ public class GameManager : MonoBehaviour
         {
             case GameState.Title: DrawTitle(); break;
             case GameState.Grimoire: DrawGrimoire(); break;
+            case GameState.Settings:
+                if (settingsReturn == GameState.Paused) DrawHud();
+                DrawSettings();
+                break;
+            case GameState.Credits: DrawCredits(); break;
             case GameState.TomePick:
                 if (Upgrades.DrawStart())
                 {
@@ -356,7 +370,9 @@ public class GameManager : MonoBehaviour
         }
         if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 355f * s, col.width * 0.7f, 80f * s), $"Grimoire  ·  {Grimoire.Gold} gold", GoldColor))
             OpenGrimoire();
-        DrawStylePicker(new Rect(col.x, col.y + 455f * s, col.width, 110f * s));
+        if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 450f * s, col.width * 0.7f, 80f * s), "Settings", new Color(0.6f, 0.6f, 0.7f)))
+            OpenSettings();
+        if (ArtStyle.Picker) DrawStylePicker(new Rect(col.x, col.y + 830f * s, col.width, 110f * s));
 
         if (DebugUi)
         {
@@ -367,7 +383,7 @@ public class GameManager : MonoBehaviour
         }
 
         DrawDebugToggle();
-        UI.Text(new Rect(col.x, col.y + 585f * s, col.width, 140f * s),
+        UI.Text(new Rect(col.x, col.y + 560f * s, col.width, 140f * s),
             "Drag anywhere to move. Spells cast on their own.\nLevel up to socket runes into your spells.\nBeat the bosses for more sockets and a new zone.",
             24, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.75f), false);
     }
@@ -532,12 +548,14 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // Bottom-left button on the title screen and pause menu.
-    void DrawDebugToggle()
+    // Bottom-left button on the title screen, top-left on the pause menu. Development builds only.
+    void DrawDebugToggle(bool top = false)
     {
+        if (!DebugAllowed) return;
         float s = UiScale;
         Rect safe = Screen.safeArea;
-        var r = new Rect(safe.xMin + 20f * s, Screen.height - safe.yMin - 84f * s, 200f * s, 64f * s);
+        float y = top ? Screen.height - safe.yMax + 20f * s : Screen.height - safe.yMin - 84f * s;
+        var r = new Rect(safe.xMin + 20f * s, y, 200f * s, 64f * s);
         if (UI.Button(r, DebugUi ? "Debug: On" : "Debug: Off", DebugUi ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.5f, 0.5f, 0.6f)))
             DebugUi = !DebugUi;
     }
@@ -579,27 +597,34 @@ public class GameManager : MonoBehaviour
             DrawPauseSpell(spell, new Rect(col.x, y, col.width, h));
             y += h + gap;
         }
-        if (Player.Spells.Count == 0) y += 40f * s;
 
-        y += 14f * s;
+        // The buttons sit at the bottom of the screen however many spells there are, with room under
+        // them for the "tap again" line.
+        float bw = (col.width - gap) / 2f, bh = 90f * s;
+        y = col.yMax - 38f * s - bh - gap - bh - 16f * s - 110f * s;
         if (UI.Button(new Rect(col.x + col.width * 0.1f, y, col.width * 0.8f, 110f * s), "Resume", new Color(0.6f, 0.45f, 1f)))
         {
             Resume();
             return;
         }
         y += 126f * s;
-        float bw = (col.width - 2f * gap) / 3f, bh = 90f * s;
         if (UI.Button(new Rect(col.x, y, bw, bh), "Spellbook", GoldColor))
         {
             confirming = null;
             OpenGrimoire();
         }
-        if (UI.Button(new Rect(col.x + bw + gap, y, bw, bh), confirming == "Restart" ? "Sure?" : "Restart", new Color(1f, 0.55f, 0.4f)))
+        if (UI.Button(new Rect(col.x + bw + gap, y, bw, bh), "Settings", new Color(0.6f, 0.6f, 0.7f)))
+        {
+            confirming = null;
+            OpenSettings();
+        }
+        y += bh + gap;
+        if (UI.Button(new Rect(col.x, y, bw, bh), confirming == "Restart" ? "Sure?" : "Restart", new Color(1f, 0.55f, 0.4f)))
         {
             if (confirming != "Restart") confirming = "Restart";
             else { BankGold(false); Telemetry.EndRun(this, "quit", bankedGold); StartRun(); }
         }
-        if (UI.Button(new Rect(col.x + 2f * (bw + gap), y, bw, bh), confirming == "Quit" ? "Sure?" : "Quit", new Color(0.6f, 0.6f, 0.7f)))
+        if (UI.Button(new Rect(col.x + bw + gap, y, bw, bh), confirming == "Quit" ? "Sure?" : "Quit", new Color(0.6f, 0.6f, 0.7f)))
         {
             if (confirming != "Quit") confirming = "Quit";
             else
@@ -612,7 +637,7 @@ public class GameManager : MonoBehaviour
         }
         if (confirming != null)
             UI.Text(new Rect(col.x, y + bh + 8f * s, col.width, 30f * s), $"Tap again to {confirming.ToLower()}. This run ends and its gold is banked.", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.7f), false);
-        DrawDebugToggle();
+        DrawDebugToggle(top: true);   // the bottom is taken by the buttons
     }
 
     // One spell: name, tier and level, its socketed runes and any power kept from evolving.
@@ -627,6 +652,124 @@ public class GameManager : MonoBehaviour
         if (kept.Length > 0) body += $"\n<size={Mathf.RoundToInt(18 * s)}><color=#ffd966>Kept: {kept}</color></size>";
         string tier = spell.CanEvolve ? $"TIER {(spell.Tier == 1 ? "I" : spell.Tier == 2 ? "II" : "III")}  ·  " : "";
         UI.Card(r, spell.Title, body, spell.Color, $"{tier}{runes.Count}/{Upgrades.SocketCount} RUNES");
+    }
+
+    // ---------------------------------------------------------------- settings and credits
+
+    void OpenSettings()
+    {
+        Sfx.Play(Sound.Select, 0.8f);
+        Haptics.Selection();
+        settingsReturn = State;
+        State = GameState.Settings;
+    }
+
+    void CloseSettings()
+    {
+        Sfx.Play(Sound.Select, 0.8f);
+        Haptics.Selection();
+        State = settingsReturn;
+    }
+
+    // Sound volume, haptics, screen shake and damage numbers, then Credits and Back.
+    void DrawSettings()
+    {
+        float s = UiScale;
+        UI.Dim(0.75f);
+        var col = UI.Column(0.08f, 0.88f);
+        UI.Text(new Rect(col.x, col.y, col.width, 60f * s), "Settings", 52, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
+
+        float y = col.y + 110f * s, rowH = 96f * s, gap = 16f * s;
+        var dim = new Color(0.45f, 0.45f, 0.55f);
+
+        // Sound: − 75% +
+        var row = new Rect(col.x, y, col.width, rowH);
+        UI.Box(row, new Color(1f, 1f, 1f, 0.06f));
+        UI.Text(new Rect(row.x + 20f * s, row.y, row.width * 0.4f, rowH), "Sound", 32, TextAnchor.MiddleLeft);
+        float bw = 90f * s, bx = row.xMax - 12f * s - bw;
+        int pct = Mathf.RoundToInt(Settings.Volume * 100f);
+        if (UI.Button(new Rect(bx, row.y + 8f * s, bw, rowH - 16f * s), "+", pct < 100 ? GoldColor : dim) && pct < 100)
+        {
+            Settings.StepVolume(1);
+            Sfx.Play(Sound.Select, 0.8f);
+        }
+        UI.Text(new Rect(bx - 150f * s, row.y, 150f * s, rowH), pct == 0 ? "Off" : $"{pct}%", 32, TextAnchor.MiddleCenter, pct == 0 ? new Color(1f, 1f, 1f, 0.5f) : Color.white);
+        if (UI.Button(new Rect(bx - 150f * s - bw, row.y + 8f * s, bw, rowH - 16f * s), "-", pct > 0 ? GoldColor : dim) && pct > 0)
+        {
+            Settings.StepVolume(-1);
+            Sfx.Play(Sound.Select, 0.8f);
+        }
+        y += rowH + gap;
+
+        if (SettingRow(new Rect(col.x, y, col.width, rowH), "Haptics", Settings.Haptics))
+        {
+            Settings.Haptics = !Settings.Haptics;
+            Haptics.Selection();
+        }
+        y += rowH + gap;
+        if (SettingRow(new Rect(col.x, y, col.width, rowH), "Screen shake", Settings.ScreenShake))
+        {
+            Settings.ScreenShake = !Settings.ScreenShake;
+            if (Settings.ScreenShake) Shake(0.25f);
+        }
+        y += rowH + gap;
+        if (SettingRow(new Rect(col.x, y, col.width, rowH), "Damage numbers", Settings.DamageNumbers))
+            Settings.DamageNumbers = !Settings.DamageNumbers;
+        y += rowH + gap * 3f;
+
+        if (UI.Button(new Rect(col.x + col.width * 0.15f, y, col.width * 0.7f, 90f * s), "Credits", new Color(0.6f, 0.6f, 0.7f)))
+        {
+            Sfx.Play(Sound.Select, 0.8f);
+            Haptics.Selection();
+            State = GameState.Credits;
+        }
+        y += 90f * s + gap;
+        if (UI.Button(new Rect(col.x + col.width * 0.15f, y, col.width * 0.7f, 110f * s), "Back", new Color(0.6f, 0.45f, 1f)))
+            CloseSettings();
+        DrawVersion();
+    }
+
+    // A labelled On/Off switch row. Returns true when tapped.
+    bool SettingRow(Rect r, string label, bool on)
+    {
+        float s = UiScale;
+        UI.Box(r, new Color(1f, 1f, 1f, 0.06f));
+        UI.Text(new Rect(r.x + 20f * s, r.y, r.width * 0.6f, r.height), label, 32, TextAnchor.MiddleLeft);
+        float bw = 170f * s;
+        bool tapped = UI.Button(new Rect(r.xMax - 12f * s - bw, r.y + 8f * s, bw, r.height - 16f * s), on ? "On" : "Off",
+            on ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.45f, 0.45f, 0.55f));
+        if (tapped) Sfx.Play(Sound.Select, 0.8f);
+        return tapped;
+    }
+
+    void DrawCredits()
+    {
+        float s = UiScale;
+        UI.Dim(0.8f);
+        var col = UI.Column(0.08f, 0.88f);
+        UI.Text(new Rect(col.x, col.y, col.width, 60f * s), "Credits", 52, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
+        var soft = new Color(1f, 1f, 1f, 0.8f);
+        UI.Text(new Rect(col.x, col.y + 110f * s, col.width, 560f * s),
+            $"<color=#ffd966>{Application.productName}</color>\nMade by {Application.companyName}\n\n" +
+            "<color=#ffd966>Font</color>\nVT323 by Peter Hull\nSIL Open Font License 1.1\n\n" +
+            "<color=#ffd966>Engine</color>\nMade with Unity\n\n" +
+            "<color=#ffd966>Privacy</color>\nThis game collects no personal data.\nYour progress is saved only on this device.",
+            28, TextAnchor.UpperCenter, soft, false);
+        if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 700f * s, col.width * 0.7f, 110f * s), "Back", new Color(0.6f, 0.45f, 1f)))
+        {
+            Sfx.Play(Sound.Select, 0.8f);
+            Haptics.Selection();
+            State = GameState.Settings;
+        }
+        DrawVersion();
+    }
+
+    void DrawVersion()
+    {
+        float s = UiScale;
+        Rect safe = Screen.safeArea;
+        UI.Text(new Rect(safe.xMin, Screen.height - safe.yMin - 50f * s, safe.width - 20f * s, 40f * s), $"v{Application.version}",
+            20, TextAnchor.UpperRight, new Color(1f, 1f, 1f, 0.4f), false);
     }
 
     void DrawGameOver()

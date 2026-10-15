@@ -23,7 +23,7 @@ public class Sfx : MonoBehaviour
 
     public static void Play(Sound s, float volume = 1f, float pitchJitter = 0.06f)
     {
-        if (instance == null) return;
+        if (instance == null || Settings.Volume <= 0f) return;
         instance.PlayInternal(s, volume, pitchJitter);
     }
 
@@ -49,7 +49,7 @@ public class Sfx : MonoBehaviour
         var src = sources[next];
         next = (next + 1) % Voices;
         src.pitch = 1f + Random.Range(-jitter, jitter);
-        src.PlayOneShot(clips[s], volume * Tune.F("audio.volume", 1f));
+        src.PlayOneShot(clips[s], volume * Tune.F("audio.volume", 1f) * Settings.Volume);
     }
 
     static float MinGap(Sound s)

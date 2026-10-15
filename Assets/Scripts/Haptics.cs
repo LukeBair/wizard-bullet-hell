@@ -27,7 +27,7 @@ public static class Haptics
 
     public static void Tap(Impact style)
     {
-        if (Throttle(style == Impact.Light ? 0.08f : 0.02f)) return;
+        if (!Settings.Haptics || Throttle(style == Impact.Light ? 0.08f : 0.02f)) return;
 #if UNITY_IOS && !UNITY_EDITOR
         _HapticImpact((int)style);
 #elif UNITY_ANDROID && !UNITY_EDITOR
@@ -37,6 +37,7 @@ public static class Haptics
 
     public static void Notification(Notify type)
     {
+        if (!Settings.Haptics) return;
 #if UNITY_IOS && !UNITY_EDITOR
         _HapticNotify((int)type);
 #elif UNITY_ANDROID && !UNITY_EDITOR
@@ -46,6 +47,7 @@ public static class Haptics
 
     public static void Selection()
     {
+        if (!Settings.Haptics) return;
 #if UNITY_IOS && !UNITY_EDITOR
         _HapticSelection();
 #endif
