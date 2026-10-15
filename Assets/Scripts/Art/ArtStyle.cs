@@ -32,6 +32,8 @@ public static class ArtStyle
     {
         get
         {
+            // Store builds ship Dusk only; the picker comes back with ui.artStylePicker in the tuner.
+            if (!Picker) return ArtStyleId.Dusk;
             if (current == null) current = (ArtStyleId)Mathf.Clamp(PlayerPrefs.GetInt(Key, 0), 0, All.Length - 1);
             return current.Value;
         }
@@ -42,6 +44,8 @@ public static class ArtStyle
             PlayerPrefs.Save();
         }
     }
+
+    public static bool Picker => Tune.B("ui.artStylePicker", false);
 
     public static string Label(ArtStyleId s) => s == ArtStyleId.Crt ? "CRT" : s.ToString();
 
