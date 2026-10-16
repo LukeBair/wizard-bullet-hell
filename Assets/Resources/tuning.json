@@ -16,7 +16,31 @@
     "music": {
       "volume": 0.6,
       "fade": 1.5,
-      "_about": "Zone music. volume multiplies audio.volume and the player's Settings volume; fade = crossfade seconds on zone changes and when a run starts or ends."
+      "_about": "Zone music. volume multiplies audio.volume and the player's Settings volume; fade = crossfade seconds on zone changes and when a run starts or ends.",
+      "crush": 0,
+      "crushMix": 1,
+      "_crush": "Bitcrusher on the music only: 0 = clean, 1 = very chunky (16 -> 4 bits, sample rate down to 1/16). Try 0.3-0.6 for a retro feel.",
+      "_crushMix": "How much crushed sound to blend in (0 = none, 1 = all).",
+      "tracks": {
+        "_about": "File name in Assets/Resources/Music without the extension; empty = none. Zones without a track play their chiptune takes; boss fights without one use boss.any, then the zone track.",
+        "title": "",
+        "grimoire": "",
+        "victory": "",
+        "gameOver": "",
+        "zone": {
+          "WhisperingForest": "",
+          "ArcaneAcademy": "",
+          "CrystalCaves": "",
+          "WitchsHollow": ""
+        },
+        "boss": {
+          "ElderTreant": "",
+          "HeadmasterVexley": "music_boss_vexley_fate_and_fortune",
+          "CrystalGolem": "",
+          "TheHedgeWitch": "",
+          "any": ""
+        }
+      }
     },
     "lowHealthAt": 0.25,
     "_lowHealthAt": "Health fraction below which the low-health warning plays (once per drop below it).",

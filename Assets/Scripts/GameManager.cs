@@ -780,13 +780,18 @@ public class GameManager : MonoBehaviour
         var col = UI.Column(0.08f, 0.88f);
         UI.Text(new Rect(col.x, col.y, col.width, 60f * s), "Credits", 52, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
         var soft = new Color(1f, 1f, 1f, 0.8f);
-        UI.Text(new Rect(col.x, col.y + 110f * s, col.width, 560f * s),
+        var music = new System.Text.StringBuilder("<color=#ffd966>Music</color>\n");
+        foreach (var title in Music.Buckley.Values)
+            music.Append($"<size={Mathf.RoundToInt(20 * s)}>'{title}' by Scott Buckley, released under CC-BY 4.0.\nwww.scottbuckley.com.au</size>\n");
+        music.Append("Zone music made with ACE-Step\n\n");
+        UI.Text(new Rect(col.x, col.y + 90f * s, col.width, 760f * s),
             $"<color=#ffd966>{Application.productName}</color>\nMade by {Application.companyName}\n\n" +
+            music +
             "<color=#ffd966>Font</color>\nVT323 by Peter Hull\nSIL Open Font License 1.1\n\n" +
             "<color=#ffd966>Engine</color>\nMade with Unity\n\n" +
             "<color=#ffd966>Privacy</color>\nThis game collects no personal data.\nYour progress is saved only on this device.",
-            28, TextAnchor.UpperCenter, soft, false);
-        if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 700f * s, col.width * 0.7f, 110f * s), "Back", new Color(0.6f, 0.45f, 1f)))
+            26, TextAnchor.UpperCenter, soft, false);
+        if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 860f * s, col.width * 0.7f, 110f * s), "Back", new Color(0.6f, 0.45f, 1f)))
         {
             Sfx.Play("ui.button", Sound.Select, 0.8f);
             Haptics.Selection();
