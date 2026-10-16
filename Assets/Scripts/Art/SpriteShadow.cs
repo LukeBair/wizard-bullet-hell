@@ -18,7 +18,7 @@ public class SpriteShadow : MonoBehaviour
         var s = go.AddComponent<SpriteShadow>();
         s.src = source;
         s.live = live;
-        s.sr = SpriteFactory.Add(go, source.sprite, new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.32f)), -44);
+        s.sr = SpriteFactory.Add(go, source.sprite, new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), -44);
         s.Apply();
         if (!live) s.enabled = false;   // baked: placed once
         return s;
