@@ -56,7 +56,7 @@ public static class ArtStyle
         // player_sheet_<px> are the 3D-rendered wizard at a bigger frame size: same world size as the 48px sheet.
         if (style == "Dusk" && file.StartsWith("player_sheet_") && int.TryParse(file.Substring("player_sheet_".Length), out int px))
             return 20f * px / 48f;
-        // enemy3d_* sheets from the 3D pipeline are 8 frames wide (64px, or 128px for bosses): a frame covers
+        // enemy3d_* sheets from the 3D pipeline are 8 frames wide (64px, or 128px for big enemies): a frame covers
         // the same world size as a 48px PixelLab frame.
         if (style == "Dusk" && file.StartsWith("enemy3d_")) return 20f * (width / 8f) / 48f;
         switch (style)
@@ -128,11 +128,18 @@ public static class ArtStyle
 
     static bool Use3D(EnemyLook look) => Settings.Enemy3D && sheet3D.ContainsKey(look);
 
+    // The big enemies (Treant, Witch, Headmaster) ship 128px frames plus a _64 copy; the setting picks one.
+    static SpriteSheet Sheet3D(EnemyLook look)
+    {
+        string name = "enemy3d_" + sheet3D[look].name + "_sheet";
+        return (!Settings.Boss3DSharp ? SpriteSheet.Load(name + "_64") : null) ?? SpriteSheet.Load(name);
+    }
+
     public static SpriteSheet EnemySheet(EnemyLook look)
     {
         if (Use3D(look))
         {
-            var s = SpriteSheet.Load("enemy3d_" + sheet3D[look].name + "_sheet");
+            var s = Sheet3D(look);
             if (s != null) return s;
         }
         return sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet") : null;
@@ -140,7 +147,7 @@ public static class ArtStyle
 
     public static float EnemySheetScale(EnemyLook look, float radius)
     {
-        if (Use3D(look) && SpriteSheet.Load("enemy3d_" + sheet3D[look].name + "_sheet") != null) return radius / sheet3D[look].radius;
+        if (Use3D(look) && Sheet3D(look) != null) return radius / sheet3D[look].radius;
         return sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
     }
 

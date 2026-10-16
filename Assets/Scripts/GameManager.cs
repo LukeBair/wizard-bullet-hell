@@ -749,6 +749,13 @@ public class GameManager : MonoBehaviour
             if (SettingRow(new Rect(col.x, y, col.width, rowH), "3D enemies", Settings.Enemy3D))
                 Settings.Enemy3D = !Settings.Enemy3D;
             y += rowH + gap;
+            if (Settings.Enemy3D)
+            {
+                // On: big enemies use their 128px frames; off: the 64px copies.
+                if (SettingRow(new Rect(col.x, y, col.width, rowH), "Sharp 3D bosses", Settings.Boss3DSharp))
+                    Settings.Boss3DSharp = !Settings.Boss3DSharp;
+                y += rowH + gap;
+            }
         }
 
         // Tuner: pull the latest tuning.json (and save edits) from the Mac's tuner server.
