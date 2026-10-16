@@ -35,6 +35,7 @@ for name, off in (
     k.slider_min, k.slider_max = -1.0, 1.0
     k.data.foreach_set("co", (co + off).reshape(-1))
 keys = mesh.data.shape_keys.key_blocks
+FLOOR = float(co[:, 2].min())   # feet; models are 1.0 tall when upright, shorter when wide (the golem)
 
 # --- scene ---
 sc = bpy.context.scene
@@ -159,12 +160,11 @@ def pose(clip, i, n):
         rot("Shin.L", "X", 90 * e)
         rot("Shin.R", "X", 90 * e)
         arm.location.z = -0.18 * e
-        theta = 70.0 * f
+        theta = 55.0 * f
         arm.rotation_euler = (math.radians(theta), 0, 0)
-        P = Vector((0, -0.1, -0.5))
+        P = Vector((0, -0.1, FLOOR))
         arm.location = arm.location + (P - Matrix.Rotation(math.radians(theta), 3, "X") @ P)
-        down = 75 + 10 * e
-        fwd["L"] = fwd["R"] = -40 * f
+        down = 75
     elif clip == "walk":
         # he glides: no steps under the robe, just a sway, a bob and the hands trailing
         p = 2 * math.pi * i / n

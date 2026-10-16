@@ -124,6 +124,7 @@ public static class ArtStyle
         { EnemyLook.Mole, ("mole", 1.05f) },
         { EnemyLook.Treant, ("treant", 0.84f) },
         { EnemyLook.Witch, ("witch", 0.72f) },
+        { EnemyLook.Golem, ("golem", 0.66f) },
     };
 
     // Enemies that share a look but get their own 3D model, by enemy name.
