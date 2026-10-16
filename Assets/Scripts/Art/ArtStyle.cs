@@ -126,28 +126,38 @@ public static class ArtStyle
         { EnemyLook.Witch, ("witch", 0.72f) },
     };
 
-    static bool Use3D(EnemyLook look) => Settings.Enemy3D && sheet3D.ContainsKey(look);
-
-    // Every 3D enemy ships 64px and 128px frames (_64, _128); the Sharp 3D enemies setting picks one.
-    static SpriteSheet Sheet3D(EnemyLook look)
+    // Enemies that share a look but get their own 3D model, by enemy name.
+    static readonly Dictionary<string, (string name, float radius)> sheet3DByName = new Dictionary<string, (string, float)>
     {
-        string name = "enemy3d_" + sheet3D[look].name + "_sheet";
-        return SpriteSheet.Load(name + (Settings.Enemy3DSharp ? "_128" : "_64"));
+        { "Mother Slime", ("blob", 1.05f) },
+    };
+
+    static (string name, float radius)? Entry3D(EnemyLook look, string enemy)
+    {
+        if (!Settings.Enemy3D) return null;
+        if (enemy != null && sheet3DByName.TryGetValue(enemy, out var e)) return e;
+        return sheet3D.TryGetValue(look, out var l) ? l : ((string, float)?)null;
     }
 
-    public static SpriteSheet EnemySheet(EnemyLook look)
+    // Every 3D enemy ships 64px and 128px frames (_64, _128); the Sharp 3D enemies setting picks one.
+    static SpriteSheet Sheet3D(string name) =>
+        SpriteSheet.Load("enemy3d_" + name + "_sheet" + (Settings.Enemy3DSharp ? "_128" : "_64"));
+
+    public static SpriteSheet EnemySheet(EnemyLook look, string enemy = null)
     {
-        if (Use3D(look))
+        var e = Entry3D(look, enemy);
+        if (e != null)
         {
-            var s = Sheet3D(look);
+            var s = Sheet3D(e.Value.name);
             if (s != null) return s;
         }
         return sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet") : null;
     }
 
-    public static float EnemySheetScale(EnemyLook look, float radius)
+    public static float EnemySheetScale(EnemyLook look, float radius, string enemy = null)
     {
-        if (Use3D(look) && Sheet3D(look) != null) return radius / sheet3D[look].radius;
+        var e = Entry3D(look, enemy);
+        if (e != null && Sheet3D(e.Value.name) != null) return radius / e.Value.radius;
         return sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
     }
 

@@ -163,11 +163,11 @@ public class Enemy : MonoBehaviour
         SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, o - 2);
 
         var art = ArtStyle.Enemy(d.Look);
-        var sheet = ArtStyle.EnemySheet(d.Look);
+        var sheet = ArtStyle.EnemySheet(d.Look, d.Name);
         if (sheet?["walk"] != null)
         {
             bodyColor = Color.white;
-            body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius), o);
+            body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius, d.Name), o);
             EnemyAnimator.Attach(body, sheet);
         }
         else if (art != null)
