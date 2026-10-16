@@ -65,7 +65,11 @@ public class Arena : MonoBehaviour
                         var shroom = ArtStyle.Prop(PropFile("mushrooms", Random.Range(0, 6)));
                         if (shroom != null)
                         {
-                            SpriteFactory.Child(transform, "Mushrooms", shroom, Color.white, p, 1.1f / (shroom.rect.width / shroom.pixelsPerUnit), 0).spriteSortPoint = SpriteSortPoint.Pivot;
+                            float ms = 1.1f / (shroom.rect.width / shroom.pixelsPerUnit);
+                            SpriteFactory.Child(transform, "Mushrooms", shroom, Color.white, p, ms, 0).spriteSortPoint = SpriteSortPoint.Pivot;
+                            var shroomShadow = SpriteShadow.On ? ArtStyle.PropShadow(shroom.texture.name) : null;
+                            if (shroomShadow != null)
+                                SpriteFactory.Child(transform, "CastShadow", shroomShadow, new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), p, ms, -44);
                             Lighting.Point(transform, new Color(0.45f, 0.75f, 1f), 2.4f, 0.7f, p + new Vector2(0f, 0.4f));
                             break;
                         }
@@ -185,8 +189,16 @@ public class Arena : MonoBehaviour
         float scale = pick.width * r / (sprite.rect.width / sprite.pixelsPerUnit);
         var sr = SpriteFactory.Child(transform, "Prop", sprite, Color.white, basePos, scale, 0);   // depth-sorted at its base
         sr.spriteSortPoint = SpriteSortPoint.Pivot;
-        sr.flipX = Random.value < 0.5f;
-        SpriteShadow.Add(sr, false);   // baked once, cast away from the sun
+        // The shadow baked from the 3D model touches every root and stone; it only matches the unflipped
+        // render (and the default sun), so props that have one aren't mirrored.
+        var baked = SpriteShadow.On ? ArtStyle.PropShadow(sprite.texture.name) : null;
+        if (baked != null)
+            SpriteFactory.Child(transform, "CastShadow", baked, new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), basePos, scale, -44);
+        else
+        {
+            sr.flipX = Random.value < 0.5f;
+            SpriteShadow.Add(sr, false);
+        }
         if (solid) obstacles.Add(new Vector3(p.x, p.y, r * 0.7f));
         return true;
     }

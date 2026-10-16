@@ -1186,7 +1186,7 @@
     "ambientTint": 0.0,
     "vignette": 0.12,
     "sun": 0.85,
-    "sunAngle": 125.0,
+    "sunAngle": 160.0,
     "sunHeight": 0.8,
     "sunCool": 0.4,
     "shadows": true,

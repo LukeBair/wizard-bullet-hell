@@ -2,7 +2,10 @@
 the model turned to a different angle, with a matching normal map per variant.
 Usage: Blender -b -P render_prop.py -- model.glb out_dir name [variants=6] [spread=360] [res=256] [emit=0.6] [yaw=0]
 The variants are evenly spaced turns across `spread` degrees.
-Writes out_dir/<name>_<k>.png and <name>_<k>_n.png, trimmed to the prop with its base at the bottom."""
+Writes out_dir/<name>_<k>.png and <name>_<k>_n.png, and <name>_<k>_shadow.png: the shadow the model
+casts on the ground from the game's default sun (lighting.sunAngle 160, 40 degrees up), rendered
+in Cycles with the prop itself hidden from the camera, from the same camera so it lines up exactly.
+sun=<deg> and sunElev=<deg> change the sun."""
 import math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy
@@ -56,10 +59,68 @@ cam.location = Vector((0, -math.cos(tilt), math.sin(tilt))) * dim * 4
 cam.rotation_euler = (math.pi / 2 - tilt, 0, 0)
 normals = normal_pass.NormalPass(sc, [mesh])
 
+# --- shadow pass: a white ground plane under the prop, lit only by the game's sun ---
+SUN = math.radians(float(opt.get("sun", 160)))
+ELEV = math.radians(float(opt.get("sunElev", 40)))
+bpy.ops.mesh.primitive_plane_add(size=dim * 8)
+ground = bpy.context.active_object
+ground_mat = bpy.data.materials.new("ground")
+ground_mat.use_nodes = True
+ground_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 1, 1, 1)
+ground_mat.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 1.0
+ground.data.materials.append(ground_mat)
+ground.hide_render = True
+shadow_sun = bpy.data.objects.new("shadow_sun", bpy.data.lights.new("shadow_sun", "SUN"))
+shadow_sun.data.energy = 3.0
+shadow_sun.data.angle = math.radians(1.5)   # slightly soft edge
+sc.collection.objects.link(shadow_sun)
+toward = Vector((math.cos(SUN) * math.cos(ELEV), math.sin(SUN) * math.cos(ELEV), math.sin(ELEV)))   # from the ground to the sun
+shadow_sun.rotation_euler = (-toward).to_track_quat("-Z", "Y").to_euler()
+shadow_sun.hide_render = True
+
+
+# Colour pass lighting: a key light from the same direction as the game's sun, with shadows, over a
+# dim fill, so branches, roots and rock faces shade each other and the structure reads. The old soft
+# front light stays as a weak fill.
+key = bpy.data.objects.new("key", bpy.data.lights.new("key", "SUN"))
+key.data.energy = float(opt.get("key", 5))
+key.data.angle = math.radians(3)
+key.rotation_euler = shadow_sun.rotation_euler.copy()
+sc.collection.objects.link(key)
+sun.data.energy = float(opt.get("fill", 0.8))
+sc.world.node_tree.nodes["Background"].inputs[1].default_value = float(opt.get("ambient", 0.5))
+
+
+def render_shadow(path):
+    """Ground plane + sun only; the prop casts its shadow but isn't seen. Writes a greyscale-in-alpha PNG."""
+    engine, transparent, world = sc.render.engine, sc.render.film_transparent, sc.world
+    sc.render.engine = "CYCLES"
+    sc.cycles.samples = 24
+    sc.render.film_transparent = False
+    sc.world = None
+    ground.hide_render = shadow_sun.hide_render = False
+    sun.hide_render = True
+    key.hide_render = True
+    ground.location = (0, 0, lo.z - ctr.z + 0.001 * dim)
+    mesh.visible_camera = False
+    # twice the frame at twice the resolution: same pixels per unit and centre, room for the shadow
+    cam.data.ortho_scale *= 2
+    sc.render.resolution_x = sc.render.resolution_y = RES * 2
+    sc.render.filepath = path
+    bpy.ops.render.render(write_still=True)
+    mesh.visible_camera = True
+    cam.data.ortho_scale /= 2
+    sc.render.resolution_x = sc.render.resolution_y = RES
+    ground.hide_render = shadow_sun.hide_render = True
+    sun.hide_render = False
+    key.hide_render = False
+    sc.render.engine, sc.render.film_transparent, sc.world = engine, transparent, world
+
 for k in range(N):
     turn = math.radians(YAW + k * SPREAD / max(N, 1))
     mesh.matrix_world = Matrix.Rotation(turn, 4, "Z") @ Matrix.Translation(-ctr) @ base
     sc.render.filepath = os.path.join(out, f"{name}_{k}.png")
     bpy.ops.render.render(write_still=True)
     normals.render(os.path.join(out, f"{name}_{k}_n.png"))
+    render_shadow(os.path.join(out, f"{name}_{k}_shadow.png"))
 print("[prop] done", name, N)

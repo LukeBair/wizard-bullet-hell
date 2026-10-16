@@ -195,6 +195,38 @@ public static class ArtStyle
         return props[file] = s;
     }
 
+    // A prop's baked shadow (render_prop.py casts it from the 3D model onto a ground plane): <prop>_shadow,
+    // pivoted (Resources/Art/Dusk/prop_shadows.json) so placing it where the prop stands lines it up.
+    static Dictionary<string, Vector2> shadowPivots;
+    public static Sprite PropShadow(string file)
+    {
+        string key = file + "_shadow";
+        if (props.TryGetValue(key, out var s)) return s;
+        if (shadowPivots == null)
+        {
+            shadowPivots = new Dictionary<string, Vector2>();
+            var json = Resources.Load<TextAsset>("Art/Dusk/prop_shadows");
+            if (json != null)
+                foreach (var line in json.text.Split('\n'))
+                {
+                    // "prop_x_0_hi_shadow": [0.31, 0.62],
+                    var parts = line.Split('"');
+                    if (parts.Length < 3) continue;
+                    var nums = parts[2].Trim(' ', ':', '[', ']', ',').Split(',');
+                    if (nums.Length == 2 && float.TryParse(nums[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x)
+                        && float.TryParse(nums[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y))
+                        shadowPivots[parts[1]] = new Vector2(x, y);
+                }
+        }
+        var tex = Resources.Load<Texture2D>("Art/Dusk/" + key);
+        if (tex != null && shadowPivots.TryGetValue(key, out var pivot))
+        {
+            tex.filterMode = FilterMode.Point;
+            s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), pivot, 20f);
+        }
+        return props[key] = s;
+    }
+
     public static string ObstacleSprite(ObstacleStyle style) =>
         style == ObstacleStyle.Pillar ? "obstacle_pillar" : style == ObstacleStyle.Rock ? "obstacle_rock" : "obstacle_tree";
 

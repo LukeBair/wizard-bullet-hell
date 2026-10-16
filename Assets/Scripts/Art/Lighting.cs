@@ -54,7 +54,7 @@ public static class Lighting
     {
         get
         {
-            float a = Tune.F("lighting.sunAngle", 125f) * Mathf.Deg2Rad;
+            float a = Tune.F("lighting.sunAngle", 160f) * Mathf.Deg2Rad;
             return new Vector2(Mathf.Cos(a), Mathf.Sin(a));
         }
     }
