@@ -23,20 +23,20 @@
       "_crushMix": "How much crushed sound to blend in (0 = none, 1 = all).",
       "tracks": {
         "_about": "File name in Assets/Resources/Music without the extension; empty = none. Zones without a track play their chiptune takes; boss fights without one use boss.any, then the zone track.",
-        "title": "",
+        "title": "music_title_world_of_magic",
         "grimoire": "",
         "victory": "",
         "gameOver": "",
         "zone": {
           "WhisperingForest": "",
           "ArcaneAcademy": "",
-          "CrystalCaves": "",
+          "CrystalCaves": "music_zone_caves_shadows_and_dust",
           "WitchsHollow": ""
         },
         "boss": {
-          "ElderTreant": "",
+          "ElderTreant": "music_boss_treant_primal_carnage",
           "HeadmasterVexley": "music_boss_vexley_fate_and_fortune",
-          "CrystalGolem": "",
+          "CrystalGolem": "music_boss_golem_juggernaut",
           "TheHedgeWitch": "",
           "any": ""
         }
