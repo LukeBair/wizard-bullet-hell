@@ -3,7 +3,7 @@ Reads the logs that `python generate.py ... > x.log 2>&1` writes and shows each 
 and an overall estimate. Images waiting in enemies/inputs (trellis_queue.sh) show as queued. Open a card
 to orbit the GLB in 3D and play the sprite sheets made from it (enemies/out/enemy_<name>_sheet*.json).
 Usage: python trellis_tracker.py [log_dir ...] [--port 8765]
-Default log dirs: ~/Code/trellis-mac and ~/Code/trellis-mac/enemies (any *.log that TRELLIS wrote)."""
+Default log dirs: ~/Code/trellis-mac, its enemies/ and props/ (any *.log that TRELLIS wrote)."""
 import glob, http.server, json, os, re, sys, time, urllib.parse
 
 args = sys.argv[1:]
@@ -11,7 +11,7 @@ port = 8765
 if "--port" in args:
     i = args.index("--port"); port = int(args[i + 1]); del args[i:i + 2]
 home = os.path.expanduser("~/Code/trellis-mac")
-DIRS = [os.path.abspath(os.path.expanduser(d)) for d in args] or [home, os.path.join(home, "enemies")]
+DIRS = [os.path.abspath(os.path.expanduser(d)) for d in args] or [home, os.path.join(home, "enemies"), os.path.join(home, "props")]
 
 # Stages in log order with their rough share of the whole run (from an M4 Pro, 1024_cascade).
 STAGES = [
@@ -29,7 +29,7 @@ TQDM = re.compile(r"(Loading weights|Sampling sparse structure|Sampling shape SL
 
 def parse(path):
     raw = open(path, errors="replace").read()
-    queued_input = os.path.join(INPUTS, os.path.basename(path)[:-4] + ".png")
+    queued_input = os.path.join(os.path.dirname(path), "inputs", os.path.basename(path)[:-4] + ".png")
     if "Loading pipeline" not in raw[:4000] and not os.path.isfile(queued_input):
         return None
     lines = raw.replace("\r", "\n").split("\n")
@@ -109,7 +109,7 @@ def parse(path):
 
 
 SHEETS = os.path.join(home, "enemies", "out")
-INPUTS = os.path.join(home, "enemies", "inputs")
+INPUT_DIRS = [os.path.join(home, "enemies", "inputs"), os.path.join(home, "props", "inputs")]
 
 
 def sheets_for(name):
@@ -140,9 +140,9 @@ def runs():
             if r:
                 out.append(r)
     names = {r["name"] for r in out}
-    for img in sorted(glob.glob(os.path.join(INPUTS, "*.png"))):         # waiting in the queue
+    for img in sorted(p for d in INPUT_DIRS for p in glob.glob(os.path.join(d, "*.png"))):   # waiting in a queue
         n = os.path.basename(img)[:-4]
-        if n not in names and not os.path.isfile(os.path.join(home, "enemies", n + ".glb")):
+        if n not in names and not os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(img)), n + ".glb")):
             out.append({"name": n, "path": img, "input": img, "state": "queued", "stage": "queued",
                         "stage_label": "Queued", "fraction": 0, "started": 0, "elapsed": None})
             names.add(n)
