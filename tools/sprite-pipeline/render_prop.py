@@ -62,7 +62,7 @@ normals = normal_pass.NormalPass(sc, [mesh])
 # --- shadow pass: a white ground plane under the prop, lit only by the game's sun ---
 SUN = math.radians(float(opt.get("sun", 160)))
 ELEV = math.radians(float(opt.get("sunElev", 40)))
-bpy.ops.mesh.primitive_plane_add(size=dim * 8)
+bpy.ops.mesh.primitive_plane_add(size=dim * 60)   # the tilted camera sees a long way back across the ground
 ground = bpy.context.active_object
 ground_mat = bpy.data.materials.new("ground")
 ground_mat.use_nodes = True
@@ -96,7 +96,7 @@ def render_shadow(path):
     engine, transparent, world = sc.render.engine, sc.render.film_transparent, sc.world
     sc.render.engine = "CYCLES"
     sc.cycles.samples = 24
-    sc.render.film_transparent = False
+    sc.render.film_transparent = True   # anything past the plane comes out transparent, not "in shadow"
     sc.world = None
     ground.hide_render = shadow_sun.hide_render = False
     sun.hide_render = True

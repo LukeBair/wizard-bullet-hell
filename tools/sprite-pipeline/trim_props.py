@@ -22,8 +22,11 @@ for name, h in heights.items():
         sh_path = col[:-4] + "_shadow.png"
         shadow = None
         if os.path.isfile(sh_path):
-            L = np.asarray(Image.open(sh_path).convert("L"), np.float32)
-            dark = np.clip((1 - L / max(L.max(), 1)) * 1.4, 0, 1)        # 1 = full shadow
+            rgba = Image.open(sh_path).convert("RGBA")
+            L = np.asarray(rgba.convert("L"), np.float32)
+            ground = np.asarray(rgba.getchannel("A"), np.float32) / 255   # 0 where the render saw past the plane
+            lit = max(float(np.median(L[ground > 0.5])), 1.0)              # the plain sunlit ground
+            dark = np.clip((1 - L / lit - 0.08) * 1.5, 0, 1) * ground      # 1 = full shadow; ignores render noise
             shadow = Image.fromarray((dark * 255).astype(np.uint8))
             half = Image.open(col).width // 2
             px, py = (bb[0] + bb[2]) / 2 + half, bb[3] - PIVOT_Y * (bb[3] - bb[1]) + half
