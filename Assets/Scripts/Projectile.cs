@@ -107,13 +107,14 @@ public class Projectile : MonoBehaviour
     }
 
     bool skin;
-    float skinScale;
+    float skinScale, skinPhase;
 
     // Draws the projectile as a painted effect (SpellVfx) instead of the plain orb: the sprite points
     // its head along the flight (head drawn on the left of the image), `length` world units long.
     public void SetSkin(Sprite sprite, float length)
     {
         skin = true;
+        skinPhase = Random.value * 10f;
         body.sprite = sprite;
         body.color = Color.white;
         glow.enabled = false;
@@ -129,7 +130,7 @@ public class Projectile : MonoBehaviour
         float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f;
         body.transform.localRotation = Quaternion.Euler(0f, 0f, a);
         // a little flicker so the energy feels alive
-        float pulse = 1f + 0.08f * Mathf.Sin((age + GetInstanceID()) * 38f);
+        float pulse = 1f + 0.08f * Mathf.Sin((age + skinPhase) * 38f);
         body.transform.localScale = new Vector3(skinScale * pulse, skinScale * (2f - pulse), 1f);
     }
 
