@@ -25,9 +25,10 @@ public class Arena : MonoBehaviour
     void Build()
     {
         var b = Biome;
-        SpriteFactory.Child(transform, "Ground", SpriteFactory.Square, b.Ground, Vector2.zero, HalfSize * 2f + 30f, -100);
+        bool painted = BuildGround();
+        if (!painted) SpriteFactory.Child(transform, "Ground", SpriteFactory.Square, b.Ground, Vector2.zero, HalfSize * 2f + 30f, -100);
 
-        for (int i = 0; i < 500; i++)
+        for (int i = 0; i < (painted ? 0 : 500); i++)
         {
             var p = new Vector2(Random.Range(-HalfSize, HalfSize), Random.Range(-HalfSize, HalfSize));
             SpriteFactory.Child(transform, "Speck", ArtStyle.Round, b.GroundSpeck, p, Random.Range(0.08f, 0.35f), -99);
@@ -58,6 +59,17 @@ public class Arena : MonoBehaviour
                     SpriteFactory.Child(transform, "Flame", SpriteFactory.Circle, c, p + new Vector2(0f, 0.17f), 0.1f, -93);
                     break;
                 default:
+                    if (UseForestProps && i % 6 == 0)
+                    {
+                        // glowing mushroom logs instead of every sixth flower
+                        var shroom = ArtStyle.Prop($"prop_mushrooms_{Random.Range(0, 3)}");
+                        if (shroom != null)
+                        {
+                            SpriteFactory.Child(transform, "Mushrooms", shroom, Color.white, p, 1.1f / (shroom.rect.width / shroom.pixelsPerUnit), -41).flipX = Random.value < 0.5f;
+                            Lighting.Point(transform, new Color(0.45f, 0.75f, 1f), 2.4f, 0.7f, p + new Vector2(0f, 0.4f));
+                            break;
+                        }
+                    }
                     SpriteFactory.Child(transform, "Flower", ArtStyle.Round, c, p, Random.Range(0.08f, 0.14f), -98);
                     break;
             }
@@ -87,7 +99,7 @@ public class Arena : MonoBehaviour
         if (Lighting.Active)
         {
             foreach (var sr in GetComponentsInChildren<SpriteRenderer>())
-                if (!sr.name.Contains("Glow") && sr.name != "Crystal" && sr.name != "Flame" && sr.name != "Candle")
+                if (!sr.name.Contains("Glow") && sr.name != "Crystal" && sr.name != "Flame" && sr.name != "Candle" && sr.name != "Mushrooms")
                     Lighting.MakeLit(sr);
             Lighting.Ambient(transform, b.ObstacleColor);
         }
@@ -110,9 +122,73 @@ public class Arena : MonoBehaviour
         inner.transform.localScale = new Vector3(3.2f, HalfSize * 2f, 1f);
     }
 
+    // Painted ground (tools/sprite-pipeline/ground_prep.py): a seamless base tile under soft-edged patches
+    // of every ground texture, each at a random scale, rotation and strength, so no two runs and no two
+    // spots on the floor repeat. Only with the 3D Character art; false if the zone has no textures.
+    bool BuildGround()
+    {
+        if (!Settings.Enemy3D || ArtStyle.Current != ArtStyleId.Dusk) return false;
+        string zone = Biome.Name == "Whispering Forest" ? "forest" : null;
+        var baseTex = zone == null ? null : Resources.Load<Texture2D>($"Art/Dusk/ground_{zone}_base");
+        if (baseTex == null) return false;
+        float ppu = Tune.F("ground.pixelsPerUnit", 20f);
+        baseTex.wrapMode = TextureWrapMode.Repeat;
+        var tile = Sprite.Create(baseTex, new Rect(0, 0, baseTex.width, baseTex.height), new Vector2(0.5f, 0.5f), ppu, 0, SpriteMeshType.FullRect);
+        var ground = SpriteFactory.Child(transform, "Ground", tile, Color.white, Vector2.zero, 1f, -100);
+        ground.drawMode = SpriteDrawMode.Tiled;
+        ground.size = Vector2.one * (HalfSize * 2f + 30f);
+
+        var patches = new System.Collections.Generic.List<Sprite>();
+        for (int i = 0; i < 8; i++)
+            for (int v = 0; v < 2; v++)
+            {
+                var t = Resources.Load<Texture2D>($"Art/Dusk/ground_{zone}_patch_{i}_{v}");
+                if (t != null) patches.Add(Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), ppu));
+            }
+        if (patches.Count == 0) return true;
+        float extent = HalfSize + 12f, size = baseTex.width / ppu;
+        int count = Mathf.RoundToInt(extent * extent * 4f / (size * size) * Tune.F("ground.patchDensity", 2.2f));
+        for (int i = 0; i < count; i++)
+        {
+            var p = new Vector2(Random.Range(-extent, extent), Random.Range(-extent, extent));
+            var sr = SpriteFactory.Child(transform, "GroundPatch", patches[Random.Range(0, patches.Count)], new Color(1f, 1f, 1f, Random.Range(0.55f, 1f)), p, Random.Range(0.7f, 1.7f), -99);
+            sr.transform.localRotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
+            sr.flipX = Random.value < 0.5f;
+        }
+        return true;
+    }
+
+    // Whispering Forest props from the 3D pipeline: big obstacles are trees, smaller ones boulders and
+    // shrine stones. The sprite's base sits on the collision circle; widths are in units of r.
+    static readonly (string name, int variants, float width, float minR)[] ForestProps =
+    {
+        ("tree_oak", 3, 3.2f, 1.0f), ("tree_gnarled", 3, 2.8f, 1.0f),
+        ("boulders_a", 3, 2.3f, 0f), ("boulders_b", 3, 2.6f, 0f), ("boulders_c", 3, 2.3f, 0f),
+        ("shrine_a", 3, 1.4f, 0f), ("shrine_b", 3, 1.5f, 0f),
+    };
+
+    bool UseForestProps => Biome.Name == "Whispering Forest" && ArtStyle.Prop("prop_tree_oak_0") != null;
+
+    bool AddProp(Vector2 p, float r, bool solid)
+    {
+        var options = System.Array.FindAll(ForestProps, f => solid ? (r >= 1.0f) == (f.minR >= 1.0f) : f.minR >= 1.0f);
+        var pick = options[Random.Range(0, options.Length)];
+        var sprite = ArtStyle.Prop($"prop_{pick.name}_{Random.Range(0, pick.variants)}");
+        if (sprite == null) return false;
+        var basePos = p - new Vector2(0f, r * 0.5f);
+        SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), basePos + new Vector2(0.15f, 0.05f), r * 2f, -45)
+            .transform.localScale = new Vector3(r * 2.2f, r * 1.1f, 1f);
+        float scale = pick.width * r / (sprite.rect.width / sprite.pixelsPerUnit);
+        var sr = SpriteFactory.Child(transform, "Prop", sprite, Color.white, basePos, scale, -40);
+        sr.flipX = Random.value < 0.5f;
+        if (solid) obstacles.Add(new Vector3(p.x, p.y, r * 0.7f));
+        return true;
+    }
+
     void AddTree(Vector2 p, float r, bool solid)
     {
         var b = Biome;
+        if (UseForestProps && AddProp(p, r, solid)) return;
         var art = ArtStyle.Get(ArtStyle.ObstacleSprite(b.Style));
         if (art != null)
         {

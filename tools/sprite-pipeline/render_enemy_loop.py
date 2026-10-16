@@ -20,8 +20,11 @@ Common: frames=<n> (8), az=<camera azimuth deg, 0 = model front> (-90 = side), t
         yaw=<deg> (0; turns the model first, for TRELLIS models that don't face -Y),
         dirs=8 (render all eight facings into out_dir/<s|se|e|ne|n|nw|w|sw>/; az is then ignored),
         res=<px> (256), bob=<fraction of height> (0.02), light=<sun strength> (4),
+        (SPRITE_NORMALS=1 also writes normal maps to <out_dir>_n with the same layout.)
         emit=<strength> (0; feeds the base colour into emission, for ghosts and to lift dark models)."""
 import math, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import normal_pass
 import bpy
 import numpy as np
 from mathutils import Vector
@@ -163,6 +166,7 @@ def aim(az):
     cam.rotation_euler = (math.pi / 2 - TILT, 0, az)
 
 bob_amp = float(opt.get("bob", 0.02)) * height
+NORMALS = normal_pass.NormalPass(sc, [mesh]) if os.environ.get("SPRITE_NORMALS") == "1" else None
 for k in range(N):
     t = 2 * math.pi * k / N
     p = co.copy()
@@ -198,4 +202,6 @@ for k in range(N):
         aim(az)
         sc.render.filepath = os.path.join(out, name, f"{k:02d}.png")
         bpy.ops.render.render(write_still=True)
+        if NORMALS:
+            NORMALS.render(os.path.join(out.rstrip("/") + "_n", name, f"{k:02d}.png"))
 print("[enemy] rendered", N, "frames x", len(views), "facings", mode, "->", out)

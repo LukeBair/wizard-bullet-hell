@@ -7,6 +7,7 @@ together.
 frames_dir can also hold one subfolder per clip (idle, walk, cast, death...), each with facing folders, as
 render_boss_clips.py writes; every clip/facing becomes a <clip>_<facing> row. frame_ms is then either one
 number or per-clip timings like walk=100,cast=70,death=90.
+colors 0 skips the palette reduction (normal-map sheets).
 Usage: python make_enemy_sheet.py frames_dir out_dir name px colors frame_ms [clip]"""
 import glob, json, os, sys
 from PIL import Image
@@ -50,7 +51,8 @@ for im in ims:
 mosaic = Image.new("RGB", (px * len(frames), px), (0, 0, 0))
 for i, (im, a) in enumerate(frames):
     mosaic.paste(im.convert("RGB"), (i * px, 0), a)
-pal = mosaic.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB")
+# colors 0 = keep exact colours (normal maps must not be palette-reduced)
+pal = mosaic.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB") if colors else mosaic
 sheet = Image.new("RGBA", (px * n, px * len(rows)), (0, 0, 0, 0))
 pos = lambda i: (slots[i][1] * px, slots[i][0] * px)
 for i, (im, a) in enumerate(frames):

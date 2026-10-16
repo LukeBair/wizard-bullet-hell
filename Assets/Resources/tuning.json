@@ -1173,5 +1173,15 @@
       "BulletDamage": 14
     },
     "_MaxAlive": "Any medium can set MaxAlive: the spawner won't pick it while that many are alive (0 = no cap)."
+  },
+  "lighting": {
+    "enabled": true,
+    "bloom": true,
+    "normalMaps": true,
+    "ambient": 0.9,
+    "wizardRadius": 6.0,
+    "wizardIntensity": 1.0,
+    "spellRadius": 2.2,
+    "spellIntensity": 0.9
   }
 }

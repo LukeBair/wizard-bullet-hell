@@ -174,6 +174,27 @@ public static class ArtStyle
         return sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
     }
 
+    // 3D-rendered props (tools/sprite-pipeline/render_prop.py): Resources/Art/Dusk/prop_<name>_<k> with a
+    // matching _n normal map, pivoted at the base. Null unless the Character art setting is on a 3D option.
+    static readonly Dictionary<string, Sprite> props = new Dictionary<string, Sprite>();
+    public static Sprite Prop(string file)
+    {
+        if (!Settings.Enemy3D || Current != ArtStyleId.Dusk) return null;
+        if (props.TryGetValue(file, out var s)) return s;
+        var tex = Resources.Load<Texture2D>("Art/Dusk/" + file);
+        var normals = Resources.Load<Texture2D>("Art/Dusk/" + file + "_n");
+        if (tex != null)
+        {
+            tex.filterMode = FilterMode.Point;
+            var rect = new Rect(0, 0, tex.width, tex.height);
+            var pivot = new Vector2(0.5f, 0.08f);
+            s = normals == null ? Sprite.Create(tex, rect, pivot, 20f)
+                : Sprite.Create(tex, rect, pivot, 20f, 0, SpriteMeshType.FullRect, Vector4.zero, false,
+                    new[] { new SecondarySpriteTexture { name = "_NormalMap", texture = normals } });
+        }
+        return props[file] = s;
+    }
+
     public static string ObstacleSprite(ObstacleStyle style) =>
         style == ObstacleStyle.Pillar ? "obstacle_pillar" : style == ObstacleStyle.Rock ? "obstacle_rock" : "obstacle_tree";
 

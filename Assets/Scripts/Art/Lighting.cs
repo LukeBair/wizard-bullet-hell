@@ -1,3 +1,4 @@
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -52,7 +53,7 @@ public static class Lighting
         l.transform.SetParent(parent, false);
         l.lightType = Light2D.LightType.Global;
         l.color = Color.Lerp(Color.white, tint, 0.35f);
-        l.intensity = Tune.F("lighting.ambient", 0.55f);
+        l.intensity = Tune.F("lighting.ambient", 0.9f);
         return l;
     }
 
@@ -68,7 +69,20 @@ public static class Lighting
         l.intensity = intensity;
         l.falloffIntensity = 0.7f;
         SetRadius(l, radius);
+        UseNormalMaps(l);
         return l;
+    }
+
+    // Light2D only exposes normal-map quality to the inspector; turn it on for lights made in code so
+    // sprites with a _NormalMap (the 3D-rendered sheets) are shaded by direction.
+    static FieldInfo quality, useNormals;
+    static void UseNormalMaps(Light2D l)
+    {
+        if (!Tune.B("lighting.normalMaps", true)) return;
+        quality ??= typeof(Light2D).GetField("m_NormalMapQuality", BindingFlags.NonPublic | BindingFlags.Instance);
+        useNormals ??= typeof(Light2D).GetField("m_UseNormalMap", BindingFlags.NonPublic | BindingFlags.Instance);
+        quality?.SetValue(l, Light2D.NormalMapQuality.Fast);
+        useNormals?.SetValue(l, true);
     }
 
     public static void SetRadius(Light2D l, float radius)

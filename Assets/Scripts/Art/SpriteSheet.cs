@@ -35,6 +35,9 @@ public class SpriteSheet
 
         var tex = Resources.Load<Texture2D>(path);
         var json = Resources.Load<TextAsset>(path);
+        // <name>_n: a matching normal map (3D-rendered sheets), for the 2D lights.
+        var normals = Resources.Load<Texture2D>(path + "_n");
+        var secondary = normals != null ? new[] { new SecondarySpriteTexture { name = "_NormalMap", texture = normals } } : null;
         if (tex != null && json != null)
         {
             tex.filterMode = ArtStyle.Current == ArtStyleId.Vector ? FilterMode.Bilinear : FilterMode.Point;
@@ -50,7 +53,9 @@ public class SpriteSheet
                     var f = data.frames[tag.from + i];
                     // Aseprite counts y from the top, Unity from the bottom.
                     var rect = new UnityEngine.Rect(f.frame.x, tex.height - f.frame.y - f.frame.h, f.frame.w, f.frame.h);
-                    clip.Frames[i] = Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), ppu);
+                    clip.Frames[i] = secondary == null
+                        ? Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), ppu)
+                        : Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), ppu, 0, SpriteMeshType.FullRect, Vector4.zero, false, secondary);
                     clip.Durations[i] = f.duration / 1000f;
                     clip.Length += clip.Durations[i];
                 }

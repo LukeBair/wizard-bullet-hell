@@ -1103,5 +1103,15 @@
       "BulletSpeed": 3,
       "BulletDamage": 14
     }
+  },
+  "lighting": {
+    "enabled": true,
+    "bloom": true,
+    "normalMaps": true,
+    "ambient": 0.9,
+    "wizardRadius": 6.0,
+    "wizardIntensity": 1.0,
+    "spellRadius": 2.2,
+    "spellIntensity": 0.9
   }
 }

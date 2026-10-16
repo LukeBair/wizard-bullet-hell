@@ -9,7 +9,7 @@ class ArtImport : AssetPostprocessor
     const string Root = "Assets/Resources/Art/";
 
     // Bump when these settings change, so Unity reimports the art with them.
-    public override uint GetVersion() => 1;
+    public override uint GetVersion() => 2;
 
     void OnPreprocessTexture()
     {
@@ -18,6 +18,18 @@ class ArtImport : AssetPostprocessor
         string file = Path.GetFileNameWithoutExtension(assetPath);
         var ti = (TextureImporter)assetImporter;
         ti.GetSourceTextureWidthAndHeight(out int width, out _);
+
+        // <sheet>_n.png: a normal map for the 2D lights. Linear data, never compressed or filtered.
+        if (file.EndsWith("_n"))
+        {
+            ti.textureType = TextureImporterType.Default;
+            ti.sRGBTexture = false;
+            ti.mipmapEnabled = false;
+            ti.textureCompression = TextureImporterCompression.Uncompressed;
+            ti.wrapMode = TextureWrapMode.Clamp;
+            ti.filterMode = FilterMode.Point;
+            return;
+        }
 
         ti.textureType = TextureImporterType.Sprite;
         ti.spriteImportMode = SpriteImportMode.Single;

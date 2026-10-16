@@ -1,9 +1,12 @@
 """Pose a rigged boss (rig_humanoid.py) through idle, walk, two-handed cast and death in all eight facings.
 Usage: Blender -b rig/<name>.blend -P render_boss_clips.py -- out_dir mesh_name [res] [emit] [style] [rest_down]
+Set SPRITE_NORMALS=1 to also write normal maps to <out_dir>_n/<clip>/<facing>/NN.png.
 style: glide (robed, no steps: the Headmaster), stride (a caster who walks on visible legs) or
 brute (heavy stomping walk, overhead two-fist slam for the cast, falls forward on death).
 Writes out_dir/<clip>/<facing>/NN.png, which make_enemy_sheet.py packs into <clip>_<facing> clips."""
 import math, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import normal_pass
 import bpy
 import numpy as np
 from mathutils import Matrix, Vector
@@ -225,8 +228,11 @@ def shoot(clip, facing, i):
     cam.rotation_euler = (math.pi / 2 - TILT, 0, t)
     sc.render.filepath = os.path.join(out_dir, clip, facing, f"{i:02d}.png")
     bpy.ops.render.render(write_still=True)
+    if NORMALS:
+        NORMALS.render(os.path.join(out_dir.rstrip("/") + "_n", clip, facing, f"{i:02d}.png"))
 
 
+NORMALS = normal_pass.NormalPass(sc, [mesh]) if os.environ.get("SPRITE_NORMALS") == "1" else None
 CLIPS = [("idle", 4), ("walk", 8), ("cast", 8), ("death", 10)]
 bpy.context.view_layer.objects.active = arm
 bpy.ops.object.mode_set(mode="POSE")

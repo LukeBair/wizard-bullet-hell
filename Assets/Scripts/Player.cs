@@ -96,7 +96,7 @@ public class Player : MonoBehaviour
         // The wizard's sprite takes light, and he carries a soft lantern so he's never lost in the dark.
         foreach (var sr in visual.GetComponentsInChildren<SpriteRenderer>())
             if (sr.name != "Aura" && sr.name != "Shadow") Lighting.MakeLit(sr);
-        Lighting.Point(visual, new Color(1f, 0.85f, 0.65f), Tune.F("lighting.wizardRadius", 5f), Tune.F("lighting.wizardIntensity", 0.75f));
+        Lighting.Point(visual, new Color(1f, 0.85f, 0.65f), Tune.F("lighting.wizardRadius", 6f), Tune.F("lighting.wizardIntensity", 1f));
         hitbox = SpriteFactory.Child(visual, "Hitbox", ArtStyle.Round, new Color(1f, 1f, 1f, 0f), Vector2.zero, HitRadius * 2f, 55);
         renderers = GetComponentsInChildren<SpriteRenderer>();
         baseAlpha = new float[renderers.Length];
