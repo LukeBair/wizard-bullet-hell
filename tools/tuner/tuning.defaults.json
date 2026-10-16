@@ -12,7 +12,12 @@
     "_about": "Forest Wisps and Mirror Ward share evenly spaced rings around the wizard, inner ring first to whichever was learned first. radius = inner ring, spacing = gap between rings, in world units."
   },
   "audio": {
-    "volume": 1.0
+    "volume": 1.0,
+    "music": {
+      "volume": 0.6,
+      "fade": 1.5,
+      "_about": "Zone music. volume multiplies audio.volume and the player's Settings volume; fade = crossfade seconds on zone changes and when a run starts or ends."
+    }
   },
   "settings": {
     "volume": 1,
