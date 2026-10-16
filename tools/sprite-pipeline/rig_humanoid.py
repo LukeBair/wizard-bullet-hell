@@ -1,5 +1,6 @@
 """Build a humanoid armature for a TRELLIS character and skin it by bone distance.
-Usage: Blender -b -P rig_humanoid.py -- model.glb out.blend [bones.json] [mesh_name]
+Usage: Blender -b -P rig_humanoid.py -- model.glb out.blend [bones.json] [mesh_name] [yaw_deg]
+yaw turns the model first, for TRELLIS models that don't face -Y (the treant needs 90).
 bones.json maps bone name -> [head, tail, parent, radius] in the model's space (1.0 tall, centred on the
 origin, Z-up, facing -Y), with the same bone names as rig_wizard.py so render_boss_clips.py can pose it.
 Without it, the wizard's table below is used."""
@@ -16,6 +17,10 @@ bpy.ops.import_scene.gltf(filepath=src)
 mesh = [o for o in bpy.context.scene.objects if o.type == "MESH"][0]
 mesh.name = argv[3] if len(argv) > 3 else "wizard"
 bpy.context.view_layer.objects.active = mesh
+if len(argv) > 4:
+    import math
+    from mathutils import Matrix
+    mesh.matrix_world = Matrix.Rotation(math.radians(float(argv[4])), 4, "Z") @ mesh.matrix_world
 bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
 
 # name: (head, tail, parent, radius)

@@ -593,6 +593,7 @@ public class Enemy : MonoBehaviour
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
+            anim?.PlayCast();   // branches up, then slammed down
             var roster = GameManager.Instance.Arena.Biome.Roster;
             bool brood = Health < MaxHealth * Def.SummonBelow;
             switch (attackIndex++ % (brood ? 5 : 4))
