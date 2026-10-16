@@ -4,9 +4,10 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 // 2D lighting on URP's 2D Renderer (Assets/Editor/SetupUrp2D.cs switches the project over).
-// Characters, enemies and the world use the lit sprite material, so a dim ambient light plus point
-// lights on the wizard, spells, crystals and candles shade them; effects, bullets and glows stay unlit
-// and bloom carries their glow. With no render pipeline (the built-in renderer) everything here is a
+// Characters, enemies and the world use the lit sprite material under a full-strength white ambient
+// light, so they read exactly as drawn; point lights on spells, crystals, candles, mushrooms and tomes
+// add their hue on top of whatever they pass. Effects, bullets and glows stay unlit and bloom carries
+// their glow. With no render pipeline (the built-in renderer) everything here is a
 // no-op and sprites draw as before. Tuning: lighting.* in tuning.json.
 public static class Lighting
 {
@@ -37,6 +38,8 @@ public static class Lighting
         var data = cam.GetUniversalAdditionalCameraData();
         data.renderPostProcessing = Active && Tune.B("lighting.bloom", true);
         if (profile == null) profile = Resources.Load<VolumeProfile>("Render/PostFX");
+        if (profile != null && profile.TryGet<Vignette>(out var vignette))
+            vignette.intensity.value = Tune.F("lighting.vignette", 0.12f);
         if (profile != null && Object.FindAnyObjectByType<Volume>() == null)
         {
             var v = new GameObject("PostFX").AddComponent<Volume>();
@@ -52,15 +55,15 @@ public static class Lighting
         var l = new GameObject("Ambient").AddComponent<Light2D>();
         l.transform.SetParent(parent, false);
         l.lightType = Light2D.LightType.Global;
-        l.color = Color.Lerp(Color.white, tint, 0.35f);
-        l.intensity = Tune.F("lighting.ambient", 0.9f);
+        l.color = Color.Lerp(Color.white, tint, Tune.F("lighting.ambientTint", 0f));
+        l.intensity = Tune.F("lighting.ambient", 1f);
         return l;
     }
 
     // A soft round light. Radius is in world units whatever the parent's scale.
     public static Light2D Point(Transform parent, Color color, float radius, float intensity, Vector2 offset = default)
     {
-        if (!Active) return null;
+        if (!Active || intensity <= 0f) return null;
         var l = new GameObject("Light").AddComponent<Light2D>();
         l.transform.SetParent(parent, false);
         l.transform.localPosition = offset;

@@ -161,20 +161,20 @@ public class Enemy : MonoBehaviour
         float s = d.Radius * 2f;
         bodyColor = d.Color;
         int o = d.Tier == EnemyTier.Boss ? 40 : 20;
-        SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, o - 2);
+        SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, -44);
 
         var art = ArtStyle.Enemy(d.Look);
         var sheet = ArtStyle.EnemySheet(d.Look, d.Name);
         if (sheet?["walk"] != null)
         {
             bodyColor = Color.white;
-            body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius, d.Name), o);
+            body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius, d.Name), 0);   // depth-sorted
             anim = EnemyAnimator.Attach(body, sheet);
         }
         else if (art != null)
         {
             bodyColor = Color.white;
-            body = SpriteFactory.Child(transform, "Body", art, bodyColor, Vector2.zero, ArtStyle.EnemyScale(d.Look, d.Radius), o);
+            body = SpriteFactory.Child(transform, "Body", art, bodyColor, Vector2.zero, ArtStyle.EnemyScale(d.Look, d.Radius), 0);
         }
         else
         {
@@ -266,7 +266,7 @@ public class Enemy : MonoBehaviour
         if (tome?["spin"] != null)
         {
             // the 3D tome, spinning; its frames are 2.4 units wide, so this makes it about a unit across
-            var sr = SpriteFactory.Child(book, "Tome", tome["spin"].Frames[0], Color.white, Vector2.zero, 0.5f, 45);
+            var sr = SpriteFactory.Child(book, "Tome", tome["spin"].Frames[0], Color.white, Vector2.zero, 0.5f, 0);
             Lighting.MakeLit(sr);
             Lighting.Point(book, Def.Accent, 2.2f, 0.7f);
             EnemyAnimator.Attach(sr, tome, "spin", false);

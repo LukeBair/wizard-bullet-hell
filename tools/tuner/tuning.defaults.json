@@ -1108,10 +1108,12 @@
     "enabled": true,
     "bloom": true,
     "normalMaps": true,
-    "ambient": 0.9,
+    "ambient": 1.0,
     "wizardRadius": 6.0,
-    "wizardIntensity": 1.0,
-    "spellRadius": 2.2,
-    "spellIntensity": 0.9
+    "wizardIntensity": 0.0,
+    "spellRadius": 2.8,
+    "spellIntensity": 1.0,
+    "ambientTint": 0.0,
+    "vignette": 0.12
   }
 }

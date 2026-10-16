@@ -52,7 +52,7 @@ public class Projectile : MonoBehaviour
             // Enemy bullets get a hot white core so they never read as your own spells.
             if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, Color.white, Vector2.zero, 0.5f, 82);
             // your spells light up whatever they fly past (enemy bullets are too many; bloom does them)
-            if (team == Team.Player) p.spellLight = Lighting.Point(go.transform, color, 1f, Tune.F("lighting.spellIntensity", 0.9f));
+            if (team == Team.Player) p.spellLight = Lighting.Point(go.transform, color, 1f, Tune.F("lighting.spellIntensity", 1f));
         }
         else p.ResetState();
 
@@ -74,7 +74,7 @@ public class Projectile : MonoBehaviour
         if (p.spellLight != null)
         {
             p.spellLight.color = color;
-            Lighting.SetRadius(p.spellLight, Tune.F("lighting.spellRadius", 2.2f));
+            Lighting.SetRadius(p.spellLight, Tune.F("lighting.spellRadius", 2.8f));
         }
         if (p.core != null) p.core.sprite = ArtStyle.Round;
         p.gameObject.SetActive(true);

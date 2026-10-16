@@ -38,6 +38,12 @@ static class SetupUrp2D
             AssetDatabase.CreateAsset(asset, AssetPath);
         }
 
+        // Depth sorting: sprites on the same sorting order draw back to front by height on screen.
+        var rendererData = new SerializedObject(AssetDatabase.LoadAssetAtPath<ScriptableObject>(Dir + "/URP2D_Renderer.asset"));
+        rendererData.FindProperty("m_TransparencySortMode").intValue = (int)TransparencySortMode.CustomAxis;
+        rendererData.FindProperty("m_TransparencySortAxis").vector3Value = Vector3.up;
+        rendererData.ApplyModifiedPropertiesWithoutUndo();
+
         GraphicsSettings.defaultRenderPipeline = asset;
         int current = QualitySettings.GetQualityLevel();
         for (int i = 0; i < QualitySettings.names.Length; i++)

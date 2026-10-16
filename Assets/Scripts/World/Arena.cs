@@ -65,7 +65,7 @@ public class Arena : MonoBehaviour
                         var shroom = ArtStyle.Prop($"prop_mushrooms_{Random.Range(0, 3)}");
                         if (shroom != null)
                         {
-                            SpriteFactory.Child(transform, "Mushrooms", shroom, Color.white, p, 1.1f / (shroom.rect.width / shroom.pixelsPerUnit), -41).flipX = Random.value < 0.5f;
+                            SpriteFactory.Child(transform, "Mushrooms", shroom, Color.white, p, 1.1f / (shroom.rect.width / shroom.pixelsPerUnit), 0).spriteSortPoint = SpriteSortPoint.Pivot;
                             Lighting.Point(transform, new Color(0.45f, 0.75f, 1f), 2.4f, 0.7f, p + new Vector2(0f, 0.4f));
                             break;
                         }
@@ -179,7 +179,8 @@ public class Arena : MonoBehaviour
         SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), basePos + new Vector2(0.15f, 0.05f), r * 2f, -45)
             .transform.localScale = new Vector3(r * 2.2f, r * 1.1f, 1f);
         float scale = pick.width * r / (sprite.rect.width / sprite.pixelsPerUnit);
-        var sr = SpriteFactory.Child(transform, "Prop", sprite, Color.white, basePos, scale, -40);
+        var sr = SpriteFactory.Child(transform, "Prop", sprite, Color.white, basePos, scale, 0);   // depth-sorted at its base
+        sr.spriteSortPoint = SpriteSortPoint.Pivot;
         sr.flipX = Random.value < 0.5f;
         if (solid) obstacles.Add(new Vector3(p.x, p.y, r * 0.7f));
         return true;
