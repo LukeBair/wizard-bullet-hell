@@ -117,7 +117,7 @@ public class Player : MonoBehaviour
             Vector2 pos = Position + input * MoveSpeed * MoveMultiplier * Tuning.Pace * dt;
             transform.position = gm.Arena.PushOut(pos, BodyRadius);
             if (Mathf.Abs(input.x) > 0.1f) visual.localScale = new Vector3(Mathf.Sign(input.x), 1f, 1f);
-            if (anim != null) anim.Facing = Mathf.Abs(input.x) > Mathf.Abs(input.y) ? "_side" : input.y > 0f ? "_up" : "";
+            if (anim != null) anim.Facing = WizardAnimator.FacingFor(input, anim.HasDiagonals, anim.Facing);
         }
 
         foreach (var spell in Spells) spell.Tick(dt);
