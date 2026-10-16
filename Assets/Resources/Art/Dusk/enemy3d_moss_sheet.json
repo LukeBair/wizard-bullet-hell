@@ -1410,7 +1410,7 @@
   }
  ],
  "meta": {
-  "image": "enemy3d_blob_sheet.png",
+  "image": "enemy3d_moss_sheet.png",
   "format": "RGBA8888",
   "size": {
    "w": 512,

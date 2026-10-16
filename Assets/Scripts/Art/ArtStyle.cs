@@ -110,19 +110,20 @@ public static class ArtStyle
     };
 
     // 3D-rendered eight-facing sheets (tools/sprite-pipeline, Resources/Art/Dusk/enemy3d_<name>_sheet), the
-    // name each look uses, and the enemy radius its frames suit (from the model's size in frame).
+    // name each look uses, and the enemy radius its frames suit: half the model's median width in frame,
+    // so the body spans the hitbox (thin robed casters a bit more, so they don't tower over it).
     static readonly Dictionary<EnemyLook, (string name, float radius)> sheet3D = new Dictionary<EnemyLook, (string, float)>
     {
-        { EnemyLook.Blob, ("blob", 0.62f) },
-        { EnemyLook.Bat, ("bat", 0.45f) },
-        { EnemyLook.Beast, ("wolf", 0.54f) },
-        { EnemyLook.Goblin, ("goblin", 0.61f) },
-        { EnemyLook.Wizard, ("wizard", 0.64f) },
-        { EnemyLook.Mushroom, ("mushroom", 0.66f) },
-        { EnemyLook.Pixie, ("pixie", 0.61f) },
-        { EnemyLook.Mole, ("mole", 0.62f) },
-        { EnemyLook.Treant, ("treant", 0.51f) },
-        { EnemyLook.Witch, ("witch", 0.63f) },
+        { EnemyLook.Blob, ("moss", 1.07f) },
+        { EnemyLook.Bat, ("bat", 0.71f) },
+        { EnemyLook.Beast, ("wolf", 0.94f) },
+        { EnemyLook.Goblin, ("goblin", 0.70f) },
+        { EnemyLook.Headmaster, ("wizard", 0.74f) },
+        { EnemyLook.Mushroom, ("mushroom", 0.82f) },
+        { EnemyLook.Pixie, ("pixie", 0.75f) },
+        { EnemyLook.Mole, ("mole", 1.05f) },
+        { EnemyLook.Treant, ("treant", 0.84f) },
+        { EnemyLook.Witch, ("witch", 0.72f) },
     };
 
     static bool Use3D(EnemyLook look) => Settings.Enemy3D && sheet3D.ContainsKey(look);
