@@ -21,6 +21,16 @@ public static class Settings
     public static string WizardSheet => WizardSheets[Wizard];
     public static string WizardLabel => WizardLabels[Wizard];
 
+    const string EnemyArtKey = "set_enemy3d";
+
+    // Enemies drawn with the 3D-rendered eight-facing sheets (enemy3d_<name>) where one exists, or the
+    // original sprites. Applies to enemies spawned after it changes.
+    public static bool Enemy3D
+    {
+        get => PlayerPrefs.GetInt(EnemyArtKey, 1) == 1;
+        set => Set(EnemyArtKey, value);
+    }
+
     // Sound volume in steps of settings.volumeStep, 0 = muted.
     public static float Volume
     {

@@ -56,6 +56,9 @@ public static class ArtStyle
         // player_sheet_<px> are the 3D-rendered wizard at a bigger frame size: same world size as the 48px sheet.
         if (style == "Dusk" && file.StartsWith("player_sheet_") && int.TryParse(file.Substring("player_sheet_".Length), out int px))
             return 20f * px / 48f;
+        // enemy3d_* sheets from the 3D pipeline are 8 frames wide (64px, or 128px for bosses): a frame covers
+        // the same world size as a 48px PixelLab frame.
+        if (style == "Dusk" && file.StartsWith("enemy3d_")) return 20f * (width / 8f) / 48f;
         switch (style)
         {
             case "Dusk": return 20f;
@@ -106,9 +109,39 @@ public static class ArtStyle
         { EnemyLook.Witch, 0.88f }, { EnemyLook.Headmaster, 0.86f },
     };
 
-    public static SpriteSheet EnemySheet(EnemyLook look) =>
-        sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet") : null;
-    public static float EnemySheetScale(EnemyLook look, float radius) => sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
+    // 3D-rendered eight-facing sheets (tools/sprite-pipeline, Resources/Art/Dusk/enemy3d_<name>_sheet), the
+    // name each look uses, and the enemy radius its frames suit (from the model's size in frame).
+    static readonly Dictionary<EnemyLook, (string name, float radius)> sheet3D = new Dictionary<EnemyLook, (string, float)>
+    {
+        { EnemyLook.Blob, ("blob", 0.62f) },
+        { EnemyLook.Bat, ("bat", 0.45f) },
+        { EnemyLook.Beast, ("wolf", 0.54f) },
+        { EnemyLook.Goblin, ("goblin", 0.61f) },
+        { EnemyLook.Wizard, ("wizard", 0.64f) },
+        { EnemyLook.Mushroom, ("mushroom", 0.66f) },
+        { EnemyLook.Pixie, ("pixie", 0.61f) },
+        { EnemyLook.Mole, ("mole", 0.62f) },
+        { EnemyLook.Treant, ("treant", 0.51f) },
+        { EnemyLook.Witch, ("witch", 0.63f) },
+    };
+
+    static bool Use3D(EnemyLook look) => Settings.Enemy3D && sheet3D.ContainsKey(look);
+
+    public static SpriteSheet EnemySheet(EnemyLook look)
+    {
+        if (Use3D(look))
+        {
+            var s = SpriteSheet.Load("enemy3d_" + sheet3D[look].name + "_sheet");
+            if (s != null) return s;
+        }
+        return sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet") : null;
+    }
+
+    public static float EnemySheetScale(EnemyLook look, float radius)
+    {
+        if (Use3D(look) && SpriteSheet.Load("enemy3d_" + sheet3D[look].name + "_sheet") != null) return radius / sheet3D[look].radius;
+        return sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
+    }
 
     public static string ObstacleSprite(ObstacleStyle style) =>
         style == ObstacleStyle.Pillar ? "obstacle_pillar" : style == ObstacleStyle.Rock ? "obstacle_rock" : "obstacle_tree";

@@ -744,6 +744,11 @@ public class GameManager : MonoBehaviour
                 Sfx.Play("ui.button", Sound.Select, 0.8f);
             }
             y += rowH + gap;
+
+            // Enemy sprites: the 3D-rendered eight-facing sheets or the originals, for enemies spawned from now on.
+            if (SettingRow(new Rect(col.x, y, col.width, rowH), "3D enemies", Settings.Enemy3D))
+                Settings.Enemy3D = !Settings.Enemy3D;
+            y += rowH + gap;
         }
 
         // Tuner: pull the latest tuning.json (and save edits) from the Mac's tuner server.

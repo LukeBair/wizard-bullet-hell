@@ -12,9 +12,12 @@ Modes:
   biped  two-legged walk for upright characters facing the camera at az 0 (TRELLIS's default). Legs
          are the vertices below leg=<fraction> (default 0.32), split left/right; they swing forward
          and back in turn while the body sways. swing=<deg> (default 22), sway=<deg> (default 4).
+         arms=<deg> lowers arms held out in a T-pose: vertices further than armx=<fraction of
+         half-width> (0.35) from the centre and above the legs rotate down about the shoulder.
   squash bouncing blob: squashes and stretches about its base and hops. amount=<fraction> (0.12).
   still  no deformation, just the bob (for a turntable check).
 Common: frames=<n> (8), az=<camera azimuth deg, 0 = model front> (-90 = side), tilt=<deg> (25),
+        yaw=<deg> (0; turns the model first, for TRELLIS models that don't face -Y),
         dirs=8 (render all eight facings into out_dir/<s|se|e|ne|n|nw|w|sw>/; az is then ignored),
         res=<px> (256), bob=<fraction of height> (0.02), light=<sun strength> (4),
         emit=<strength> (0; feeds the base colour into emission, for ghosts and to lift dark models)."""
@@ -37,6 +40,8 @@ bpy.ops.import_scene.gltf(filepath=src)
 mesh = [o for o in bpy.context.scene.objects if o.type == "MESH"][0]
 bpy.context.view_layer.objects.active = mesh
 mesh.select_set(True)
+from mathutils import Matrix
+mesh.matrix_world = Matrix.Rotation(math.radians(float(opt.get("yaw", 0))), 4, "Z") @ mesh.matrix_world   # glTF objects use quaternions
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 nv = len(mesh.data.vertices)
 co = np.empty(nv * 3)
@@ -91,6 +96,18 @@ elif mode == "biped":
         hips.append((sel, hip, 0.0 if l else math.pi))
     swing = math.radians(float(opt.get("swing", 22)))
     sway = math.radians(float(opt.get("sway", 4)))
+    arm_deg = float(opt.get("arms", 0))
+    if arm_deg:
+        half = np.abs(co[:, 0] - ctr[0]).max()
+        ax = float(opt.get("armx", 0.35)) * half
+        rel_x = co[:, 0] - ctr[0]
+        w_arm = np.clip((np.abs(rel_x) - ax) / (0.1 * half), 0, 1) * (co[:, 2] > zb + 0.1 * height)
+        arm_z = co[w_arm > 0.5, 2].mean() if (w_arm > 0.5).any() else ctr[2]
+        for sgn in (1, -1):
+            sel = (np.sign(rel_x) == sgn) & (w_arm > 0)
+            pivot = np.array([ctr[0] + sgn * ax, ctr[1], arm_z])
+            # rotate about the forward axis so the arm swings down toward the body
+            co[sel] = rotate(co[sel], pivot, np.array([0, 1.0, 0]), sgn * math.radians(arm_deg) * w_arm[sel])
 elif mode == "squash":
     amt = float(opt.get("amount", 0.12))
 elif mode == "flap":
