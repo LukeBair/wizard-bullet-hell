@@ -17,7 +17,11 @@ public class Music : MonoBehaviour
     // CC BY 4.0 tracks shipped in Resources/Music, for the Credits screen: file name -> title.
     public static readonly Dictionary<string, string> Buckley = new Dictionary<string, string>
     {
+        { "music_title_world_of_magic", "World of Magic" },
+        { "music_zone_caves_shadows_and_dust", "Shadows and Dust" },
+        { "music_boss_treant_primal_carnage", "Primal Carnage" },
         { "music_boss_vexley_fate_and_fortune", "Fate and Fortune" },
+        { "music_boss_golem_juggernaut", "Juggernaut" },
     };
 
     AudioSource[] sources;
