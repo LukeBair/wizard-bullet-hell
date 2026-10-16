@@ -161,7 +161,8 @@ public class Enemy : MonoBehaviour
         float s = d.Radius * 2f;
         bodyColor = d.Color;
         int o = d.Tier == EnemyTier.Boss ? 40 : 20;
-        SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, -44);
+        bool castShadow = SpriteShadow.On && (ArtStyle.EnemySheet(d.Look, d.Name) != null || ArtStyle.Enemy(d.Look) != null);
+        if (!castShadow) SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, -44);
 
         var art = ArtStyle.Enemy(d.Look);
         var sheet = ArtStyle.EnemySheet(d.Look, d.Name);

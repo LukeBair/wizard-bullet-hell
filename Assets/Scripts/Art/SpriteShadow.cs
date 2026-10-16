@@ -8,9 +8,11 @@ public class SpriteShadow : MonoBehaviour
     SpriteRenderer src, sr;
     bool live;
 
+    public static bool On => Lighting.Active && Tune.B("lighting.shadows", true);
+
     public static SpriteShadow Add(SpriteRenderer source, bool live)
     {
-        if (source == null || source.sprite == null || !Lighting.Active || !Tune.B("lighting.shadows", true)) return null;
+        if (source == null || source.sprite == null || !On) return null;
         var go = new GameObject("CastShadow");
         go.transform.SetParent(source.transform.parent, true);
         var s = go.AddComponent<SpriteShadow>();
@@ -39,7 +41,7 @@ public class SpriteShadow : MonoBehaviour
         Vector2 u = Lighting.ShadowDirection;
         float len = Tune.F("lighting.shadowLength", 0.55f);
         var b = sprite.bounds;                                    // sprite space, relative to the pivot
-        Vector2 feet = new Vector2(b.center.x, b.min.y);
+        Vector2 feet = new Vector2(b.center.x, b.min.y + SpriteSheet.FootOffset(sprite));
         Vector3 scale = src.transform.lossyScale;
         float angle = Mathf.Atan2(u.y, u.x) * Mathf.Rad2Deg - 90f;   // the sprite's up axis points along u
         var rot = Quaternion.Euler(0f, 0f, angle);

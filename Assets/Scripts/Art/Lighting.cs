@@ -66,7 +66,7 @@ public static class Lighting
     public static Light2D Sun(Transform cam)
     {
         if (!Active) return null;
-        float intensity = Tune.F("lighting.sun", 0.7f);
+        float intensity = Tune.F("lighting.sun", 0.85f);
         if (intensity <= 0f) return null;
         const float far = 200f;
         var l = new GameObject("Sun").AddComponent<Light2D>();
@@ -94,7 +94,7 @@ public static class Lighting
         l.transform.SetParent(parent, false);
         l.lightType = Light2D.LightType.Global;
         l.color = Color.Lerp(Color.white, tint, Tune.F("lighting.ambientTint", 0f));
-        l.intensity = Tune.F("lighting.ambient", 0.6f);
+        l.intensity = Tune.F("lighting.ambient", 0.8f);
         return l;
     }
 

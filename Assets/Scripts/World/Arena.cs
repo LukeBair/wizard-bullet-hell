@@ -179,8 +179,9 @@ public class Arena : MonoBehaviour
         var sprite = ArtStyle.Prop(PropFile(pick.name, Random.Range(0, pick.variants)));
         if (sprite == null) return false;
         var basePos = p - new Vector2(0f, r * 0.5f);
-        SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), basePos + new Vector2(0.15f, 0.05f), r * 2f, -45)
-            .transform.localScale = new Vector3(r * 2.2f, r * 1.1f, 1f);
+        if (!SpriteShadow.On)
+            SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), basePos + new Vector2(0.15f, 0.05f), r * 2f, -45)
+                .transform.localScale = new Vector3(r * 2.2f, r * 1.1f, 1f);
         float scale = pick.width * r / (sprite.rect.width / sprite.pixelsPerUnit);
         var sr = SpriteFactory.Child(transform, "Prop", sprite, Color.white, basePos, scale, 0);   // depth-sorted at its base
         sr.spriteSortPoint = SpriteSortPoint.Pivot;

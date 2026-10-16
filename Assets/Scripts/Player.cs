@@ -76,7 +76,7 @@ public class Player : MonoBehaviour
         visual.SetParent(transform, false);
         var robe = new Color(0.45f, 0.25f, 0.85f);
         // Flat shadow centred under the feet (the visual flips on x, so it must sit at x = 0).
-        SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, -0.5f), 1f, -44)
+        if (!SpriteShadow.On) SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, -0.5f), 1f, -44)
             .transform.localScale = new Vector3(0.9f, 0.32f, 1f);
         SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, -43);
         var sheet = SpriteSheet.Load(Settings.WizardSheet) ?? SpriteSheet.Load("player_sheet");
