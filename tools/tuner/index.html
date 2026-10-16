@@ -32,6 +32,7 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
   .card h3 { margin: 0 0 8px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card h4.subhead { margin: 12px 0 4px; font-size: 12px; font-weight: 600; opacity: 0.7; text-transform: none; }
   .row { display: grid; grid-template-columns: 1fr 110px 26px; align-items: center; gap: 8px; padding: 3px 0; }
   .row label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
   .row label .path { color: var(--muted); font-size: 11px; display: block; }
@@ -585,6 +586,8 @@ function card(title, path, keys, removable) {
   const obj = get(data, path);
   if (path.length > 1) for (const k of Object.keys(obj).filter(isNote)) { const n = document.createElement("div"); n.className = "note"; n.textContent = obj[k]; c.appendChild(n); }
   for (const k of keys) c.appendChild(row([...path, k], label(k)));
+  // Groups nested deeper than a card (audio › sfx › spells › Fireball) get a subheading each.
+  if (path.length > 1) nested(c, path, obj, []);
 
   // Add a new value to this group.
   const add = document.createElement("div");
@@ -600,6 +603,22 @@ function card(title, path, keys, removable) {
   };
   c.appendChild(add);
   return c;
+}
+
+function nested(c, path, obj, trail) {
+  for (const k of Object.keys(obj)) {
+    if (isNote(k) || !isObj(obj[k])) continue;
+    const sub = obj[k], subPath = [...path, k], subTrail = [...trail, label(k)];
+    const leaves = Object.keys(sub).filter((x) => !isNote(x) && !isObj(sub[x]) && !Array.isArray(sub[x]));
+    if (leaves.length) {
+      const h = document.createElement("h4");
+      h.className = "subhead";
+      h.textContent = subTrail.join(" › ");
+      c.appendChild(h);
+      for (const x of leaves) c.appendChild(row([...subPath, x], label(x)));
+    }
+    nested(c, subPath, sub, subTrail);
+  }
 }
 
 function row(path, text, showPath) {
