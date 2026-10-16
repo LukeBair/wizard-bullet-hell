@@ -97,6 +97,7 @@ public class Enemy : MonoBehaviour
     SpriteRenderer[] renderers;
     SpriteRenderer curseMark, vines, charmAura, bugs;
     readonly List<Transform> books = new List<Transform>();
+    EnemyAnimator anim;   // set when the body plays a sprite sheet
     Color bodyColor, shownColor;
     Enemy[] self;
 
@@ -168,7 +169,7 @@ public class Enemy : MonoBehaviour
         {
             bodyColor = Color.white;
             body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius, d.Name), o);
-            EnemyAnimator.Attach(body, sheet);
+            anim = EnemyAnimator.Attach(body, sheet);
         }
         else if (art != null)
         {
@@ -259,8 +260,18 @@ public class Enemy : MonoBehaviour
         var book = new GameObject("Book").transform;
         book.SetParent(transform, false);
         SpriteFactory.Child(book, "Glow", SpriteFactory.Glow, new Color(Def.Accent.r, Def.Accent.g, Def.Accent.b, 0.5f), Vector2.zero, 1.1f, 44);
-        SpriteFactory.Child(book, "Cover", SpriteFactory.Square, new Color(0.55f, 0.15f, 0.2f), Vector2.zero, 0.45f, 45);
-        SpriteFactory.Child(book, "Pages", SpriteFactory.Square, new Color(0.95f, 0.9f, 0.8f), new Vector2(0.05f, 0f), 0.35f, 46);
+        var tome = ArtStyle.TomeSheet;
+        if (tome?["spin"] != null)
+        {
+            // the 3D tome, spinning; its frames are 2.4 units wide, so this makes it about a unit across
+            var sr = SpriteFactory.Child(book, "Tome", tome["spin"].Frames[0], Color.white, Vector2.zero, 0.5f, 45);
+            EnemyAnimator.Attach(sr, tome, "spin", false);
+        }
+        else
+        {
+            SpriteFactory.Child(book, "Cover", SpriteFactory.Square, new Color(0.55f, 0.15f, 0.2f), Vector2.zero, 0.45f, 45);
+            SpriteFactory.Child(book, "Pages", SpriteFactory.Square, new Color(0.95f, 0.9f, 0.8f), new Vector2(0.05f, 0f), 0.35f, 46);
+        }
         books.Add(book);
     }
 
@@ -656,6 +667,7 @@ public class Enemy : MonoBehaviour
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate;
+            anim?.PlayCast();
             switch (attackIndex++ % 4)
             {
                 case 0:
@@ -1239,6 +1251,7 @@ public class Enemy : MonoBehaviour
                 child.knockback = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 6f;
             }
         }
+        anim?.PlayDeath();   // a sheet with a death clip leaves the body behind to play it
         Destroy(gameObject);
     }
 }

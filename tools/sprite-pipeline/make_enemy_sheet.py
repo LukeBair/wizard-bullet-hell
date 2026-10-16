@@ -4,19 +4,33 @@ sw, as render_enemy_loop.py dirs=8 writes). Each facing is a row tagged <clip>_<
 is also tagged <clip>, which is what EnemyAnimator plays (it mirrors east for west).
 Frames are trimmed to their shared bounding box, fit into px with a 1px margin and palette-reduced
 together.
+frames_dir can also hold one subfolder per clip (idle, walk, cast, death...), each with facing folders, as
+render_boss_clips.py writes; every clip/facing becomes a <clip>_<facing> row. frame_ms is then either one
+number or per-clip timings like walk=100,cast=70,death=90.
 Usage: python make_enemy_sheet.py frames_dir out_dir name px colors frame_ms [clip]"""
 import glob, json, os, sys
 from PIL import Image
 
-src, out, name, px, colors, ms = sys.argv[1:7]
-px, colors, ms = int(px), int(colors), int(ms)
+src, out, name, px, colors, ms_arg = sys.argv[1:7]
+px, colors = int(px), int(colors)
 clip = sys.argv[7] if len(sys.argv) > 7 else "walk"
+ms_map = dict((k, int(v)) for k, v in (kv.split("=") for kv in ms_arg.split(","))) if "=" in ms_arg else {}
+ms = int(ms_arg) if not ms_map else 90
 os.makedirs(out, exist_ok=True)
 FACINGS = ["s", "se", "e", "ne", "n", "nw", "w", "sw"]
-rows = [f for f in FACINGS if os.path.isdir(os.path.join(src, f))] or [""]
-per_row = [sorted(glob.glob(os.path.join(src, r, "*.png"))) for r in rows]
-n = len(per_row[0])
-ims = [Image.open(f).convert("RGBA") for files in per_row for f in files]
+clip_dirs = sorted(d for d in os.listdir(src) if os.path.isdir(os.path.join(src, d)) and d not in FACINGS)
+CLIP_ORDER = ["idle", "walk", "cast", "hit", "death"]
+clip_dirs.sort(key=lambda c: CLIP_ORDER.index(c) if c in CLIP_ORDER else 99)
+rows = []   # (clip, facing, files)
+for c in clip_dirs or [clip]:
+    base = os.path.join(src, c) if clip_dirs else src
+    for f in [f for f in FACINGS if os.path.isdir(os.path.join(base, f))] or [""]:
+        rows.append((c, f, sorted(glob.glob(os.path.join(base, f, "*.png")))))
+n = max(len(r[2]) for r in rows)
+ims, slots = [], []   # slots: (row, column) of each frame
+for ri, (_, _, files) in enumerate(rows):
+    for ci, fpath in enumerate(files):
+        ims.append(Image.open(fpath).convert("RGBA")); slots.append((ri, ci))
 
 # Shared bbox so the creature doesn't jitter between frames
 l, t, r, b = 1e9, 1e9, 0, 0
@@ -38,22 +52,24 @@ for i, (im, a) in enumerate(frames):
     mosaic.paste(im.convert("RGB"), (i * px, 0), a)
 pal = mosaic.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB")
 sheet = Image.new("RGBA", (px * n, px * len(rows)), (0, 0, 0, 0))
-pos = lambda i: ((i % n) * px, (i // n) * px)
+pos = lambda i: (slots[i][1] * px, slots[i][0] * px)
 for i, (im, a) in enumerate(frames):
     fr = pal.crop((i * px, 0, (i + 1) * px, px)).convert("RGBA"); fr.putalpha(a)
     sheet.paste(fr, pos(i))
 sheet.save(os.path.join(out, name + ".png"))
 
-tags = []
-for r, f in enumerate(rows):
-    span = {"from": r * n, "to": r * n + n - 1, "direction": "forward"}
+tags, durations, start = [], [], 0
+for c, f, files in rows:
+    span = {"from": start, "to": start + len(files) - 1, "direction": "forward"}
     if f:
-        tags.append({"name": f"{clip}_{f}", **span})
+        tags.append({"name": f"{c}_{f}", **span})
     if f in ("", "e"):
-        tags.append({"name": clip, **span})
+        tags.append({"name": c, **span})
+    durations += [ms_map.get(c, ms)] * len(files)
+    start += len(files)
 d = {"frames": [{"filename": str(i), "frame": {"x": pos(i)[0], "y": pos(i)[1], "w": px, "h": px}, "rotated": False,
                  "trimmed": False, "spriteSourceSize": {"x": 0, "y": 0, "w": px, "h": px},
-                 "sourceSize": {"w": px, "h": px}, "duration": ms} for i in range(len(frames))],
+                 "sourceSize": {"w": px, "h": px}, "duration": durations[i]} for i in range(len(frames))],
      "meta": {"image": name + ".png", "format": "RGBA8888", "size": {"w": sheet.width, "h": sheet.height}, "scale": "1",
               "frameTags": tags}}
 json.dump(d, open(os.path.join(out, name + ".json"), "w"), indent=1)

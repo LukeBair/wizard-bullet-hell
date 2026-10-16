@@ -56,9 +56,9 @@ public static class ArtStyle
         // player_sheet_<px> are the 3D-rendered wizard at a bigger frame size: same world size as the 48px sheet.
         if (style == "Dusk" && file.StartsWith("player_sheet_") && int.TryParse(file.Substring("player_sheet_".Length), out int px))
             return 20f * px / 48f;
-        // enemy3d_* sheets from the 3D pipeline are 8 frames wide (_64 or _128): a frame covers
-        // the same world size as a 48px PixelLab frame.
-        if (style == "Dusk" && file.StartsWith("enemy3d_")) return 20f * (width / 8f) / 48f;
+        // enemy3d_*_<px> sheets from the 3D pipeline: a frame covers the same world size as a 48px PixelLab frame.
+        if (style == "Dusk" && file.StartsWith("enemy3d_") && int.TryParse(file.Substring(file.LastIndexOf('_') + 1), out int fpx))
+            return 20f * fpx / 48f;
         switch (style)
         {
             case "Dusk": return 20f;
@@ -118,7 +118,7 @@ public static class ArtStyle
         { EnemyLook.Bat, ("bat", 0.71f) },
         { EnemyLook.Beast, ("wolf", 0.94f) },
         { EnemyLook.Goblin, ("goblin", 0.70f) },
-        { EnemyLook.Headmaster, ("wizard", 0.74f) },
+        { EnemyLook.Headmaster, ("headmaster", 0.6f) },
         { EnemyLook.Mushroom, ("mushroom", 0.82f) },
         { EnemyLook.Pixie, ("pixie", 0.75f) },
         { EnemyLook.Mole, ("mole", 1.05f) },
@@ -161,6 +161,9 @@ public static class ArtStyle
         }
         return sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet") : null;
     }
+
+    // The Headmaster's orbiting tome: a 3D turntable spin, 32px frames (64px in 128px mode).
+    public static SpriteSheet TomeSheet => Settings.Enemy3D ? SpriteSheet.Load(Settings.Enemy3DSharp ? "enemy3d_tome_sheet_64" : "enemy3d_tome_sheet_32") : null;
 
     public static float EnemySheetScale(EnemyLook look, float radius, string enemy = null)
     {
