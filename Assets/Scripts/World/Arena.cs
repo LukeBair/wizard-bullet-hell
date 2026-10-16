@@ -42,6 +42,7 @@ public class Arena : MonoBehaviour
                 case ObstacleStyle.Rock:
                     // Glowing crystal clusters.
                     SpriteFactory.Child(transform, "CrystalGlow", SpriteFactory.Glow, new Color(c.r, c.g, c.b, 0.35f), p, 1.2f, -97);
+                    if (i % 3 == 0) Lighting.Point(transform, c, 2.6f, 0.8f, p);
                     for (int k = 0; k < 3; k++)
                     {
                         var shard = SpriteFactory.Child(transform, "Crystal", SpriteFactory.Diamond, c, p + Random.insideUnitCircle * 0.2f, 0.25f, -96);
@@ -52,6 +53,7 @@ public class Arena : MonoBehaviour
                 case ObstacleStyle.Pillar:
                     if (i % 3 != 0) break;   // fewer candles than flowers
                     SpriteFactory.Child(transform, "CandleGlow", SpriteFactory.Glow, new Color(1f, 0.8f, 0.4f, 0.3f), p, 1.4f, -95);
+                    Lighting.Point(transform, new Color(1f, 0.75f, 0.4f), 3f, 0.85f, p);
                     SpriteFactory.Child(transform, "Candle", SpriteFactory.Square, new Color(0.95f, 0.9f, 0.8f), p, 0.12f, -94).transform.localScale = new Vector3(0.12f, 0.25f, 1f);
                     SpriteFactory.Child(transform, "Flame", SpriteFactory.Circle, c, p + new Vector2(0f, 0.17f), 0.1f, -93);
                     break;
@@ -79,6 +81,15 @@ public class Arena : MonoBehaviour
             if (p.magnitude < 5f || Blocked(p, r + 2.5f)) continue;
             AddTree(p, r, true);
             placed++;
+        }
+
+        // Lighting: the floor and obstacles take light; glows, crystals and flames stay self-lit.
+        if (Lighting.Active)
+        {
+            foreach (var sr in GetComponentsInChildren<SpriteRenderer>())
+                if (!sr.name.Contains("Glow") && sr.name != "Crystal" && sr.name != "Flame" && sr.name != "Candle")
+                    Lighting.MakeLit(sr);
+            Lighting.Ambient(transform, b.ObstacleColor);
         }
     }
 

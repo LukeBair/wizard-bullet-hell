@@ -29,6 +29,7 @@ public class Projectile : MonoBehaviour
     readonly HashSet<Enemy> hit = new HashSet<Enemy>();
     static readonly List<Enemy> scratch = new List<Enemy>();
     SpriteRenderer body, glow, core;
+    UnityEngine.Rendering.Universal.Light2D spellLight;
 
     // Spent projectiles are parked here and reused, since bosses and split spells fire hundreds a minute.
     static readonly Stack<Projectile>[] pool = { new Stack<Projectile>(), new Stack<Projectile>() };
@@ -50,6 +51,8 @@ public class Projectile : MonoBehaviour
             p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, 2.4f, team == Team.Enemy ? 80 : 70);
             // Enemy bullets get a hot white core so they never read as your own spells.
             if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, Color.white, Vector2.zero, 0.5f, 82);
+            // your spells light up whatever they fly past (enemy bullets are too many; bloom does them)
+            if (team == Team.Player) p.spellLight = Lighting.Point(go.transform, color, 1f, Tune.F("lighting.spellIntensity", 0.9f));
         }
         else p.ResetState();
 
@@ -68,6 +71,11 @@ public class Projectile : MonoBehaviour
         p.body.sprite = ArtStyle.Round;
         p.body.color = color;
         p.glow.color = new Color(color.r, color.g, color.b, 0.6f);
+        if (p.spellLight != null)
+        {
+            p.spellLight.color = color;
+            Lighting.SetRadius(p.spellLight, Tune.F("lighting.spellRadius", 2.2f));
+        }
         if (p.core != null) p.core.sprite = ArtStyle.Round;
         p.gameObject.SetActive(true);
         return p;

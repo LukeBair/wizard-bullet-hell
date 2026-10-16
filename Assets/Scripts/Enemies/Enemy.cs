@@ -242,6 +242,8 @@ public class Enemy : MonoBehaviour
             SpriteFactory.Child(transform, "PupilR", SpriteFactory.Circle, Color.black, new Vector2(0.17f, 0.03f) * s, s * 0.08f, o + 2);
         }
 
+        if (body != null) Lighting.MakeLit(body);
+
         // Status markers, hidden until needed.
         curseMark = SpriteFactory.Child(transform, "Curse", SpriteFactory.Diamond, new Color(0.7f, 0.3f, 0.9f), new Vector2(0f, 0.75f) * s, 0.3f, o + 5);
         vines = SpriteFactory.Child(transform, "Vines", SpriteFactory.Ring, new Color(0.25f, 0.7f, 0.2f, 0.9f), Vector2.zero, s * 1.3f, o + 4);
@@ -265,6 +267,8 @@ public class Enemy : MonoBehaviour
         {
             // the 3D tome, spinning; its frames are 2.4 units wide, so this makes it about a unit across
             var sr = SpriteFactory.Child(book, "Tome", tome["spin"].Frames[0], Color.white, Vector2.zero, 0.5f, 45);
+            Lighting.MakeLit(sr);
+            Lighting.Point(book, Def.Accent, 2.2f, 0.7f);
             EnemyAnimator.Attach(sr, tome, "spin", false);
         }
         else

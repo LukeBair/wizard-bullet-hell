@@ -125,6 +125,7 @@ public class GameManager : MonoBehaviour
         cam.orthographicSize = CameraSize;
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = Color.black;
+        Lighting.SetupCamera(cam);
     }
 
     void BuildWorld(Biome biome = null)
