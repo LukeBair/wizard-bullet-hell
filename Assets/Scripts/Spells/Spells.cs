@@ -40,7 +40,7 @@ public class ArcaneMissile : Spell
         p.Lifetime = T("lifetime", 2f);
         p.OnHit = (proj, e) =>
         {
-            SpellVfx.Impact(proj.Position, Element, 1.4f * Area);
+            SpellVfx.Impact(proj.Position, Element, 0.7f * Area);
             Hit(e, Damage, proj.Velocity.normalized * 2f);
             Grimoire.Feat(SpellId.ArcaneMissile);
             if (Tier == 3 && canSplit)
