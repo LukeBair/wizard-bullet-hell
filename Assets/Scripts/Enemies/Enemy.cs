@@ -97,6 +97,7 @@ public class Enemy : MonoBehaviour
     SpriteRenderer[] renderers;
     SpriteRenderer curseMark, vines, charmAura, bugs;
     readonly List<Transform> books = new List<Transform>();
+    EnemyAnimator anim;   // set when the body plays a sprite sheet
     Color bodyColor, shownColor;
     Enemy[] self;
 
@@ -160,20 +161,21 @@ public class Enemy : MonoBehaviour
         float s = d.Radius * 2f;
         bodyColor = d.Color;
         int o = d.Tier == EnemyTier.Boss ? 40 : 20;
-        SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, o - 2);
+        bool castShadow = SpriteShadow.On && (ArtStyle.EnemySheet(d.Look, d.Name) != null || ArtStyle.Enemy(d.Look) != null);
+        if (!castShadow) SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, -44);
 
         var art = ArtStyle.Enemy(d.Look);
-        var sheet = ArtStyle.EnemySheet(d.Look);
+        var sheet = ArtStyle.EnemySheet(d.Look, d.Name);
         if (sheet?["walk"] != null)
         {
             bodyColor = Color.white;
-            body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius), o);
-            EnemyAnimator.Attach(body, sheet);
+            body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius, d.Name), 0);   // depth-sorted
+            anim = EnemyAnimator.Attach(body, sheet);
         }
         else if (art != null)
         {
             bodyColor = Color.white;
-            body = SpriteFactory.Child(transform, "Body", art, bodyColor, Vector2.zero, ArtStyle.EnemyScale(d.Look, d.Radius), o);
+            body = SpriteFactory.Child(transform, "Body", art, bodyColor, Vector2.zero, ArtStyle.EnemyScale(d.Look, d.Radius), 0);
         }
         else
         {
@@ -241,6 +243,8 @@ public class Enemy : MonoBehaviour
             SpriteFactory.Child(transform, "PupilR", SpriteFactory.Circle, Color.black, new Vector2(0.17f, 0.03f) * s, s * 0.08f, o + 2);
         }
 
+        if (body != null) { Lighting.MakeLit(body); if (sheet != null || art != null) SpriteShadow.Add(body, true); }
+
         // Status markers, hidden until needed.
         curseMark = SpriteFactory.Child(transform, "Curse", SpriteFactory.Diamond, new Color(0.7f, 0.3f, 0.9f), new Vector2(0f, 0.75f) * s, 0.3f, o + 5);
         vines = SpriteFactory.Child(transform, "Vines", SpriteFactory.Ring, new Color(0.25f, 0.7f, 0.2f, 0.9f), Vector2.zero, s * 1.3f, o + 4);
@@ -259,8 +263,20 @@ public class Enemy : MonoBehaviour
         var book = new GameObject("Book").transform;
         book.SetParent(transform, false);
         SpriteFactory.Child(book, "Glow", SpriteFactory.Glow, new Color(Def.Accent.r, Def.Accent.g, Def.Accent.b, 0.5f), Vector2.zero, 1.1f, 44);
-        SpriteFactory.Child(book, "Cover", SpriteFactory.Square, new Color(0.55f, 0.15f, 0.2f), Vector2.zero, 0.45f, 45);
-        SpriteFactory.Child(book, "Pages", SpriteFactory.Square, new Color(0.95f, 0.9f, 0.8f), new Vector2(0.05f, 0f), 0.35f, 46);
+        var tome = ArtStyle.TomeSheet;
+        if (tome?["spin"] != null)
+        {
+            // the 3D tome, spinning; its frames are 2.4 units wide, so this makes it about a unit across
+            var sr = SpriteFactory.Child(book, "Tome", tome["spin"].Frames[0], Color.white, Vector2.zero, 0.5f, 0);
+            Lighting.MakeLit(sr);
+            Lighting.Point(book, Def.Accent, 2.2f, 0.7f);
+            EnemyAnimator.Attach(sr, tome, "spin", false);
+        }
+        else
+        {
+            SpriteFactory.Child(book, "Cover", SpriteFactory.Square, new Color(0.55f, 0.15f, 0.2f), Vector2.zero, 0.45f, 45);
+            SpriteFactory.Child(book, "Pages", SpriteFactory.Square, new Color(0.95f, 0.9f, 0.8f), new Vector2(0.05f, 0f), 0.35f, 46);
+        }
         books.Add(book);
     }
 
@@ -577,6 +593,7 @@ public class Enemy : MonoBehaviour
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
+            anim?.PlayCast();   // branches up, then slammed down
             var roster = GameManager.Instance.Arena.Biome.Roster;
             bool brood = Health < MaxHealth * Def.SummonBelow;
             switch (attackIndex++ % (brood ? 5 : 4))
@@ -617,6 +634,7 @@ public class Enemy : MonoBehaviour
         fireTimer -= dt * FireRate;
         if (fireTimer <= 0f)
         {
+            anim?.PlayCast();
             if (state == 0)
             {
                 fireTimer = Def.FireInterval * Tuning.CastRate;
@@ -656,6 +674,7 @@ public class Enemy : MonoBehaviour
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate;
+            anim?.PlayCast();
             switch (attackIndex++ % 4)
             {
                 case 0:
@@ -707,6 +726,7 @@ public class Enemy : MonoBehaviour
             case 0:   // walk
                 if (stateTimer <= 0f)
                 {
+                    anim?.PlayCast();   // the slam wind-up
                     int attack = attackIndex++ % 3;
                     if (attack == 0)
                     {
@@ -776,7 +796,7 @@ public class Enemy : MonoBehaviour
         fireTimer -= dt * FireRate;
         if (fireTimer > 0f) return;
         fireTimer = Def.FireInterval * Tuning.CastRate;
-        if (dist < 11f && (!IsCharmed || dist > 0.01f)) fire();
+        if (dist < 11f && (!IsCharmed || dist > 0.01f)) { anim?.PlayCast(); fire(); }
     }
 
     void Blink(float range)
@@ -1239,6 +1259,7 @@ public class Enemy : MonoBehaviour
                 child.knockback = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 6f;
             }
         }
+        anim?.PlayDeath();   // a sheet with a death clip leaves the body behind to play it
         Destroy(gameObject);
     }
 }

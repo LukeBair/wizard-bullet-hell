@@ -20,7 +20,8 @@
     "w": 48,
     "h": 48
    },
-   "duration": 100
+   "duration": 100,
+   "foot": 9
   },
   {
    "filename": "1",
@@ -42,7 +43,8 @@
     "w": 48,
     "h": 48
    },
-   "duration": 100
+   "duration": 100,
+   "foot": 8
   },
   {
    "filename": "2",
@@ -64,7 +66,8 @@
     "w": 48,
     "h": 48
    },
-   "duration": 100
+   "duration": 100,
+   "foot": 9
   },
   {
    "filename": "3",
@@ -86,7 +89,8 @@
     "w": 48,
     "h": 48
    },
-   "duration": 100
+   "duration": 100,
+   "foot": 9
   },
   {
    "filename": "4",
@@ -108,7 +112,8 @@
     "w": 48,
     "h": 48
    },
-   "duration": 100
+   "duration": 100,
+   "foot": 8
   },
   {
    "filename": "5",
@@ -130,7 +135,8 @@
     "w": 48,
     "h": 48
    },
-   "duration": 100
+   "duration": 100,
+   "foot": 9
   }
  ],
  "meta": {

@@ -15,6 +15,8 @@ public class XpGem : MonoBehaviour
     {
         Telemetry.XpDropped(value);
         var go = new GameObject("Gem");
+        // depth-sorted as one piece with characters and props, so a gem behind a tree is hidden by it
+        go.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;
         go.transform.position = pos + Random.insideUnitCircle * 0.2f;
         var g = go.AddComponent<XpGem>();
         g.pos = go.transform.position;

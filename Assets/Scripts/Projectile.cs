@@ -29,6 +29,7 @@ public class Projectile : MonoBehaviour
     readonly HashSet<Enemy> hit = new HashSet<Enemy>();
     static readonly List<Enemy> scratch = new List<Enemy>();
     SpriteRenderer body, glow, core;
+    UnityEngine.Rendering.Universal.Light2D spellLight;
 
     // Spent projectiles are parked here and reused, since bosses and split spells fire hundreds a minute.
     static readonly Stack<Projectile>[] pool = { new Stack<Projectile>(), new Stack<Projectile>() };
@@ -45,11 +46,16 @@ public class Projectile : MonoBehaviour
             var go = new GameObject(team == Team.Player ? "Spell" : "Bullet");
             go.SetActive(false);
             p = go.AddComponent<Projectile>();
+            // Your spells depth-sort with characters and props (passing behind a tree hides them);
+            // enemy bullets always draw on top so they can never hide.
+            if (team == Team.Player) go.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;
             p.Team = team;
             p.body = SpriteFactory.Add(go, ArtStyle.Round, color, team == Team.Enemy ? 81 : 71);
             p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, 2.4f, team == Team.Enemy ? 80 : 70);
             // Enemy bullets get a hot white core so they never read as your own spells.
             if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, Color.white, Vector2.zero, 0.5f, 82);
+            // your spells light up whatever they fly past (enemy bullets are too many; bloom does them)
+            if (team == Team.Player) p.spellLight = Lighting.Point(go.transform, color, 1f, Tune.F("lighting.spellIntensity", 1f));
         }
         else p.ResetState();
 
@@ -68,7 +74,16 @@ public class Projectile : MonoBehaviour
         p.body.sprite = ArtStyle.Round;
         p.body.color = color;
         p.glow.color = new Color(color.r, color.g, color.b, 0.6f);
+        if (p.spellLight != null)
+        {
+            p.spellLight.color = color;
+            Lighting.SetRadius(p.spellLight, Tune.F("lighting.spellRadius", 2.8f));
+        }
         if (p.core != null) p.core.sprite = ArtStyle.Round;
+        p.skin = false;   // pooled: a reused projectile starts as the plain orb again
+        p.body.transform.localRotation = Quaternion.identity;
+        p.body.transform.localScale = Vector3.one;
+        p.glow.enabled = true;
         p.gameObject.SetActive(true);
         return p;
     }
@@ -89,6 +104,34 @@ public class Projectile : MonoBehaviour
         age = trailTimer = 0f;
         hit.Clear();
         enabled = true;
+    }
+
+    bool skin;
+    float skinScale, skinPhase;
+
+    // Draws the projectile as a painted effect (SpellVfx) instead of the plain orb: the sprite points
+    // its head along the flight (head drawn on the left of the image), `length` world units long.
+    public void SetSkin(Sprite sprite, float length)
+    {
+        skin = true;
+        skinPhase = UnityEngine.Random.value * 10f;
+        body.sprite = sprite;
+        body.color = Color.white;
+        glow.enabled = false;
+        float unitsLong = sprite.rect.width / sprite.pixelsPerUnit;
+        skinScale = length / (unitsLong * Mathf.Max(0.0001f, transform.localScale.x));
+        body.transform.localScale = Vector3.one * skinScale;
+        Orient();
+    }
+
+    void Orient()
+    {
+        if (Velocity.sqrMagnitude < 1e-6f) return;
+        float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f;
+        body.transform.localRotation = Quaternion.Euler(0f, 0f, a);
+        // a little flicker so the energy feels alive
+        float pulse = 1f + 0.08f * Mathf.Sin((age + skinPhase) * 38f);
+        body.transform.localScale = new Vector3(skinScale * pulse, skinScale * (2f - pulse), 1f);
     }
 
     // Takes the projectile out of play (use instead of Destroy) and parks it for reuse.
@@ -127,6 +170,7 @@ public class Projectile : MonoBehaviour
         }
 
         age += dt;
+        if (skin) Orient();
         if (Homing > 0f && age < HomingTime)
         {
             Vector2? target = null;

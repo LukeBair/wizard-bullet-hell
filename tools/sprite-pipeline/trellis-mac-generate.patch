@@ -1,0 +1,22 @@
+diff --git a/generate.py b/generate.py
+index b3f6718..f17e2ab 100644
+--- a/generate.py
++++ b/generate.py
+@@ -78,10 +78,17 @@ def main():
+     t0 = time.time()
+     from trellis2.pipelines.trellis2_image_to_3d import Trellis2ImageTo3DPipeline
+ 
++    # Swap RMBG-2.0 (non-commercial) for an Apache-2.0 remover
++    import trellis2.pipelines.rembg as _rembg
++    from backends.rembg_free import FreeRembg
++    _rembg.BiRefNet = FreeRembg
++
+     pipeline = Trellis2ImageTo3DPipeline.from_pretrained("microsoft/TRELLIS.2-4B")
+     print(f"Loaded in {time.time() - t0:.0f}s")
+ 
+     # Move to MPS
++    # Plenty of unified memory: keep every model resident on the GPU
++    pipeline.low_vram = False
+     pipeline.to(torch.device("mps"))
+     print("Device: MPS")
+ 

@@ -125,6 +125,8 @@ public class GameManager : MonoBehaviour
         cam.orthographicSize = CameraSize;
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = Color.black;
+        Lighting.SetupCamera(cam);
+        if (cam.transform.Find("Sun") == null) Lighting.Sun(cam.transform);
     }
 
     void BuildWorld(Biome biome = null)
@@ -729,6 +731,23 @@ public class GameManager : MonoBehaviour
         if (SettingRow(new Rect(col.x, y, col.width, rowH), "Damage numbers", Settings.DamageNumbers))
             Settings.DamageNumbers = !Settings.DamageNumbers;
         y += rowH + gap;
+
+        if (ArtStyle.Current == ArtStyleId.Dusk)
+        {
+            // Character art: the original sprites or the 3D-rendered 64px / 128px sheets, for the wizard
+            // straight away and for enemies spawned from then on.
+            var wr = new Rect(col.x, y, col.width, rowH);
+            UI.Box(wr, new Color(1f, 1f, 1f, 0.06f));
+            UI.Text(new Rect(wr.x + 20f * s, wr.y, wr.width * 0.5f, rowH), "Character art", 32, TextAnchor.MiddleLeft);
+            float ww = 260f * s;
+            if (UI.Button(new Rect(wr.xMax - 12f * s - ww, wr.y + 8f * s, ww, rowH - 16f * s), Settings.WizardLabel, new Color(0.6f, 0.45f, 1f)))
+            {
+                Settings.Wizard++;
+                if (Player != null) Player.ReloadWizardSheet();
+                Sfx.Play("ui.button", Sound.Select, 0.8f);
+            }
+            y += rowH + gap;
+        }
 
         // Tuner: pull the latest tuning.json (and save edits) from the Mac's tuner server.
         if (Tune.B("ui.tunerButton", true))
