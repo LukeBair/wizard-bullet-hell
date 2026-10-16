@@ -31,13 +31,13 @@ public static class Settings
         set => Set(EnemyArtKey, value);
     }
 
-    const string BossSharpKey = "set_boss3d128";
+    const string SharpKey = "set_enemy3d128";
 
-    // Big 3D enemies (Treant, Witch, Headmaster) at 128px frames, or the lighter 64px copies.
-    public static bool Boss3DSharp
+    // 3D enemies drawn from their 128px frames, or the chunkier 64px ones (the default).
+    public static bool Enemy3DSharp
     {
-        get => PlayerPrefs.GetInt(BossSharpKey, 1) == 1;
-        set => Set(BossSharpKey, value);
+        get => PlayerPrefs.GetInt(SharpKey, 0) == 1;
+        set => Set(SharpKey, value);
     }
 
     // Sound volume in steps of settings.volumeStep, 0 = muted.

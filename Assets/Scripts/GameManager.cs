@@ -751,9 +751,9 @@ public class GameManager : MonoBehaviour
             y += rowH + gap;
             if (Settings.Enemy3D)
             {
-                // On: big enemies use their 128px frames; off: the 64px copies.
-                if (SettingRow(new Rect(col.x, y, col.width, rowH), "Sharp 3D bosses", Settings.Boss3DSharp))
-                    Settings.Boss3DSharp = !Settings.Boss3DSharp;
+                // On: 3D enemies use their 128px frames; off: the 64px ones.
+                if (SettingRow(new Rect(col.x, y, col.width, rowH), "Sharp 3D enemies", Settings.Enemy3DSharp))
+                    Settings.Enemy3DSharp = !Settings.Enemy3DSharp;
                 y += rowH + gap;
             }
         }
