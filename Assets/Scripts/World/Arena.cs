@@ -62,7 +62,7 @@ public class Arena : MonoBehaviour
                     if (UseForestProps && i % 6 == 0)
                     {
                         // glowing mushroom logs instead of every sixth flower
-                        var shroom = ArtStyle.Prop($"prop_mushrooms_{Random.Range(0, 3)}");
+                        var shroom = ArtStyle.Prop(PropFile("mushrooms", Random.Range(0, 6)));
                         if (shroom != null)
                         {
                             SpriteFactory.Child(transform, "Mushrooms", shroom, Color.white, p, 1.1f / (shroom.rect.width / shroom.pixelsPerUnit), 0).spriteSortPoint = SpriteSortPoint.Pivot;
@@ -162,18 +162,21 @@ public class Arena : MonoBehaviour
     // shrine stones. The sprite's base sits on the collision circle; widths are in units of r.
     static readonly (string name, int variants, float width, float minR)[] ForestProps =
     {
-        ("tree_oak", 3, 2.4f, 1.0f),
-        ("boulders_a", 3, 2.3f, 0f), ("boulders_b", 3, 2.6f, 0f), ("boulders_c", 3, 2.3f, 0f),
-        ("shrine_a", 3, 1.4f, 0f), ("shrine_b", 3, 1.5f, 0f),
+        ("tree_oak", 6, 2.4f, 1.0f),
+        ("boulders_a", 6, 2.3f, 0f), ("boulders_b", 6, 2.6f, 0f), ("boulders_c", 6, 2.3f, 0f),
+        ("shrine_a", 6, 1.4f, 0f), ("shrine_b", 6, 1.5f, 0f),
     };
 
-    bool UseForestProps => Biome.Name == "Whispering Forest" && ArtStyle.Prop("prop_tree_oak_0") != null;
+    // Each prop is rendered from six angles, in a sharp tier (128px Character art) and a chunky one (64px).
+    static string PropFile(string name, int variant) => $"prop_{name}_{variant}_{(Settings.Enemy3DSharp ? "hi" : "lo")}";
+
+    bool UseForestProps => Biome.Name == "Whispering Forest" && ArtStyle.Prop(PropFile("tree_oak", 0)) != null;
 
     bool AddProp(Vector2 p, float r, bool solid)
     {
         var options = System.Array.FindAll(ForestProps, f => solid ? (r >= 1.0f) == (f.minR >= 1.0f) : f.minR >= 1.0f);
         var pick = options[Random.Range(0, options.Length)];
-        var sprite = ArtStyle.Prop($"prop_{pick.name}_{Random.Range(0, pick.variants)}");
+        var sprite = ArtStyle.Prop(PropFile(pick.name, Random.Range(0, pick.variants)));
         if (sprite == null) return false;
         var basePos = p - new Vector2(0f, r * 0.5f);
         SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), basePos + new Vector2(0.15f, 0.05f), r * 2f, -45)

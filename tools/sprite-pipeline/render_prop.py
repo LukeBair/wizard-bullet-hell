@@ -1,6 +1,7 @@
 """Render a static prop (tree, rock, shrine...) from the game's 25-degree camera as a few variants, each
 the model turned to a different angle, with a matching normal map per variant.
-Usage: Blender -b -P render_prop.py -- model.glb out_dir name [variants=3] [res=256] [emit=0.6] [yaw=0]
+Usage: Blender -b -P render_prop.py -- model.glb out_dir name [variants=6] [spread=360] [res=256] [emit=0.6] [yaw=0]
+The variants are evenly spaced turns across `spread` degrees.
 Writes out_dir/<name>_<k>.png and <name>_<k>_n.png, trimmed to the prop with its base at the bottom."""
 import math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -11,7 +12,8 @@ from mathutils import Matrix, Vector
 a = sys.argv[sys.argv.index("--") + 1:]
 src, out, name = a[0], a[1], a[2]
 opt = dict(kv.split("=") for kv in a[3:])
-N, RES, EMIT, YAW = int(opt.get("variants", 3)), int(opt.get("res", 256)), float(opt.get("emit", 0.6)), float(opt.get("yaw", 0))
+SPREAD = float(opt.get("spread", 360))
+N, RES, EMIT, YAW = int(opt.get("variants", 6)), int(opt.get("res", 256)), float(opt.get("emit", 0.6)), float(opt.get("yaw", 0))
 os.makedirs(out, exist_ok=True)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -46,7 +48,7 @@ sc.world.node_tree.nodes["Background"].inputs[0].default_value = (0.6, 0.6, 0.65
 sc.world.node_tree.nodes["Background"].inputs[1].default_value = 0.8
 cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
 cam.data.type = "ORTHO"
-cam.data.ortho_scale = dim * 1.15
+cam.data.ortho_scale = dim * 1.5   # room for the diagonal as it turns
 sc.collection.objects.link(cam)
 sc.camera = cam
 tilt = math.radians(25)
@@ -55,7 +57,7 @@ cam.rotation_euler = (math.pi / 2 - tilt, 0, 0)
 normals = normal_pass.NormalPass(sc, [mesh])
 
 for k in range(N):
-    turn = math.radians(YAW + k * 360.0 / max(N, 1) * 0.35)   # modest turns so every variant shows its good side
+    turn = math.radians(YAW + k * SPREAD / max(N, 1))
     mesh.matrix_world = Matrix.Rotation(turn, 4, "Z") @ Matrix.Translation(-ctr) @ base
     sc.render.filepath = os.path.join(out, f"{name}_{k}.png")
     bpy.ops.render.render(write_still=True)
