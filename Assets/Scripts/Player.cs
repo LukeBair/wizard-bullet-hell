@@ -164,6 +164,9 @@ public class Player : MonoBehaviour
     // A spell just fired: swing the staff.
     public void CastAnim() => anim?.Cast();
 
+    // Re-read the Wizard art setting and switch the live wizard's sheet.
+    public void ReloadWizardSheet() => anim?.SetSheet(SpriteSheet.Load(Settings.WizardSheet) ?? SpriteSheet.Load("player_sheet"));
+
     public T GetSpell<T>() where T : Spell
     {
         foreach (var s in Spells) if (s is T t) return t;

@@ -30,6 +30,14 @@ public class WizardAnimator : MonoBehaviour
         return a;
     }
 
+    // Swap to another sheet mid-run (the Wizard art setting) and restart the current loop on it.
+    public void SetSheet(SpriteSheet newSheet)
+    {
+        if (newSheet == null || newSheet == sheet || clipName == "death") return;
+        sheet = newSheet;
+        Play(Moving ? "walk" : "idle");
+    }
+
     string Faced(string name) => sheet[name + Facing] != null ? name + Facing : name;
 
     void Play(string name, bool once = false)

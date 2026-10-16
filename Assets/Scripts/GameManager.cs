@@ -740,6 +740,7 @@ public class GameManager : MonoBehaviour
             if (UI.Button(new Rect(wr.xMax - 12f * s - ww, wr.y + 8f * s, ww, rowH - 16f * s), Settings.WizardLabel, new Color(0.6f, 0.45f, 1f)))
             {
                 Settings.Wizard++;
+                if (Player != null) Player.ReloadWizardSheet();
                 Sfx.Play("ui.button", Sound.Select, 0.8f);
             }
             y += rowH + gap;
