@@ -1178,12 +1178,19 @@
     "enabled": true,
     "bloom": true,
     "normalMaps": true,
-    "ambient": 1.0,
+    "ambient": 0.6,
     "wizardRadius": 6.0,
     "wizardIntensity": 0.0,
     "spellRadius": 2.8,
     "spellIntensity": 1.0,
     "ambientTint": 0.0,
-    "vignette": 0.12
+    "vignette": 0.12,
+    "sun": 0.7,
+    "sunAngle": 125.0,
+    "sunHeight": 0.8,
+    "sunCool": 0.4,
+    "shadows": true,
+    "shadowAlpha": 0.32,
+    "shadowLength": 0.55
   }
 }

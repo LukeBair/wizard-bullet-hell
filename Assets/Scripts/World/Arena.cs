@@ -185,6 +185,7 @@ public class Arena : MonoBehaviour
         var sr = SpriteFactory.Child(transform, "Prop", sprite, Color.white, basePos, scale, 0);   // depth-sorted at its base
         sr.spriteSortPoint = SpriteSortPoint.Pivot;
         sr.flipX = Random.value < 0.5f;
+        SpriteShadow.Add(sr, false);   // baked once, cast away from the sun
         if (solid) obstacles.Add(new Vector3(p.x, p.y, r * 0.7f));
         return true;
     }

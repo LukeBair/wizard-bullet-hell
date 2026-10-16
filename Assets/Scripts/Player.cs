@@ -93,6 +93,8 @@ public class Player : MonoBehaviour
             SpriteFactory.Child(visual, "Staff", SpriteFactory.Square, new Color(0.6f, 0.4f, 0.2f), new Vector2(0.38f, 0f), 1f, 53).transform.localScale = new Vector3(0.07f, 0.8f, 1f);
             SpriteFactory.Child(visual, "Gem", SpriteFactory.Circle, new Color(0.5f, 0.95f, 1f), new Vector2(0.38f, 0.42f), 0.16f, 54);
         }
+        var wizardSprite = visual.Find("Sprite");
+        if (wizardSprite != null) SpriteShadow.Add(wizardSprite.GetComponent<SpriteRenderer>(), true);
         // The wizard's sprite takes light, and he carries a soft lantern so he's never lost in the dark.
         foreach (var sr in visual.GetComponentsInChildren<SpriteRenderer>())
             if (sr.name != "Aura" && sr.name != "Shadow") Lighting.MakeLit(sr);

@@ -48,6 +48,44 @@ public static class Lighting
         }
     }
 
+    // Where the sun sits: lighting.sunAngle is the compass direction the light comes from (degrees,
+    // 0 = from the right, 90 = from the top). Shadows fall the opposite way.
+    static Vector2 SunFrom
+    {
+        get
+        {
+            float a = Tune.F("lighting.sunAngle", 125f) * Mathf.Deg2Rad;
+            return new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+        }
+    }
+    public static Vector2 ShadowDirection => -SunFrom;
+
+    // A directional "sun": URP's 2D lights have no directional type, so this is a huge flat point light
+    // parked far off-screen on the camera, which reaches every sprite from (nearly) the same direction.
+    // With normal maps on, it gives every prop and character a lit side and a shaded side.
+    public static Light2D Sun(Transform cam)
+    {
+        if (!Active) return null;
+        float intensity = Tune.F("lighting.sun", 0.7f);
+        if (intensity <= 0f) return null;
+        const float far = 200f;
+        var l = new GameObject("Sun").AddComponent<Light2D>();
+        l.transform.SetParent(cam, false);
+        Vector2 from = SunFrom * far;
+        l.transform.localPosition = new Vector3(from.x, from.y, 0f);
+        l.lightType = Light2D.LightType.Point;
+        l.color = Color.Lerp(Color.white, new Color(0.75f, 0.85f, 1f), Tune.F("lighting.sunCool", 0.4f));   // cool moonlight
+        l.intensity = intensity;
+        l.falloffIntensity = 0f;
+        l.pointLightOuterRadius = far * 2f;
+        l.pointLightInnerRadius = far * 1.9f;   // flat across the whole screen
+        UseNormalMaps(l);
+        distance ??= typeof(Light2D).GetField("m_NormalMapDistance", BindingFlags.NonPublic | BindingFlags.Instance);
+        distance?.SetValue(l, far * Tune.F("lighting.sunHeight", 0.8f));   // how high the sun stands: low = long side light
+        return l;
+    }
+    static FieldInfo distance;
+
     // The ambient light every lit sprite gets, tinted per biome.
     public static Light2D Ambient(Transform parent, Color tint)
     {
@@ -56,7 +94,7 @@ public static class Lighting
         l.transform.SetParent(parent, false);
         l.lightType = Light2D.LightType.Global;
         l.color = Color.Lerp(Color.white, tint, Tune.F("lighting.ambientTint", 0f));
-        l.intensity = Tune.F("lighting.ambient", 1f);
+        l.intensity = Tune.F("lighting.ambient", 0.6f);
         return l;
     }
 

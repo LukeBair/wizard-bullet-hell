@@ -126,6 +126,7 @@ public class GameManager : MonoBehaviour
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = Color.black;
         Lighting.SetupCamera(cam);
+        if (cam.transform.Find("Sun") == null) Lighting.Sun(cam.transform);
     }
 
     void BuildWorld(Biome biome = null)

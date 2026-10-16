@@ -242,7 +242,7 @@ public class Enemy : MonoBehaviour
             SpriteFactory.Child(transform, "PupilR", SpriteFactory.Circle, Color.black, new Vector2(0.17f, 0.03f) * s, s * 0.08f, o + 2);
         }
 
-        if (body != null) Lighting.MakeLit(body);
+        if (body != null) { Lighting.MakeLit(body); if (sheet != null || art != null) SpriteShadow.Add(body, true); }
 
         // Status markers, hidden until needed.
         curseMark = SpriteFactory.Child(transform, "Curse", SpriteFactory.Diamond, new Color(0.7f, 0.3f, 0.9f), new Vector2(0f, 0.75f) * s, 0.3f, o + 5);
