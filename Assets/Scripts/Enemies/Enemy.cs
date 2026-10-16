@@ -964,6 +964,7 @@ public class Enemy : MonoBehaviour
         // Gauge: fire meeting ice reacts (Steam) and the two cancel one unit for one unit.
         if (Gauge && IsChilled && steamCooldown <= 0f) { Steam(); UseChill(); return; }
         bool had = burnTimer > 0f;
+        if (!had) Sfx.Play(Sound.Sizzle, 0.5f, 0.2f);
         burnDps = Mathf.Max(had ? burnDps : 0f, dps);
         burnTimer = Mathf.Max(burnTimer, duration);
         burnUnits = Mathf.Min(GaugeMax, (had ? burnUnits : 0) + 1);
@@ -974,6 +975,7 @@ public class Enemy : MonoBehaviour
     {
         if (Gauge && IsBurning && steamCooldown <= 0f) { Steam(); UseBurn(); return; }
         bool had = chillTimer > 0f;
+        if (!had) Sfx.Play(Sound.Chill, 0.5f, 0.2f);
         chillTimer = Mathf.Max(chillTimer, duration);
         chillUnits = Mathf.Min(GaugeMax, (had ? chillUnits : 0) + 1);
         if (!Gauge && IsBurning) Steam();
@@ -1018,6 +1020,7 @@ public class Enemy : MonoBehaviour
 
     public void Wither(float amount, float slow, float duration)
     {
+        if (witherTimer <= 0f) Sfx.Play(Sound.Wither, 0.5f, 0.2f);
         witherAmount = witherTimer > 0f ? Mathf.Max(witherAmount, amount) : amount;
         witherSlow = witherTimer > 0f ? Mathf.Max(witherSlow, slow) : slow;
         witherTimer = Mathf.Max(witherTimer, duration);
@@ -1033,6 +1036,7 @@ public class Enemy : MonoBehaviour
 
     public void ApplyWet(float duration)
     {
+        if (wetTimer <= 0f) Sfx.Play(Sound.Splash, 0.5f, 0.2f);
         wetUnits = Mathf.Min(GaugeMax, (wetTimer > 0f ? wetUnits : 0) + 1);
         wetTimer = Mathf.Max(wetTimer, duration);
     }

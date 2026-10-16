@@ -433,6 +433,7 @@ public class CometTrail : Spell
         lastDrop = at;
         hasDropped = true;
         float damage = Damage;   // fixed at drop time, so an Overloaded patch stays strong
+        Sfx.Play(Sound.Comet, 0.35f, 0.15f);
         for (int i = 0; i < Count; i++)
         {
             Vector2 p = at + side * (i - (Count - 1) * 0.5f) * T("splitGap", 0.8f);

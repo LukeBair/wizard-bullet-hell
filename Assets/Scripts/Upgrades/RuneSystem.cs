@@ -117,6 +117,7 @@ public class RuneSystem : UpgradeSystem
         spell.AddRune(rune);
         bool resonates = CountOf(list, rune) == Tune.I("runes.resonanceCount", 3);
         Telemetry.PickRune(rune, spell, resonates);
+        Sfx.Play(Sound.RuneSocket, resonates ? 0.9f : 0.6f, 0f);
         if (resonates)
         {
             spell.AddRune(rune);   // resonance: the third matching rune counts double
@@ -130,6 +131,7 @@ public class RuneSystem : UpgradeSystem
         spell.Evolve();
         Telemetry.PickEvolve(spell);
         GameManager.Instance.Toast($"{spell.Name} evolved: {spell.Title}!");
+        Sfx.Play(Sound.Evolve, 0.9f, 0f);
         Fx.Ring(Player.Position, spell.Color, 3f, 0.6f);
         Fx.Burst(Player.Position, spell.Color, 5f);
     }

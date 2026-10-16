@@ -182,7 +182,7 @@ public class Director : MonoBehaviour
             var def = roster.Bosses[bossIndex++ % roster.Bosses.Length];
             Boss = SpawnAtEdge(def, "boss");
             gm.Toast(IsFinalBoss ? $"Final boss: {def.Name}!" : $"{def.Name} approaches!");
-            Sfx.Play(Sound.Warning, 0.7f, 0f);
+            Sfx.Play(Sound.BossRoar, 0.9f, 0.05f);
             Haptics.Tap(Haptics.Impact.Heavy);
         }
     }

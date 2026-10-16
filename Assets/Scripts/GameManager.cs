@@ -101,6 +101,7 @@ public class GameManager : MonoBehaviour
         runGold += gold;
         DamageText.Spawn(at + Vector2.up * 0.4f, gold, GoldColor);
         Fx.Ring(at, GoldColor, 0.6f, 0.3f);
+        Sfx.Play(Sound.Coin, 0.6f, 0.1f);
     }
 
     // Pays out the run's gold once: pickups plus time survived, plus the win bonus.
@@ -226,6 +227,7 @@ public class GameManager : MonoBehaviour
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f)) PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
         PlayerPrefs.Save();
         if (Player != null) Particles.LevelUp(Player.Position);
+        Sfx.Play(Sound.Victory, 0.9f, 0f);
         StartCoroutine(Tune.FetchFromMac());
     }
 
@@ -477,7 +479,8 @@ public class GameManager : MonoBehaviour
 
     void Bought()
     {
-        Sfx.Play(Sound.LevelUp, 0.6f, 0f);
+        Sfx.Play(Sound.Coin, 0.9f, 0f);
+        Sfx.Play(Sound.LevelUp, 0.4f, 0f);
         Haptics.Notification(Haptics.Notify.Success);
     }
 
@@ -725,7 +728,25 @@ public class GameManager : MonoBehaviour
         y += rowH + gap;
         if (SettingRow(new Rect(col.x, y, col.width, rowH), "Damage numbers", Settings.DamageNumbers))
             Settings.DamageNumbers = !Settings.DamageNumbers;
-        y += rowH + gap * 3f;
+        y += rowH + gap;
+
+        // Tuner: pull the latest tuning.json (and save edits) from the Mac's tuner server.
+        if (Tune.B("ui.tunerButton", true))
+        {
+            row = new Rect(col.x, y, col.width, rowH);
+            UI.Box(row, new Color(1f, 1f, 1f, 0.06f));
+            UI.Text(new Rect(row.x + 20f * s, row.y + 6f * s, row.width * 0.55f, rowH * 0.5f), "Tuner", 32, TextAnchor.MiddleLeft);
+            string status = Tune.Fetching ? "connecting..." : Tune.LastFetch;
+            UI.Text(new Rect(row.x + 20f * s, row.y + rowH * 0.5f, row.width * 0.6f, rowH * 0.45f), status, 18, TextAnchor.UpperLeft, new Color(1f, 1f, 1f, 0.5f), false);
+            float tw = 210f * s;
+            if (UI.Button(new Rect(row.xMax - 12f * s - tw, row.y + 8f * s, tw, rowH - 16f * s), Tune.Fetching ? "..." : "Connect", Tune.Fetching ? dim : GoldColor) && !Tune.Fetching)
+            {
+                Sfx.Play(Sound.Select, 0.8f);
+                StartCoroutine(Tune.FetchFromMac());
+            }
+            y += rowH + gap;
+        }
+        y += gap * 2f;
 
         if (UI.Button(new Rect(col.x + col.width * 0.15f, y, col.width * 0.7f, 90f * s), "Credits", new Color(0.6f, 0.6f, 0.7f)))
         {

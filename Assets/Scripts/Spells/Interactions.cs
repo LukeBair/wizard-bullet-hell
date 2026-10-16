@@ -24,6 +24,7 @@ public static class Interactions
     {
         if (seen.Add(i)) GameManager.Instance.Toast($"Combo: {Name(i)}!");
         Particles.Combo(i, at);
+        Sfx.Play(Sound.Combo, 0.5f, 0.08f);
         EffectCounter.Count(Name(i), at, Tint(i));
     }
 

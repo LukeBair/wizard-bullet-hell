@@ -417,6 +417,7 @@ public abstract class Spell
         if (to == null) return;
         nextSpark = Time.time + Tune.F("runes.Static.cooldown", 0.1f);
         Fx.Bolt(from.Position, to.Position, ElementColor(Element.Storm));
+        Sfx.Play(Sound.Spark, 0.4f, 0.2f);
         Strike(to, damage * Tune.F("runes.Static.damagePerRune", 0.2f) * stat, default, Element.Storm, false);
     }
 
