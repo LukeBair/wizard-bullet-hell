@@ -46,6 +46,9 @@ public class Projectile : MonoBehaviour
             var go = new GameObject(team == Team.Player ? "Spell" : "Bullet");
             go.SetActive(false);
             p = go.AddComponent<Projectile>();
+            // Your spells depth-sort with characters and props (passing behind a tree hides them);
+            // enemy bullets always draw on top so they can never hide.
+            if (team == Team.Player) go.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;
             p.Team = team;
             p.body = SpriteFactory.Add(go, ArtStyle.Round, color, team == Team.Enemy ? 81 : 71);
             p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, 2.4f, team == Team.Enemy ? 80 : 70);
