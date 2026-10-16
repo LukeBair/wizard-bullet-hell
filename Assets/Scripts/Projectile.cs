@@ -114,7 +114,7 @@ public class Projectile : MonoBehaviour
     public void SetSkin(Sprite sprite, float length)
     {
         skin = true;
-        skinPhase = Random.value * 10f;
+        skinPhase = UnityEngine.Random.value * 10f;
         body.sprite = sprite;
         body.color = Color.white;
         glow.enabled = false;
