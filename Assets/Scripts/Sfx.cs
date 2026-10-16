@@ -11,8 +11,9 @@ public enum Sound
 }
 
 // Placeholder sound effects, synthesized at startup so there are no audio assets to manage.
-// Each sound is rate limited so a screen full of enemies doesn't turn into noise, and has its own
-// volume in the tuner (audio.sfx.<Sound>), on top of audio.volume and the Settings volume.
+// Each sound is rate limited so a screen full of enemies doesn't turn into noise. Every place that
+// plays one names itself (e.g. "spells.Fireball.cast") and gets its own volume in the tuner under
+// audio.sfx.<that name>, on top of audio.volume and the Settings volume.
 public class Sfx : MonoBehaviour
 {
     const int Rate = 44100;
@@ -23,20 +24,15 @@ public class Sfx : MonoBehaviour
     readonly Dictionary<Sound, float> lastPlayed = new Dictionary<Sound, float>();
     AudioSource[] sources;
     int next;
-    static readonly string[] volumeKeys = BuildVolumeKeys();
+    static readonly Dictionary<string, string> volumeKeys = new Dictionary<string, string>();   // source -> tuner key
 
-    static string[] BuildVolumeKeys()
-    {
-        var names = System.Enum.GetNames(typeof(Sound));
-        var keys = new string[names.Length];
-        for (int i = 0; i < names.Length; i++) keys[i] = "audio.sfx." + names[i];
-        return keys;
-    }
-
-    public static void Play(Sound s, float volume = 1f, float pitchJitter = 0.06f)
+    public static void Play(string source, Sound s, float volume = 1f, float pitchJitter = 0.06f)
     {
         if (instance == null || Settings.Volume <= 0f) return;
-        instance.PlayInternal(s, volume, pitchJitter);
+        if (!volumeKeys.TryGetValue(source, out string key)) volumeKeys[source] = key = "audio.sfx." + source;
+        float own = Tune.F(key, 1f);
+        if (own <= 0f) return;
+        instance.PlayInternal(s, volume * own, pitchJitter);
     }
 
     void Awake()
@@ -61,9 +57,7 @@ public class Sfx : MonoBehaviour
         var src = sources[next];
         next = (next + 1) % Voices;
         src.pitch = 1f + Random.Range(-jitter, jitter);
-        float own = Tune.F(volumeKeys[(int)s], 1f);
-        if (own <= 0f) return;
-        src.PlayOneShot(clips[s], volume * own * Tune.F("audio.volume", 1f) * Settings.Volume);
+        src.PlayOneShot(clips[s], volume * Tune.F("audio.volume", 1f) * Settings.Volume);
     }
 
     static float MinGap(Sound s)

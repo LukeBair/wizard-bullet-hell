@@ -534,7 +534,7 @@ public class Enemy : MonoBehaviour
                             state = 1; stateTimer = IsCharmed ? 1.2f : 2.2f;
                             SetHidden(true);
                             Fx.Burst(Position, Def.Color, 1.5f);
-                            Sfx.Play(Sound.Burrow, 0.5f);
+                            Sfx.Play("enemies.burrow", Sound.Burrow, 0.5f);
                         }
                         return dir * speed * 0.4f;
                     case 1:
@@ -712,7 +712,7 @@ public class Enemy : MonoBehaviour
                     {
                         state = 1; stateTimer = 1.1f; lockedDir = dir;
                         Fx.Telegraph(Position, lockedDir, 11f, Radius * 2f, new Color(0.5f, 0.95f, 1f, 0.35f), 1.1f);
-                        Sfx.Play(Sound.Warning, 0.4f, 0f);
+                        Sfx.Play("boss.golemSlam", Sound.Warning, 0.4f, 0f);
                     }
                     else if (attack == 1)
                     {
@@ -798,7 +798,7 @@ public class Enemy : MonoBehaviour
         p = arena.PushOut(p, Radius);
         Fx.Burst(Position, Def.Accent, Radius * 3f);
         Fx.Ring(Position, Def.Accent, Radius * 1.5f);
-        Sfx.Play(Sound.Teleport, 0.35f);
+        Sfx.Play("enemies.teleport", Sound.Teleport, 0.35f);
         MoveTo(p);
         Fx.Burst(p, Def.Accent, Radius * 3f);
     }
@@ -866,7 +866,7 @@ public class Enemy : MonoBehaviour
         }
         p.Lifetime = 6f;
         if (IsBoss) Particles.Muzzle(from, v, ArtStyle.EnemyBullet(Def.Accent));
-        Sfx.Play(Sound.EnemyShoot, 0.2f, 0.15f);
+        Sfx.Play("enemies.shoot", Sound.EnemyShoot, 0.2f, 0.15f);
         return p;
     }
 
@@ -941,7 +941,7 @@ public class Enemy : MonoBehaviour
             flash = 1f;
             DamageText.Spawn(Position + Vector2.up * Radius, amount, numberColor ?? Color.white);
             Particles.Hit(Position, numberColor ?? Color.white, push);
-            Sfx.Play(Sound.EnemyHit, 0.25f, 0.15f);
+            Sfx.Play("enemies.hit", Sound.EnemyHit, 0.25f, 0.15f);
         }
         if (!IsBoss && !IsRooted) knockback += push;
         if (Health <= 0f) Die();
@@ -964,7 +964,7 @@ public class Enemy : MonoBehaviour
         // Gauge: fire meeting ice reacts (Steam) and the two cancel one unit for one unit.
         if (Gauge && IsChilled && steamCooldown <= 0f) { Steam(); UseChill(); return; }
         bool had = burnTimer > 0f;
-        if (!had) Sfx.Play(Sound.Sizzle, 0.5f, 0.2f);
+        if (!had) Sfx.Play("status.burn", Sound.Sizzle, 0.5f, 0.2f);
         burnDps = Mathf.Max(had ? burnDps : 0f, dps);
         burnTimer = Mathf.Max(burnTimer, duration);
         burnUnits = Mathf.Min(GaugeMax, (had ? burnUnits : 0) + 1);
@@ -975,7 +975,7 @@ public class Enemy : MonoBehaviour
     {
         if (Gauge && IsBurning && steamCooldown <= 0f) { Steam(); UseBurn(); return; }
         bool had = chillTimer > 0f;
-        if (!had) Sfx.Play(Sound.Chill, 0.5f, 0.2f);
+        if (!had) Sfx.Play("status.chill", Sound.Chill, 0.5f, 0.2f);
         chillTimer = Mathf.Max(chillTimer, duration);
         chillUnits = Mathf.Min(GaugeMax, (had ? chillUnits : 0) + 1);
         if (!Gauge && IsBurning) Steam();
@@ -1020,7 +1020,7 @@ public class Enemy : MonoBehaviour
 
     public void Wither(float amount, float slow, float duration)
     {
-        if (witherTimer <= 0f) Sfx.Play(Sound.Wither, 0.5f, 0.2f);
+        if (witherTimer <= 0f) Sfx.Play("status.wither", Sound.Wither, 0.5f, 0.2f);
         witherAmount = witherTimer > 0f ? Mathf.Max(witherAmount, amount) : amount;
         witherSlow = witherTimer > 0f ? Mathf.Max(witherSlow, slow) : slow;
         witherTimer = Mathf.Max(witherTimer, duration);
@@ -1036,7 +1036,7 @@ public class Enemy : MonoBehaviour
 
     public void ApplyWet(float duration)
     {
-        if (wetTimer <= 0f) Sfx.Play(Sound.Splash, 0.5f, 0.2f);
+        if (wetTimer <= 0f) Sfx.Play("status.wet", Sound.Splash, 0.5f, 0.2f);
         wetUnits = Mathf.Min(GaugeMax, (wetTimer > 0f ? wetUnits : 0) + 1);
         wetTimer = Mathf.Max(wetTimer, duration);
     }
@@ -1089,7 +1089,7 @@ public class Enemy : MonoBehaviour
         Fx.Burst(Position, new Color(0.7f, 0.95f, 1f), Radius * 4f);
         Fx.Ring(Position, Color.white, Radius * 2f);
         Particles.Frost(Position, Radius * 2f);
-        Sfx.Play(Sound.Lightning, 0.5f, 0.3f);
+        Sfx.Play("combos.shatter", Sound.Lightning, 0.5f, 0.3f);
         using (Telemetry.By("Shatter")) TakeDamage(dmg, default, new Color(0.7f, 0.95f, 1f));
     }
 
@@ -1160,7 +1160,7 @@ public class Enemy : MonoBehaviour
         Interactions.Trigger(Interaction.Steam, Position);
         float dmg = Mathf.Min(Tune.F("combos.steamMaxDamage", 60f), Tune.F("combos.steamBaseDamage", 10f) + MaxHealth * Tune.F("combos.steamHealthFraction", 0.08f));
         Fx.Burst(Position, new Color(0.95f, 0.95f, 0.95f, 0.8f), 3f);
-        Sfx.Play(Sound.FireballCast, 0.35f, 0.3f);
+        Sfx.Play("combos.steam", Sound.FireballCast, 0.35f, 0.3f);
         using (Telemetry.By("Steam"))
         foreach (var e in Spell.EnemiesWithin(Position, 1.6f))
             e.TakeDamage(dmg, (e.Position - Position).normalized * 3f, new Color(0.95f, 0.95f, 0.95f));
@@ -1177,7 +1177,7 @@ public class Enemy : MonoBehaviour
         Fx.Burst(Position, c, radius * 2f);
         Fx.Ring(Position, c, radius, 0.3f);
         Particles.Ants(Position, radius, fire);
-        Sfx.Play(Sound.EnemyDie, 0.5f, 0.3f);
+        Sfx.Play("status.infestBurst", Sound.EnemyDie, 0.5f, 0.3f);
         foreach (var e in Spell.EnemiesWithin(Position, radius))
         {
             if (e == this) continue;
@@ -1223,7 +1223,7 @@ public class Enemy : MonoBehaviour
 
         Fx.Burst(Position, Def.Color, Radius * 2.5f, false);   // Particles.Death throws the debris
         Particles.Death(Position, Def.Look, Radius, Def.Tier);
-        if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
+        if (!IsBoss) Sfx.Play("enemies.die", Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();
         if (IsRooted) rootDeathBloom?.Invoke(Position);
         if (IsRooted && VineTrapped) Grimoire.Feat(SpellId.Overgrowth);

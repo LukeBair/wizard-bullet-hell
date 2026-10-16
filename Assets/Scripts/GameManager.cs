@@ -101,7 +101,7 @@ public class GameManager : MonoBehaviour
         runGold += gold;
         DamageText.Spawn(at + Vector2.up * 0.4f, gold, GoldColor);
         Fx.Ring(at, GoldColor, 0.6f, 0.3f);
-        Sfx.Play(Sound.Coin, 0.6f, 0.1f);
+        Sfx.Play("pickups.midasGold", Sound.Coin, 0.6f, 0.1f);
     }
 
     // Pays out the run's gold once: pickups plus time survived, plus the win bonus.
@@ -213,7 +213,7 @@ public class GameManager : MonoBehaviour
         Director.Holding = false;
         fadeInUntil = Time.time + FadeTime;
         Toast(next.Name);
-        Sfx.Play(Sound.Warning, 0.5f, 0f);
+        Sfx.Play("events.zoneChange", Sound.Warning, 0.5f, 0f);
     }
 
     void Win()
@@ -227,7 +227,7 @@ public class GameManager : MonoBehaviour
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f)) PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
         PlayerPrefs.Save();
         if (Player != null) Particles.LevelUp(Player.Position);
-        Sfx.Play(Sound.Victory, 0.9f, 0f);
+        Sfx.Play("events.victory", Sound.Victory, 0.9f, 0f);
         StartCoroutine(Tune.FetchFromMac());
     }
 
@@ -281,7 +281,7 @@ public class GameManager : MonoBehaviour
             if (rested && pendingLevelUps == 0)
             {
                 Toast("Fully built: rested");
-                Sfx.Play(Sound.LevelUp, 0.5f, 0f);
+                Sfx.Play("events.fullyBuilt", Sound.LevelUp, 0.5f, 0f);
                 if (Player != null) Particles.LevelUp(Player.Position);
             }
         }
@@ -290,7 +290,7 @@ public class GameManager : MonoBehaviour
             State = GameState.LevelUp;
             Time.timeScale = 0f;
             Joystick.Blocked = true;
-            Sfx.Play(Sound.LevelUp, 0.8f, 0f);
+            Sfx.Play("events.levelUp", Sound.LevelUp, 0.8f, 0f);
             if (Player != null) Particles.LevelUp(Player.Position);
             Haptics.Notification(Haptics.Notify.Success);
         }
@@ -339,7 +339,7 @@ public class GameManager : MonoBehaviour
             case GameState.TomePick:
                 if (Upgrades.DrawStart())
                 {
-                    Sfx.Play(Sound.Select, 0.8f);
+                    Sfx.Play("ui.button", Sound.Select, 0.8f);
                     Haptics.Selection();
                     BeginPlaying();
                 }
@@ -349,7 +349,7 @@ public class GameManager : MonoBehaviour
                 DrawHud();
                 if (Upgrades.Draw())
                 {
-                    Sfx.Play(Sound.Select, 0.8f);
+                    Sfx.Play("ui.button", Sound.Select, 0.8f);
                     Haptics.Selection();
                     pendingLevelUps--;
                     if (pendingLevelUps > 0) Upgrades.Open();
@@ -376,7 +376,7 @@ public class GameManager : MonoBehaviour
 
         if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 220f * s, col.width * 0.7f, 120f * s), "Play", new Color(0.6f, 0.45f, 1f)))
         {
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
             Haptics.Selection();
             StartRun();
         }
@@ -430,7 +430,7 @@ public class GameManager : MonoBehaviour
 
     void OpenGrimoire()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         grimoirePage = 0;
         grimoireReturn = State;
@@ -479,8 +479,8 @@ public class GameManager : MonoBehaviour
 
     void Bought()
     {
-        Sfx.Play(Sound.Coin, 0.9f, 0f);
-        Sfx.Play(Sound.LevelUp, 0.4f, 0f);
+        Sfx.Play("ui.purchaseCoin", Sound.Coin, 0.9f, 0f);
+        Sfx.Play("ui.purchase", Sound.LevelUp, 0.4f, 0f);
         Haptics.Notification(Haptics.Notify.Success);
     }
 
@@ -497,7 +497,7 @@ public class GameManager : MonoBehaviour
             var accent = on ? new Color(1f, 0.85f, 0.4f) : new Color(0.45f, 0.45f, 0.55f);
             if (UI.Button(new Rect(r.x + i * (w + gap), r.y + 40f * s, w, 70f * s), ArtStyle.Label(styles[i]), accent) && !on)
             {
-                Sfx.Play(Sound.Select, 0.8f);
+                Sfx.Play("ui.button", Sound.Select, 0.8f);
                 Haptics.Selection();
                 ArtStyle.Current = styles[i];
                 BuildWorld();
@@ -579,7 +579,7 @@ public class GameManager : MonoBehaviour
 
     void Pause()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         confirming = null;
         State = GameState.Paused;
@@ -588,7 +588,7 @@ public class GameManager : MonoBehaviour
 
     void Resume()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         State = GameState.Playing;
         Time.timeScale = 1f;
@@ -671,7 +671,7 @@ public class GameManager : MonoBehaviour
 
     void OpenSettings()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         settingsReturn = State;
         State = GameState.Settings;
@@ -679,7 +679,7 @@ public class GameManager : MonoBehaviour
 
     void CloseSettings()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         State = settingsReturn;
     }
@@ -704,13 +704,13 @@ public class GameManager : MonoBehaviour
         if (UI.Button(new Rect(bx, row.y + 8f * s, bw, rowH - 16f * s), "+", pct < 100 ? GoldColor : dim) && pct < 100)
         {
             Settings.StepVolume(1);
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
         }
         UI.Text(new Rect(bx - 150f * s, row.y, 150f * s, rowH), pct == 0 ? "Off" : $"{pct}%", 32, TextAnchor.MiddleCenter, pct == 0 ? new Color(1f, 1f, 1f, 0.5f) : Color.white);
         if (UI.Button(new Rect(bx - 150f * s - bw, row.y + 8f * s, bw, rowH - 16f * s), "-", pct > 0 ? GoldColor : dim) && pct > 0)
         {
             Settings.StepVolume(-1);
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
         }
         y += rowH + gap;
 
@@ -741,7 +741,7 @@ public class GameManager : MonoBehaviour
             float tw = 210f * s;
             if (UI.Button(new Rect(row.xMax - 12f * s - tw, row.y + 8f * s, tw, rowH - 16f * s), Tune.Fetching ? "..." : "Connect", Tune.Fetching ? dim : GoldColor) && !Tune.Fetching)
             {
-                Sfx.Play(Sound.Select, 0.8f);
+                Sfx.Play("ui.button", Sound.Select, 0.8f);
                 StartCoroutine(Tune.FetchFromMac());
             }
             y += rowH + gap;
@@ -750,7 +750,7 @@ public class GameManager : MonoBehaviour
 
         if (UI.Button(new Rect(col.x + col.width * 0.15f, y, col.width * 0.7f, 90f * s), "Credits", new Color(0.6f, 0.6f, 0.7f)))
         {
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
             Haptics.Selection();
             State = GameState.Credits;
         }
@@ -769,7 +769,7 @@ public class GameManager : MonoBehaviour
         float bw = 170f * s;
         bool tapped = UI.Button(new Rect(r.xMax - 12f * s - bw, r.y + 8f * s, bw, r.height - 16f * s), on ? "On" : "Off",
             on ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.45f, 0.45f, 0.55f));
-        if (tapped) Sfx.Play(Sound.Select, 0.8f);
+        if (tapped) Sfx.Play("ui.button", Sound.Select, 0.8f);
         return tapped;
     }
 
@@ -788,7 +788,7 @@ public class GameManager : MonoBehaviour
             28, TextAnchor.UpperCenter, soft, false);
         if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 700f * s, col.width * 0.7f, 110f * s), "Back", new Color(0.6f, 0.45f, 1f)))
         {
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
             Haptics.Selection();
             State = GameState.Settings;
         }

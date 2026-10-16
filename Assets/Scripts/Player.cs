@@ -229,7 +229,7 @@ public class Player : MonoBehaviour
         wards++;
         wardTimer = Tune.F("runes.Ward.cooldown", 5f);
         Fx.Ring(Position, new Color(0.75f, 0.9f, 1f), 0.7f, 0.3f);
-        Sfx.Play(Sound.WardReady, 0.5f, 0f);
+        Sfx.Play("player.wardReady", Sound.WardReady, 0.5f, 0f);
     }
 
     // Any hit (bullet, contact or hazard) is about to land: a ward eats it, with the usual
@@ -240,7 +240,7 @@ public class Player : MonoBehaviour
         wards--;
         invulnTimer = InvulnTime;
         Fx.Burst(Position, new Color(0.75f, 0.9f, 1f), 1.5f);
-        Sfx.Play(Sound.WardBlock, 0.7f, 0.1f);
+        Sfx.Play("player.wardBlock", Sound.WardBlock, 0.7f, 0.1f);
         return true;
     }
 
@@ -280,10 +280,10 @@ public class Player : MonoBehaviour
         bool wasHealthy = Health >= lowAt;
         Health -= amount;
         Telemetry.Hurt(amount, source, kind, Health);
-        if (wasHealthy && IsAlive && Health < lowAt) Sfx.Play(Sound.LowHealth, 0.8f, 0f);
+        if (wasHealthy && IsAlive && Health < lowAt) Sfx.Play("player.lowHealth", Sound.LowHealth, 0.8f, 0f);
         invulnTimer = InvulnTime;
         GameManager.Instance.Shake(0.2f);
-        Sfx.Play(Sound.PlayerHurt, 0.8f);
+        Sfx.Play("player.hurt", Sound.PlayerHurt, 0.8f);
         Haptics.Tap(Haptics.Impact.Heavy);
         anim?.Hit();
 
@@ -291,7 +291,7 @@ public class Player : MonoBehaviour
 
         if (!IsAlive)
         {
-            Sfx.Play(Sound.PlayerDie, 1f, 0f);
+            Sfx.Play("player.die", Sound.PlayerDie, 1f, 0f);
             if (anim != null)
             {
                 // Keep the sprite up for the death animation; hide the aura, hitbox and the rest.

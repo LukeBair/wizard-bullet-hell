@@ -83,7 +83,7 @@ public class XpGem : MonoBehaviour
         if (dist < 0.4f)
         {
             player.AddXp(value);
-            Sfx.Play(Sound.Gem, 0.3f, 0.15f);
+            Sfx.Play("pickups.xpGem", Sound.Gem, 0.3f, 0.15f);
             Particles.Pickup(pos, color);
             Destroy(gameObject);
             return;

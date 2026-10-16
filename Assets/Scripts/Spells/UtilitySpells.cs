@@ -69,7 +69,7 @@ public class Rejuvenate : Spell
         GameManager.Instance.Toast("Phoenix Rite: revived!");
         Fx.Burst(Owner.Position, Color, 8f);
         Fx.Ring(Owner.Position, Color, 4f, 0.6f);
-        Sfx.Play(Sound.LevelUp, 0.9f, 0f);
+        Sfx.Play("spells.Rejuvenate.revive", Sound.LevelUp, 0.9f, 0f);
         Haptics.Notification(Haptics.Notify.Success);
         // Clear some space so the revive isn't instantly wasted.
         foreach (var e in EnemiesWithin(Owner.Position, 4f))
@@ -91,7 +91,7 @@ public class Rejuvenate : Spell
         Fx.Ring(Owner.Position, Color, 1.2f, 0.4f);
         Fx.Burst(Owner.Position, Color, 2f);
         DamageText.Spawn(Owner.Position + Vector2.up * 0.6f, amount, new Color(0.5f, 1f, 0.5f));
-        Sfx.Play(Sound.Gem, 0.5f, 0f);
+        Sfx.Play("spells.Rejuvenate.pulse", Sound.Gem, 0.5f, 0f);
     }
 }
 
@@ -130,7 +130,7 @@ public class Overgrowth : Spell
 
     protected override void Cast()
     {
-        Sfx.Play(Sound.Burrow, 0.5f);
+        Sfx.Play("spells.Overgrowth.cast", Sound.Burrow, 0.5f);
         var used = new System.Collections.Generic.List<Enemy>();
         for (int i = 0; i < Count; i++)
         {
@@ -235,7 +235,7 @@ public class Veil : Spell
         ResetCooldown();
         passed.Clear();
         Owner.Phase(PhaseTime);
-        Sfx.Play(Sound.Teleport, 0.7f);
+        Sfx.Play("spells.Veil.absorb", Sound.Teleport, 0.7f);
         Fx.Ring(Owner.Position, Color, 1.5f, 0.4f);
         if (RuneCount(Rune.Area) > 0)
             foreach (var e in EnemiesWithin(Owner.Position, 2f * Area))
@@ -287,7 +287,7 @@ public class TidalLance : Spell
     {
         var target = Enemy.Nearest(Owner.Position, Range);
         if (target == null) return;
-        Sfx.Play(Sound.FireballCast, 0.5f, 0.2f);
+        Sfx.Play("spells.TidalLance.cast", Sound.FireballCast, 0.5f, 0.2f);
         float duration = TT("duration", 1.2f) * (1f + 0.3f * RuneCount(Rune.Pierce));
         float cone = Tier >= 2 ? TT("coneAngle", 35f) : 0f;
         float push = Tier >= 2 ? TT("push", 12f) : T("push", 5f);
@@ -356,7 +356,7 @@ public class Cyclone : Spell
         float dist = T("distance", 4.5f);
         if (target != null)
             dist = Mathf.Clamp(Vector2.Distance(Owner.Position, target.Position) + T("frontOffset", 1f), T("minDistance", 2f), dist);
-        Sfx.Play(Sound.Burrow, 0.4f, 0.3f);
+        Sfx.Play("spells.Cyclone.cast", Sound.Burrow, 0.4f, 0.3f);
         float tick = Tier == 3 ? T("tickEvery_t3", 0.125f) : T("tickEvery", 0.25f);
         float speed = Tier >= 2 ? TT("travelSpeed", 2.5f) : 0f;
         for (int i = 0; i < Count; i++)
@@ -482,7 +482,7 @@ public class Enthrall : Spell
         {
             var e = Pick(used);
             if (e == null) return;
-            Sfx.Play(Sound.Teleport, 0.5f, 0.2f);
+            Sfx.Play("spells.Enthrall.cast", Sound.Teleport, 0.5f, 0.2f);
             if (Tier == 1)
             {
                 used.Add(e);

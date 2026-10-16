@@ -21,41 +21,123 @@
     "lowHealthAt": 0.25,
     "_lowHealthAt": "Health fraction below which the low-health warning plays (once per drop below it).",
     "sfx": {
-      "Missile": 1,
-      "FireballCast": 1,
-      "Explosion": 1,
-      "Nova": 1,
-      "Lightning": 1,
-      "WispHit": 1,
-      "EnemyHit": 1,
-      "EnemyDie": 1,
-      "EnemyShoot": 1,
-      "PlayerHurt": 1,
-      "Gem": 1,
-      "LevelUp": 1,
-      "Select": 1,
-      "Warning": 1,
-      "Teleport": 1,
-      "Burrow": 1,
-      "BossDie": 1,
-      "PlayerDie": 1,
-      "Victory": 1,
-      "BossRoar": 1,
-      "Comet": 1,
-      "Combo": 1,
-      "WardBlock": 1,
-      "WardReady": 1,
-      "LowHealth": 1,
-      "RuneSocket": 1,
-      "Evolve": 1,
-      "Feat": 1,
-      "Coin": 1,
-      "Sizzle": 1,
-      "Chill": 1,
-      "Splash": 1,
-      "Wither": 1,
-      "Spark": 1,
-      "_about": "Per-sound volume multipliers (0 = off), on top of audio.volume and the Settings volume. Each call site also has its own base level."
+      "boss": {
+        "arrive": 1,
+        "die": 1,
+        "golemSlam": 1
+      },
+      "combos": {
+        "combo": 1,
+        "shatter": 1,
+        "steam": 1
+      },
+      "enemies": {
+        "burrow": 1,
+        "die": 1,
+        "hazard": 1,
+        "hit": 1,
+        "shoot": 1,
+        "teleport": 1
+      },
+      "events": {
+        "evolve": 1,
+        "featDone": 1,
+        "fullyBuilt": 1,
+        "levelUp": 1,
+        "runeSocket": 1,
+        "swarm": 1,
+        "victory": 1,
+        "zoneChange": 1
+      },
+      "pickups": {
+        "midasGold": 1,
+        "xpGem": 1
+      },
+      "player": {
+        "die": 1,
+        "hurt": 1,
+        "lowHealth": 1,
+        "wardBlock": 1,
+        "wardReady": 1
+      },
+      "runes": {
+        "overload": 1,
+        "staticSpark": 1
+      },
+      "spells": {
+        "ArcaneMissile": {
+          "cast": 1
+        },
+        "Banish": {
+          "cast": 1
+        },
+        "ChainLightning": {
+          "cast": 1
+        },
+        "CometTrail": {
+          "drop": 1
+        },
+        "Cyclone": {
+          "cast": 1
+        },
+        "Enthrall": {
+          "cast": 1
+        },
+        "Fireball": {
+          "cast": 1,
+          "explode": 1
+        },
+        "FrostNova": {
+          "pulse": 1
+        },
+        "MirrorWard": {
+          "reflect": 1
+        },
+        "Overgrowth": {
+          "cast": 1
+        },
+        "Rejuvenate": {
+          "pulse": 1,
+          "revive": 1
+        },
+        "SpectralBlades": {
+          "cast": 1
+        },
+        "StoneSpikes": {
+          "cast": 1
+        },
+        "Sunspots": {
+          "burst": 1,
+          "cast": 1
+        },
+        "TidalLance": {
+          "cast": 1,
+          "pillar": 1
+        },
+        "Veil": {
+          "absorb": 1
+        },
+        "Wisps": {
+          "dart": 1,
+          "fireBurst": 1,
+          "orbit": 1,
+          "stormBurst": 1
+        }
+      },
+      "status": {
+        "burn": 1,
+        "chill": 1,
+        "infestBurst": 1,
+        "wet": 1,
+        "wither": 1
+      },
+      "ui": {
+        "button": 1,
+        "purchase": 1,
+        "purchaseCoin": 1,
+        "runePick": 1
+      },
+      "_about": "Volume of each individual sound (1 = default, 0 = off), on top of audio.volume and the Settings volume. Grouped by what plays it."
     }
   },
   "settings": {

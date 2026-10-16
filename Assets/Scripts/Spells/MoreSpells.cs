@@ -139,7 +139,7 @@ public class MirrorWard : Spell, IOrbiter
         float damage = Damage + bullet.Damage * T("reflectScale", 2f) * Potency;
         bullet.Release();   // leaves Projectile.All at once, so no other shard takes it
         Fx.Burst(at, Color, 1f);
-        Sfx.Play(Sound.WispHit, 0.3f, 0.3f);
+        Sfx.Play("spells.MirrorWard.reflect", Sound.WispHit, 0.3f, 0.3f);
         Grimoire.Feat(SpellId.MirrorWard);
 
         var target = Enemy.Nearest(at, Range);
@@ -193,7 +193,7 @@ public class StoneSpikes : Spell
     {
         var target = Enemy.Nearest(Owner.Position, Range);
         if (target == null) return;
-        Sfx.Play(Sound.Burrow, 0.5f, 0.2f);
+        Sfx.Play("spells.StoneSpikes.cast", Sound.Burrow, 0.5f, 0.2f);
         Vector2 from = Owner.Position;
         Vector2 dir = (target.Position - from).normalized;
         int spikes = SpikesPerLine;
@@ -275,7 +275,7 @@ public class SpectralBlades : Spell
     {
         var target = Enemy.Nearest(Owner.Position, Range);
         if (target == null) return;
-        Sfx.Play(Sound.Teleport, 0.35f, 0.3f);
+        Sfx.Play("spells.SpectralBlades.cast", Sound.Teleport, 0.35f, 0.3f);
         Vector2 dir = (target.Position - Owner.Position).normalized;
         int trips = Tier >= 2 ? 2 : 1;
         for (int i = 0; i < Count; i++)
@@ -352,7 +352,7 @@ public class Sunspots : Spell
             Vector2 at = arena.PushOut(Owner.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * dist, Radius);
             SunPool.Create(this, Owner, at, Radius, PoolTime, heal, Color);
         }
-        Sfx.Play(Sound.Gem, 0.4f, 0.2f);
+        Sfx.Play("spells.Sunspots.cast", Sound.Gem, 0.4f, 0.2f);
     }
 
     // Called by a pool every frame the wizard stands in it.
@@ -373,7 +373,7 @@ public class Sunspots : Spell
         float radius = Radius * T("burstRadius_t3", 2f);
         Fx.Ring(at, Color, radius, 0.5f);
         Fx.Burst(at, Color.white, radius * 2f);
-        Sfx.Play(Sound.Explosion, 0.6f, 0.1f);
+        Sfx.Play("spells.Sunspots.burst", Sound.Explosion, 0.6f, 0.1f);
         GameManager.Instance.Shake(0.15f);
         foreach (var e in EnemiesWithin(at, radius))
             Hit(e, T("burstDamage_t3", 80f) * Potency * (Owner != null ? Owner.DamageMultiplier : 1f), (e.Position - at).normalized * 6f);
@@ -433,7 +433,7 @@ public class CometTrail : Spell
         lastDrop = at;
         hasDropped = true;
         float damage = Damage;   // fixed at drop time, so an Overloaded patch stays strong
-        Sfx.Play(Sound.Comet, 0.35f, 0.15f);
+        Sfx.Play("spells.CometTrail.drop", Sound.Comet, 0.35f, 0.15f);
         for (int i = 0; i < Count; i++)
         {
             Vector2 p = at + side * (i - (Count - 1) * 0.5f) * T("splitGap", 0.8f);
@@ -538,7 +538,7 @@ public class Banish : Spell
             if (boss != null && boss.IsBoss) { boss.Daze(T("bossDaze", 1f)); Fx.Ring(boss.Position, Color, boss.Radius * 1.5f, 0.3f); }
             return;
         }
-        Sfx.Play(Sound.Teleport, 0.4f, 0.3f);
+        Sfx.Play("spells.Banish.cast", Sound.Teleport, 0.4f, 0.3f);
         float duration = Duration;
         foreach (var t in targets)
         {

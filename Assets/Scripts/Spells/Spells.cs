@@ -20,7 +20,7 @@ public class ArcaneMissile : Spell
     protected override void Cast()
     {
         Vector2 from = Owner.Position;
-        Sfx.Play(Sound.Missile, 0.35f);
+        Sfx.Play("spells.ArcaneMissile.cast", Sound.Missile, 0.35f);
         var used = new List<Enemy>();
         for (int i = 0; i < Count; i++)
         {
@@ -85,7 +85,7 @@ public class Fireball : Spell
         Vector2 from = Owner.Position;
         var target = Enemy.Nearest(from, Range);
         if (target == null) return;
-        Sfx.Play(Sound.FireballCast, 0.5f);
+        Sfx.Play("spells.Fireball.cast", Sound.FireballCast, 0.5f);
         for (int i = 0; i < Count; i++)
         {
             Vector2 dir = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 18f) * (target.Position - from);
@@ -114,7 +114,7 @@ public class Fireball : Spell
         float radius = Radius * scale;
         Fx.Burst(at, Color, radius * 2.2f);
         Fx.Ring(at, Color, radius);
-        Sfx.Play(Sound.Explosion, 0.5f);
+        Sfx.Play("spells.Fireball.explode", Sound.Explosion, 0.5f);
         var caught = EnemiesWithin(at, radius);
         foreach (var e in caught)
         {
@@ -182,7 +182,7 @@ public class FrostNova : Spell
     void Pulse()
     {
         Vector2 at = Owner.Position;
-        Sfx.Play(Sound.Nova, 0.45f);
+        Sfx.Play("spells.FrostNova.pulse", Sound.Nova, 0.45f);
         Fx.Ring(at, Color, Radius, 0.4f);
         Fx.Burst(at, new Color(Color.r, Color.g, Color.b, 0.4f), Radius * 2f);
         Particles.Frost(at, Radius);
@@ -225,7 +225,7 @@ public class ChainLightning : Spell
 
     protected override void Cast()
     {
-        Sfx.Play(Sound.Lightning, 0.45f);
+        Sfx.Play("spells.ChainLightning.cast", Sound.Lightning, 0.45f);
         var struck = new List<Enemy>();
         Bolts(struck);
         Grimoire.FeatMax(SpellId.ChainLightning, struck.Count);   // foes the lightning passed through this cast
@@ -456,7 +456,7 @@ public class Wisps : Spell, IOrbiter
                 lastHit[e] = Time.time;
                 hitSomething = true;
                 Fx.Burst(e.Position, Color, 1f);
-                Sfx.Play(Sound.WispHit, 0.35f, 0.2f);
+                Sfx.Play("spells.Wisps.orbit", Sound.WispHit, 0.35f, 0.2f);
                 Fx.Ring(world, Color, OrbRadius * 1.5f, 0.2f);
                 Hit(e, Damage, local.normalized * 3f);
                 Credit(e);
@@ -541,7 +541,7 @@ public class Wisps : Spell, IOrbiter
             burning = forced == 1; wet = forced == 2; chilled = forced == 4; infested = forced == 8; rooted = forced == 16;
             st.absorbHits--;
         }
-        Sfx.Play(Sound.WispHit, 0.45f, 0.2f);
+        Sfx.Play("spells.Wisps.dart", Sound.WispHit, 0.45f, 0.2f);
         Fx.Burst(at, Color, 1.2f);
         Hit(e, Damage * T("huntDamage", 1.5f), dir * 3f);
         Credit(e);
@@ -566,7 +566,7 @@ public class Wisps : Spell, IOrbiter
             float radius = T("flareRadius", 1.6f) * Area;
             Fx.Burst(at, new Color(1f, 0.55f, 0.2f), radius * 2.5f);
             Fx.Ring(at, new Color(1f, 0.7f, 0.3f), radius, 0.4f);
-            Sfx.Play(Sound.Explosion, 0.5f, 0.2f);
+            Sfx.Play("spells.Wisps.fireBurst", Sound.Explosion, 0.5f, 0.2f);
             foreach (var x in EnemiesWithin(at, radius))
             {
                 Hit(x, T("flareDamage", 40f) * power, (x.Position - at).normalized * 5f);
@@ -587,7 +587,7 @@ public class Wisps : Spell, IOrbiter
                 Credit(x);
                 arcs--;
             }
-            Sfx.Play(Sound.Lightning, 0.35f, 0.3f);
+            Sfx.Play("spells.Wisps.stormBurst", Sound.Lightning, 0.35f, 0.3f);
             return false;
         }
         if (chilled)

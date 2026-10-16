@@ -134,7 +134,7 @@ public static class Grimoire
         PlayerPrefs.SetInt($"feat.{id}.3", 1);
         PlayerPrefs.Save();
         GameManager.Instance.Toast($"Feat done: {Spell.Preview(id).Name} III in the Grimoire");
-        Sfx.Play(Sound.Feat, 0.8f, 0f);
+        Sfx.Play("events.featDone", Sound.Feat, 0.8f, 0f);
     }
 
     // Tier III also needs tier II unlocked first.
