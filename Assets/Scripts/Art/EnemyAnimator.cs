@@ -48,10 +48,10 @@ public class EnemyAnimator : MonoBehaviour
         return c;
     }
 
-    // The two-handed cast, once, in the current facing.
+    // The cast, once, in the current facing (ignored while one is already playing).
     public void PlayCast()
     {
-        if (cast == null || dying) return;
+        if (cast == null || dying || oneShot != null) return;
         oneShot = cast[facingIndex];
         t = 0f;
     }

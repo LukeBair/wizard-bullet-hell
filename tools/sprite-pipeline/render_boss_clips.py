@@ -1,5 +1,7 @@
 """Pose a rigged boss (rig_humanoid.py) through idle, walk, two-handed cast and death in all eight facings.
-Usage: Blender -b rig/<name>.blend -P render_boss_clips.py -- out_dir mesh_name [res] [emit]
+Usage: Blender -b rig/<name>.blend -P render_boss_clips.py -- out_dir mesh_name [res] [emit] [style] [rest_down]
+style: glide (robed, no steps: the Headmaster), stride (a caster who walks on visible legs) or
+brute (heavy stomping walk, overhead two-fist slam for the cast, falls forward on death).
 Writes out_dir/<clip>/<facing>/NN.png, which make_enemy_sheet.py packs into <clip>_<facing> clips."""
 import math, os, sys
 import bpy
@@ -10,6 +12,8 @@ args = sys.argv[sys.argv.index("--") + 1:]
 out_dir, mesh_name = args[0], args[1]
 RES_ARG = int(args[2]) if len(args) > 2 else 256
 EMIT = float(args[3]) if len(args) > 3 else 0.8
+STYLE = args[4] if len(args) > 4 else "glide"
+REST_DOWN = float(args[5]) if len(args) > 5 else 62.0   # how far the T-pose arms drop at rest
 os.makedirs(out_dir, exist_ok=True)
 
 arm = bpy.data.objects["rig"]
@@ -96,7 +100,7 @@ def lerp_keys(t, ts, vs):
 def pose(clip, i, n):
     """Pose frame i of n. Arms start out in TRELLIS's T-pose; `down` lowers them to the sides."""
     reset()
-    down = 62.0
+    down = REST_DOWN
     sway_x = sway_y = flare = 0.0
     fwd = {"L": 0.0, "R": 0.0}     # arm swing about X: negative = forward
     spread = 0.0                   # extra outward lift of both arms
@@ -110,6 +114,57 @@ def pose(clip, i, n):
         fwd["L"] = fwd["R"] = -4 + 3 * math.sin(u + 0.5)
         elbow["L"] = elbow["R"] = 20
         wrist["L"] = wrist["R"] = -10 + 8 * math.sin(u + 1.2)   # fingers drumming
+    elif clip == "walk" and STYLE == "brute":
+        p = 2 * math.pi * i / n
+        rot("Thigh.L", "X", -22 * math.sin(p))
+        rot("Thigh.R", "X", 22 * math.sin(p))
+        rot("Shin.L", "X", 18 * max(0.0, math.sin(p)))
+        rot("Shin.R", "X", 18 * max(0.0, -math.sin(p)))
+        arm.location.z = -0.02 * abs(math.sin(p))
+        rot("Hips", "Y", 5 * math.sin(p))
+        rot("Chest", "X", -6.0)
+        fwd["L"], fwd["R"] = 16 * math.sin(p), -16 * math.sin(p)
+        elbow["L"] = elbow["R"] = 15
+        down = 70
+    elif clip == "walk" and STYLE == "stride":
+        p = 2 * math.pi * i / n
+        rot("Thigh.L", "X", -20 * math.sin(p))
+        rot("Thigh.R", "X", 20 * math.sin(p))
+        rot("Shin.L", "X", 15 * max(0.0, math.sin(p)))
+        rot("Shin.R", "X", 15 * max(0.0, -math.sin(p)))
+        arm.location.z = 0.008 * math.sin(2 * p)
+        rot("Chest", "X", -3.0)
+        fwd["L"], fwd["R"] = 12 * math.sin(p), -12 * math.sin(p)
+        elbow["L"] = elbow["R"] = 30
+        wrist["L"] = wrist["R"] = -20                   # palms up, holding the flames
+        sway_y = 0.3 * math.sin(p)
+        flare = 0.15
+    elif clip == "cast" and STYLE == "brute":
+        # both fists go up overhead, then slam down as he drops into a crouch
+        t = i / max(n - 1, 1)
+        ks = [0, 0.35, 0.5, 0.65, 1.0]
+        fwd["L"] = fwd["R"] = lerp_keys(t, ks, [0, -150, -160, -40, 0])
+        elbow["L"] = elbow["R"] = lerp_keys(t, ks, [10, 40, 30, 5, 10])
+        rot("Chest", "X", lerp_keys(t, ks, [0, -12, -15, 22, 0]))
+        arm.location.z = lerp_keys(t, ks, [0, 0.01, 0.02, -0.06, 0])
+        down = 70
+    elif clip == "death" and STYLE == "brute":
+        # sags to his knees, then topples forward
+        t = i / max(n - 1, 1)
+        e = float(np.clip(t / 0.5, 0, 1))
+        f = float(np.clip((t - 0.4) / 0.6, 0, 1))
+        f = f * f * (3 - 2 * f)
+        rot("Thigh.L", "X", -60 * e)
+        rot("Thigh.R", "X", -60 * e)
+        rot("Shin.L", "X", 90 * e)
+        rot("Shin.R", "X", 90 * e)
+        arm.location.z = -0.18 * e
+        theta = 70.0 * f
+        arm.rotation_euler = (math.radians(theta), 0, 0)
+        P = Vector((0, -0.1, -0.5))
+        arm.location = arm.location + (P - Matrix.Rotation(math.radians(theta), 3, "X") @ P)
+        down = 75 + 10 * e
+        fwd["L"] = fwd["R"] = -40 * f
     elif clip == "walk":
         # he glides: no steps under the robe, just a sway, a bob and the hands trailing
         p = 2 * math.pi * i / n
@@ -140,7 +195,7 @@ def pose(clip, i, n):
         # recoils with arms thrown up, then crumples to his knees and slumps forward
         t = i / max(n - 1, 1)
         rec = lerp_keys(t, [0, 0.2, 0.4, 1.0], [0, 1, 0.5, 0])
-        down = 62 - 85 * rec + 20 * max(0.0, t - 0.4)
+        down = REST_DOWN - 85 * rec + 20 * max(0.0, t - 0.4)
         wrist["L"] = wrist["R"] = -50 * rec + 30 * max(0.0, t - 0.4)
         e = float(np.clip((t - 0.3) / 0.7, 0, 1))
         e = e * e * (3 - 2 * e)

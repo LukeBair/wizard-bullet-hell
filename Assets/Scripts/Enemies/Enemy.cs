@@ -628,6 +628,7 @@ public class Enemy : MonoBehaviour
         fireTimer -= dt * FireRate;
         if (fireTimer <= 0f)
         {
+            anim?.PlayCast();
             if (state == 0)
             {
                 fireTimer = Def.FireInterval * Tuning.CastRate;
@@ -719,6 +720,7 @@ public class Enemy : MonoBehaviour
             case 0:   // walk
                 if (stateTimer <= 0f)
                 {
+                    anim?.PlayCast();   // the slam wind-up
                     int attack = attackIndex++ % 3;
                     if (attack == 0)
                     {
@@ -788,7 +790,7 @@ public class Enemy : MonoBehaviour
         fireTimer -= dt * FireRate;
         if (fireTimer > 0f) return;
         fireTimer = Def.FireInterval * Tuning.CastRate;
-        if (dist < 11f && (!IsCharmed || dist > 0.01f)) fire();
+        if (dist < 11f && (!IsCharmed || dist > 0.01f)) { anim?.PlayCast(); fire(); }
     }
 
     void Blink(float range)
