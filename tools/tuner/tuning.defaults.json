@@ -16,7 +16,152 @@
     "music": {
       "volume": 0.6,
       "fade": 1.5,
-      "_about": "Zone music. volume multiplies audio.volume and the player's Settings volume; fade = crossfade seconds on zone changes and when a run starts or ends."
+      "_about": "Zone music. volume multiplies audio.volume and the player's Settings volume; fade = crossfade seconds on zone changes and when a run starts or ends.",
+      "crush": 0,
+      "crushMix": 1,
+      "_crush": "Bitcrusher on the music only: 0 = clean, 1 = very chunky (16 -> 4 bits, sample rate down to 1/16). Try 0.3-0.6 for a retro feel.",
+      "_crushMix": "How much crushed sound to blend in (0 = none, 1 = all).",
+      "tracks": {
+        "_about": "File name in Assets/Resources/Music without the extension; empty = none. Zones without a track play their chiptune takes; boss fights without one use boss.any, then the zone track.",
+        "title": "",
+        "grimoire": "",
+        "victory": "",
+        "gameOver": "",
+        "zone": {
+          "WhisperingForest": "",
+          "ArcaneAcademy": "",
+          "CrystalCaves": "",
+          "WitchsHollow": ""
+        },
+        "boss": {
+          "ElderTreant": "",
+          "HeadmasterVexley": "music_boss_vexley_fate_and_fortune",
+          "CrystalGolem": "",
+          "TheHedgeWitch": "",
+          "any": ""
+        }
+      }
+    },
+    "lowHealthAt": 0.25,
+    "_lowHealthAt": "Health fraction below which the low-health warning plays (once per drop below it).",
+    "sfx": {
+      "boss": {
+        "arrive": 1,
+        "die": 1,
+        "golemSlam": 1
+      },
+      "combos": {
+        "combo": 1,
+        "shatter": 1,
+        "steam": 1
+      },
+      "enemies": {
+        "burrow": 1,
+        "die": 1,
+        "hazard": 1,
+        "hit": 1,
+        "shoot": 1,
+        "teleport": 1
+      },
+      "events": {
+        "evolve": 1,
+        "featDone": 1,
+        "fullyBuilt": 1,
+        "levelUp": 1,
+        "runeSocket": 1,
+        "swarm": 1,
+        "victory": 1,
+        "zoneChange": 1
+      },
+      "pickups": {
+        "midasGold": 1,
+        "xpGem": 1
+      },
+      "player": {
+        "die": 1,
+        "hurt": 1,
+        "lowHealth": 1,
+        "wardBlock": 1,
+        "wardReady": 1
+      },
+      "runes": {
+        "overload": 1,
+        "staticSpark": 1
+      },
+      "spells": {
+        "ArcaneMissile": {
+          "cast": 1
+        },
+        "Banish": {
+          "cast": 1
+        },
+        "ChainLightning": {
+          "cast": 1
+        },
+        "CometTrail": {
+          "drop": 1
+        },
+        "Cyclone": {
+          "cast": 1
+        },
+        "Enthrall": {
+          "cast": 1
+        },
+        "Fireball": {
+          "cast": 1,
+          "explode": 1
+        },
+        "FrostNova": {
+          "pulse": 1
+        },
+        "MirrorWard": {
+          "reflect": 1
+        },
+        "Overgrowth": {
+          "cast": 1
+        },
+        "Rejuvenate": {
+          "pulse": 1,
+          "revive": 1
+        },
+        "SpectralBlades": {
+          "cast": 1
+        },
+        "StoneSpikes": {
+          "cast": 1
+        },
+        "Sunspots": {
+          "burst": 1,
+          "cast": 1
+        },
+        "TidalLance": {
+          "cast": 1,
+          "pillar": 1
+        },
+        "Veil": {
+          "absorb": 1
+        },
+        "Wisps": {
+          "dart": 1,
+          "fireBurst": 1,
+          "orbit": 1,
+          "stormBurst": 1
+        }
+      },
+      "status": {
+        "burn": 1,
+        "chill": 1,
+        "infestBurst": 1,
+        "wet": 1,
+        "wither": 1
+      },
+      "ui": {
+        "button": 1,
+        "purchase": 1,
+        "purchaseCoin": 1,
+        "runePick": 1
+      },
+      "_about": "Volume of each individual sound (1 = default, 0 = off), on top of audio.volume and the Settings volume. Grouped by what plays it."
     }
   },
   "settings": {
@@ -31,7 +176,9 @@
     "artStylePicker": false,
     "_artStylePicker": "Show the art style picker on the title screen. Off = Dusk only (store builds).",
     "debugToggle": false,
-    "_debugToggle": "Show the Debug button on the title and pause screens in release builds (always shown in development builds)."
+    "_debugToggle": "Show the Debug button on the title and pause screens in release builds (always shown in development builds).",
+    "tunerButton": true,
+    "_tunerButton": "Show the Tuner row (Connect to the Mac's tuner) in Settings. Turn off for App Store builds."
   },
   "hud": {
     "fontScale": 1.2,

@@ -97,7 +97,7 @@ public class Director : MonoBehaviour
         BossesDefeated++;
         HealthScale += T("healthPerBossKill", 1f);
         XpGem.MagnetAll();
-        Sfx.Play(Sound.BossDie, 1f, 0f);
+        Sfx.Play("boss.die", Sound.BossDie, 1f, 0f);
         Haptics.Notification(Haptics.Notify.Success);
         GameManager.Instance.Player.Heal(T("bossKillHeal", 30f), source: "Boss kill");
         GameManager.Instance.Toast($"{e.Def.Name} defeated!");
@@ -168,7 +168,7 @@ public class Director : MonoBehaviour
         {
             swarmTimer = SwarmEvery;
             SpawnSwarm(gm);
-            Sfx.Play(Sound.Warning, 0.5f, 0f);
+            Sfx.Play("events.swarm", Sound.Warning, 0.5f, 0f);
             Haptics.Tap(Haptics.Impact.Medium);
             Threat++;
             zoneThreat++;
@@ -182,7 +182,7 @@ public class Director : MonoBehaviour
             var def = roster.Bosses[bossIndex++ % roster.Bosses.Length];
             Boss = SpawnAtEdge(def, "boss");
             gm.Toast(IsFinalBoss ? $"Final boss: {def.Name}!" : $"{def.Name} approaches!");
-            Sfx.Play(Sound.Warning, 0.7f, 0f);
+            Sfx.Play("boss.arrive", Sound.BossRoar, 0.9f, 0.05f);
             Haptics.Tap(Haptics.Impact.Heavy);
         }
     }

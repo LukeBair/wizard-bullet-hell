@@ -22,6 +22,7 @@ public static class Tune
     static Dictionary<string, object> values = new Dictionary<string, object>();
     public static string Source { get; private set; } = "defaults";
     public static bool Fetching { get; private set; }
+    public static string LastFetch { get; private set; } = "not checked yet";   // the tuner row in Settings shows this
     public static int Version { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -152,6 +153,7 @@ public static class Tune
             req.timeout = 5;
             yield return req.SendWebRequest();
             reached = req.result == UnityWebRequest.Result.Success;
+            LastFetch = reached ? $"connected to {baseUrl}" : $"can't reach {baseUrl}";
             if (reached && TryApply(req.downloadHandler.text))
                 Source = $"live from {baseUrl}";
         }

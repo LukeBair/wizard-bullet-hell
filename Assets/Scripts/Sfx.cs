@@ -6,10 +6,14 @@ public enum Sound
     Missile, FireballCast, Explosion, Nova, Lightning, WispHit,
     EnemyHit, EnemyDie, EnemyShoot, PlayerHurt, Gem, LevelUp, Select,
     Warning, Teleport, Burrow, BossDie,
+    PlayerDie, Victory, BossRoar, Comet, Combo, WardBlock, WardReady, LowHealth,
+    RuneSocket, Evolve, Feat, Coin, Sizzle, Chill, Splash, Wither, Spark,
 }
 
 // Placeholder sound effects, synthesized at startup so there are no audio assets to manage.
-// Each sound is rate limited so a screen full of enemies doesn't turn into noise.
+// Each sound is rate limited so a screen full of enemies doesn't turn into noise. Every place that
+// plays one names itself (e.g. "spells.Fireball.cast") and gets its own volume in the tuner under
+// audio.sfx.<that name>, on top of audio.volume and the Settings volume.
 public class Sfx : MonoBehaviour
 {
     const int Rate = 44100;
@@ -20,11 +24,15 @@ public class Sfx : MonoBehaviour
     readonly Dictionary<Sound, float> lastPlayed = new Dictionary<Sound, float>();
     AudioSource[] sources;
     int next;
+    static readonly Dictionary<string, string> volumeKeys = new Dictionary<string, string>();   // source -> tuner key
 
-    public static void Play(Sound s, float volume = 1f, float pitchJitter = 0.06f)
+    public static void Play(string source, Sound s, float volume = 1f, float pitchJitter = 0.06f)
     {
         if (instance == null || Settings.Volume <= 0f) return;
-        instance.PlayInternal(s, volume, pitchJitter);
+        if (!volumeKeys.TryGetValue(source, out string key)) volumeKeys[source] = key = "audio.sfx." + source;
+        float own = Tune.F(key, 1f);
+        if (own <= 0f) return;
+        instance.PlayInternal(s, volume * own, pitchJitter);
     }
 
     void Awake()
@@ -62,6 +70,12 @@ public class Sfx : MonoBehaviour
             case Sound.Gem: return 0.04f;
             case Sound.WispHit: return 0.08f;
             case Sound.Explosion: return 0.08f;
+            case Sound.Comet: return 0.3f;
+            case Sound.Combo: return 0.15f;
+            case Sound.Coin: return 0.06f;
+            case Sound.Spark: return 0.1f;
+            case Sound.Sizzle: case Sound.Chill: case Sound.Splash: case Sound.Wither: return 0.12f;
+            case Sound.LowHealth: return 2f;
             default: return 0.03f;
         }
     }
@@ -87,6 +101,56 @@ public class Sfx : MonoBehaviour
         clips[Sound.Teleport] = Tone(0.15f, 400f, 2000f, Wave.Sine, 0.2f);
         clips[Sound.Burrow] = Tone(0.3f, 120f, 60f, Wave.Noise, 0.25f, attack: 0.1f);
         clips[Sound.BossDie] = Tone(1.0f, 200f, 30f, Wave.Noise, 0.6f, decay: 1.5f);
+
+        clips[Sound.PlayerDie] = Mix(Tone(1.1f, 440f, 70f, Wave.Square, 0.3f, decay: 1.2f),
+                                     Tone(0.8f, 180f, 40f, Wave.Noise, 0.3f, decay: 2f));
+        clips[Sound.Victory] = Arpeggio(new[] { 523f, 659f, 784f, 659f, 784f, 1046f, 1318f }, 0.11f, 0.35f);
+        clips[Sound.BossRoar] = Mix(Tone(1.2f, 70f, 140f, Wave.Noise, 0.5f, attack: 0.15f, decay: 1.5f),
+                                    Tone(1.2f, 110f, 82f, Wave.Square, 0.22f, attack: 0.2f, decay: 1f));
+        clips[Sound.Comet] = Tone(0.18f, 300f, 140f, Wave.Noise, 0.2f, attack: 0.03f, crackle: true);
+        clips[Sound.Combo] = Arpeggio(new[] { 880f, 1175f, 1568f }, 0.045f, 0.3f);
+        clips[Sound.WardBlock] = Tone(0.3f, 1800f, 1500f, Wave.Sine, 0.35f, decay: 3f, shimmer: 0.5f);
+        clips[Sound.WardReady] = Tone(0.18f, 900f, 1350f, Wave.Sine, 0.18f, shimmer: 0.3f);
+        clips[Sound.LowHealth] = Mix(Tone(0.12f, 220f, 200f, Wave.Sine, 0.45f, decay: 1f),
+                                     Delay(Tone(0.16f, 200f, 180f, Wave.Sine, 0.4f, decay: 1f), 0.2f));
+        clips[Sound.RuneSocket] = Tone(0.25f, 1046f, 1568f, Wave.Triangle, 0.3f, shimmer: 0.4f);
+        clips[Sound.Evolve] = Mix(Arpeggio(new[] { 392f, 523f, 659f, 784f, 1046f, 1318f }, 0.07f, 0.3f),
+                                  Tone(0.9f, 60f, 200f, Wave.Noise, 0.15f, attack: 0.3f, decay: 1f));
+        clips[Sound.Feat] = Arpeggio(new[] { 784f, 988f, 1175f, 1568f }, 0.06f, 0.3f);
+        clips[Sound.Coin] = Arpeggio(new[] { 1318f, 1975f }, 0.05f, 0.25f);
+        clips[Sound.Sizzle] = Tone(0.14f, 3000f, 1500f, Wave.Noise, 0.12f, attack: 0.02f);
+        clips[Sound.Chill] = Tone(0.1f, 2600f, 3200f, Wave.Sine, 0.12f, shimmer: 0.4f);
+        clips[Sound.Splash] = Tone(0.12f, 700f, 250f, Wave.Sine, 0.18f);
+        clips[Sound.Wither] = Tone(0.25f, 260f, 150f, Wave.Triangle, 0.14f, attack: 0.05f, decay: 1.5f);
+        clips[Sound.Spark] = Tone(0.06f, 2400f, 900f, Wave.Noise, 0.18f, crackle: true);
+    }
+
+    // Two clips layered (the longer one sets the length).
+    static AudioClip Mix(AudioClip a, AudioClip b)
+    {
+        var da = new float[a.samples];
+        var db = new float[b.samples];
+        a.GetData(da, 0);
+        b.GetData(db, 0);
+        var data = new float[Mathf.Max(da.Length, db.Length)];
+        for (int i = 0; i < data.Length; i++)
+            data[i] = (i < da.Length ? da[i] : 0f) + (i < db.Length ? db[i] : 0f);
+        var clip = AudioClip.Create("mix", data.Length, 1, Rate, false);
+        clip.SetData(data, 0);
+        return clip;
+    }
+
+    // The clip with silence in front of it.
+    static AudioClip Delay(AudioClip a, float seconds)
+    {
+        int pad = Mathf.CeilToInt(seconds * Rate);
+        var src = new float[a.samples];
+        a.GetData(src, 0);
+        var data = new float[pad + src.Length];
+        System.Array.Copy(src, 0, data, pad, src.Length);
+        var clip = AudioClip.Create("delay", data.Length, 1, Rate, false);
+        clip.SetData(data, 0);
+        return clip;
     }
 
     // A sweep from f0 to f1 with a fast attack and an exponential-ish decay.

@@ -183,7 +183,7 @@ public class WaterPillar : MonoBehaviour
         SpriteFactory.Child(go.transform, "Edge", SpriteFactory.Ring, new Color(color.r, color.g, color.b, 0.8f), Vector2.zero, radius * 2f, 74);
         w.column = SpriteFactory.Child(go.transform, "Column", SpriteFactory.Circle, new Color(0.7f, 0.9f, 1f, 0.55f), Vector2.zero, radius * 1.7f, 75);
         Fx.Burst(at, color, radius * 3f);
-        Sfx.Play(Sound.Explosion, 0.35f, 0.3f);
+        Sfx.Play("spells.TidalLance.pillar", Sound.Explosion, 0.35f, 0.3f);
     }
 
     void Update()

@@ -209,7 +209,7 @@ public abstract class Spell
         if (overloaded)
         {
             Fx.Ring(Owner.Position, Color.Lerp(Color, Color.white, 0.5f), 1.6f, 0.4f);
-            Sfx.Play(Sound.Lightning, 0.35f, 0.3f);
+            Sfx.Play("runes.overload", Sound.Lightning, 0.35f, 0.3f);
         }
         Cast();
         if (CastAnimates) Owner?.CastAnim();
@@ -417,6 +417,7 @@ public abstract class Spell
         if (to == null) return;
         nextSpark = Time.time + Tune.F("runes.Static.cooldown", 0.1f);
         Fx.Bolt(from.Position, to.Position, ElementColor(Element.Storm));
+        Sfx.Play("runes.staticSpark", Sound.Spark, 0.4f, 0.2f);
         Strike(to, damage * Tune.F("runes.Static.damagePerRune", 0.2f) * stat, default, Element.Storm, false);
     }
 
