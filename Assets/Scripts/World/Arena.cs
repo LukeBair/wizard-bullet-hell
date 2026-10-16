@@ -162,7 +162,7 @@ public class Arena : MonoBehaviour
     // shrine stones. The sprite's base sits on the collision circle; widths are in units of r.
     static readonly (string name, int variants, float width, float minR)[] ForestProps =
     {
-        ("tree_oak", 3, 3.2f, 1.0f),
+        ("tree_oak", 3, 2.4f, 1.0f),
         ("boulders_a", 3, 2.3f, 0f), ("boulders_b", 3, 2.6f, 0f), ("boulders_c", 3, 2.3f, 0f),
         ("shrine_a", 3, 1.4f, 0f), ("shrine_b", 3, 1.5f, 0f),
     };
