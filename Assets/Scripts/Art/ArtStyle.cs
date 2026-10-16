@@ -139,9 +139,17 @@ public static class ArtStyle
         return sheet3D.TryGetValue(look, out var l) ? l : ((string, float)?)null;
     }
 
-    // Every 3D enemy ships 64px and 128px frames (_64, _128); the Sharp 3D enemies setting picks one.
-    static SpriteSheet Sheet3D(string name) =>
-        SpriteSheet.Load("enemy3d_" + name + "_sheet" + (Settings.Enemy3DSharp ? "_128" : "_64"));
+    // Every 3D enemy ships 64px and 128px frames (_64, _128), picked by the Character art setting. The small
+    // ones (moss slime, bat, fairy) are shrunk a lot to fit their hitboxes, so they go a step chunkier: _32
+    // in place of _64, and _64 in place of _128.
+    static readonly HashSet<string> chunky3D = new HashSet<string> { "moss", "bat", "pixie" };
+
+    static SpriteSheet Sheet3D(string name)
+    {
+        int px = Settings.Enemy3DSharp ? 128 : 64;
+        if (chunky3D.Contains(name)) px /= 2;
+        return SpriteSheet.Load($"enemy3d_{name}_sheet_{px}");
+    }
 
     public static SpriteSheet EnemySheet(EnemyLook look, string enemy = null)
     {

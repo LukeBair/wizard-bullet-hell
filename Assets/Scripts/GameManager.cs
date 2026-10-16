@@ -732,10 +732,11 @@ public class GameManager : MonoBehaviour
 
         if (ArtStyle.Current == ArtStyleId.Dusk)
         {
-            // Wizard sprite sheet: the original or the 3D-rendered 64px / 128px ones, used from the next run.
+            // Character art: the original sprites or the 3D-rendered 64px / 128px sheets, for the wizard
+            // straight away and for enemies spawned from then on.
             var wr = new Rect(col.x, y, col.width, rowH);
             UI.Box(wr, new Color(1f, 1f, 1f, 0.06f));
-            UI.Text(new Rect(wr.x + 20f * s, wr.y, wr.width * 0.5f, rowH), "Wizard art", 32, TextAnchor.MiddleLeft);
+            UI.Text(new Rect(wr.x + 20f * s, wr.y, wr.width * 0.5f, rowH), "Character art", 32, TextAnchor.MiddleLeft);
             float ww = 260f * s;
             if (UI.Button(new Rect(wr.xMax - 12f * s - ww, wr.y + 8f * s, ww, rowH - 16f * s), Settings.WizardLabel, new Color(0.6f, 0.45f, 1f)))
             {
@@ -744,18 +745,6 @@ public class GameManager : MonoBehaviour
                 Sfx.Play("ui.button", Sound.Select, 0.8f);
             }
             y += rowH + gap;
-
-            // Enemy sprites: the 3D-rendered eight-facing sheets or the originals, for enemies spawned from now on.
-            if (SettingRow(new Rect(col.x, y, col.width, rowH), "3D enemies", Settings.Enemy3D))
-                Settings.Enemy3D = !Settings.Enemy3D;
-            y += rowH + gap;
-            if (Settings.Enemy3D)
-            {
-                // On: 3D enemies use their 128px frames; off: the 64px ones.
-                if (SettingRow(new Rect(col.x, y, col.width, rowH), "Sharp 3D enemies", Settings.Enemy3DSharp))
-                    Settings.Enemy3DSharp = !Settings.Enemy3DSharp;
-                y += rowH + gap;
-            }
         }
 
         // Tuner: pull the latest tuning.json (and save edits) from the Mac's tuner server.
