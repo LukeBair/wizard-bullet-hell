@@ -53,6 +53,9 @@ public static class ArtStyle
     public static float PixelsPerUnit(string style, string file, int width)
     {
         if (file.StartsWith("bullet") || file.StartsWith("gem")) return width;
+        // player_sheet_<px> are the 3D-rendered wizard at a bigger frame size: same world size as the 48px sheet.
+        if (style == "Dusk" && file.StartsWith("player_sheet_") && int.TryParse(file.Substring("player_sheet_".Length), out int px))
+            return 20f * px / 48f;
         switch (style)
         {
             case "Dusk": return 20f;

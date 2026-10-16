@@ -79,7 +79,7 @@ public class Player : MonoBehaviour
         SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, -0.5f), 1f, 48)
             .transform.localScale = new Vector3(0.9f, 0.32f, 1f);
         SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, 49);
-        var sheet = SpriteSheet.Load("player_sheet");
+        var sheet = SpriteSheet.Load(Settings.WizardSheet) ?? SpriteSheet.Load("player_sheet");
         var art = ArtStyle.Get("player");
         if (sheet != null && sheet["idle"] != null)
             anim = WizardAnimator.Attach(SpriteFactory.Child(visual, "Sprite", sheet["idle"].Frames[0], Color.white, new Vector2(0f, 0.1f), 0.85f, 50), sheet);

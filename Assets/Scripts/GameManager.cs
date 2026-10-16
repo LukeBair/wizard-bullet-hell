@@ -730,6 +730,21 @@ public class GameManager : MonoBehaviour
             Settings.DamageNumbers = !Settings.DamageNumbers;
         y += rowH + gap;
 
+        if (ArtStyle.Current == ArtStyleId.Dusk)
+        {
+            // Wizard sprite sheet: the original or the 3D-rendered 64px / 128px ones, used from the next run.
+            var wr = new Rect(col.x, y, col.width, rowH);
+            UI.Box(wr, new Color(1f, 1f, 1f, 0.06f));
+            UI.Text(new Rect(wr.x + 20f * s, wr.y, wr.width * 0.5f, rowH), "Wizard art", 32, TextAnchor.MiddleLeft);
+            float ww = 260f * s;
+            if (UI.Button(new Rect(wr.xMax - 12f * s - ww, wr.y + 8f * s, ww, rowH - 16f * s), Settings.WizardLabel, new Color(0.6f, 0.45f, 1f)))
+            {
+                Settings.Wizard++;
+                Sfx.Play("ui.button", Sound.Select, 0.8f);
+            }
+            y += rowH + gap;
+        }
+
         // Tuner: pull the latest tuning.json (and save edits) from the Mac's tuner server.
         if (Tune.B("ui.tunerButton", true))
         {

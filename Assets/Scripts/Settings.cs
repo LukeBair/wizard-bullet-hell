@@ -6,6 +6,21 @@ public static class Settings
 {
     const string VolumeKey = "set_volume", HapticsKey = "set_haptics", ShakeKey = "set_shake", NumbersKey = "set_numbers";
 
+    const string WizardKey = "set_wizard";
+    static readonly string[] WizardSheets = { "player_sheet", "player_sheet_64", "player_sheet_128" };
+    static readonly string[] WizardLabels = { "Original", "64px 3D", "128px 3D" };
+
+    // Which wizard sprite sheet to use (Dusk art): 0 = the original 48px sheet, 1 and 2 = the
+    // 3D-rendered 64px and 128px sheets. Read when a run starts.
+    public static int Wizard
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetInt(WizardKey, 0), 0, WizardSheets.Length - 1);
+        set { PlayerPrefs.SetInt(WizardKey, value % WizardSheets.Length); PlayerPrefs.Save(); }
+    }
+
+    public static string WizardSheet => WizardSheets[Wizard];
+    public static string WizardLabel => WizardLabels[Wizard];
+
     // Sound volume in steps of settings.volumeStep, 0 = muted.
     public static float Volume
     {
