@@ -51,9 +51,9 @@ public class Projectile : MonoBehaviour
             if (team == Team.Player) go.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;
             p.Team = team;
             p.body = SpriteFactory.Add(go, ArtStyle.Round, color, team == Team.Enemy ? 81 : 71);
-            p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, 2.4f, team == Team.Enemy ? 80 : 70);
+            p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, team == Team.Enemy ? Tune.F("bullets.enemyGlow", 1.4f) : 2.4f, team == Team.Enemy ? 80 : 70);
             // Enemy bullets get a hot white core so they never read as your own spells.
-            if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, Color.white, Vector2.zero, 0.5f, 82);
+            if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, new Color(0.8f, 0.8f, 0.8f), Vector2.zero, 0.5f, 82);
             // your spells light up whatever they fly past (enemy bullets are too many; bloom does them)
             if (team == Team.Player) p.spellLight = Lighting.Point(go.transform, color, 1f, Tune.F("lighting.spellIntensity", 1f));
         }
