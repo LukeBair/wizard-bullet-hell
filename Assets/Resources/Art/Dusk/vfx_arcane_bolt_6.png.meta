@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: b10c79650c4a14e42ab9884363ea3926
+guid: 5d279051d9d9e4f9b837ff739e025789
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -6518957505623597388
-    second: vfx_arcane_head_0_0
+      213: -1181436362613021845
+    second: vfx_arcane_bolt_6_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -128,13 +128,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: vfx_arcane_head_0_0
+      name: vfx_arcane_bolt_6_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 15
-        height: 15
+        width: 44
+        height: 33
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -143,8 +143,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4be507300b20885a0800000000000000
-      internalID: -6518957505623597388
+      spriteID: b63a8b143e1ba9fe0800000000000000
+      internalID: -1181436362613021845
       vertices: []
       indices: 
       edges: []

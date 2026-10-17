@@ -24,23 +24,23 @@ public static class SpellVfx
 
     static bool On => Settings.Enemy3D && ArtStyle.Current == ArtStyleId.Dusk;
 
-    // Skins a player projectile for its element: an animated, centred head (the tail is pixel particles).
+    // Skins a player projectile for its element: an animated painted bolt, head first.
     // Length is in world units.
     public static void Skin(Projectile p, Element e, float length)
     {
         string key = Key(e);
         if (!On || key == null) return;
-        var head = Frames($"vfx_{key}_head", 8);
+        var head = Frames($"vfx_{key}_bolt", 8);
         if (head.Length > 0) p.SetSkin(head, length);
     }
 
-    // The hit: a flash that blows out into a ragged shockwave ring, played frame by frame.
+    // The hit: an animated burst, played frame by frame.
     public static void Impact(Vector2 pos, Element e, float size)
     {
         string key = Key(e);
         if (!On || key == null) return;
         var frames = Frames($"vfx_{key}_hit", 12);
-        if (frames.Length > 0) Puff.Spawn(pos, frames, size * 1.8f, 0.4f);
+        if (frames.Length > 0) Puff.Spawn(pos, frames, size * 1.8f, 0.5f);
     }
 
     class Puff : MonoBehaviour

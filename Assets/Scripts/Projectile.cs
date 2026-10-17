@@ -128,11 +128,14 @@ public class Projectile : MonoBehaviour
         Orient();
     }
 
-    // Animated skins step through their frames; the sprites are drawn centred, so no rotation is needed.
+    // Animated skins step through their frames and point their head (drawn on the left) along the flight.
     void Orient()
     {
         if (skinFrames.Length > 1)
             body.sprite = skinFrames[(int)((age + skinPhase) * 14f) % skinFrames.Length];
+        if (Velocity.sqrMagnitude < 1e-6f) return;
+        float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f;
+        body.transform.localRotation = Quaternion.Euler(0f, 0f, a);
     }
 
     // Takes the projectile out of play (use instead of Destroy) and parks it for reuse.
@@ -205,8 +208,7 @@ public class Projectile : MonoBehaviour
             if (trailTimer <= 0f)
             {
                 trailTimer = 1f / Tune.F("fx.trail.rate", 30f);
-                if (skin) Particles.ArcaneTrail(pos, Velocity);
-                else Particles.Trail(pos, color, Radius);
+                if (!skin) Particles.Trail(pos, color, Radius);   // painted skins carry their own tail
             }
 
             scratch.Clear();
