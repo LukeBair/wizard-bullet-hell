@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 0efc996d8bdd64283b37ddedaf357e45
+guid: da370bea4f15948fa9f3216bb5ee6884
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 975538186262229514
-    second: vfx_arcane_ring_0
+      213: 5153113715802359288
+    second: vfx_arcane_hit_4_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -128,13 +128,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: vfx_arcane_ring_0
+      name: vfx_arcane_hit_4_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 128
-        height: 127
+        width: 41
+        height: 41
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -143,8 +143,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: a023df0dfcec98d00800000000000000
-      internalID: 975538186262229514
+      spriteID: 8f5c7954f99838740800000000000000
+      internalID: 5153113715802359288
       vertices: []
       indices: 
       edges: []

@@ -10,70 +10,62 @@ public static class SpellVfx
 
     static string Key(Element e) => e == Element.Arcane ? "arcane" : null;
 
-    static Sprite[] Bolts(string key)
+    static Sprite[] Frames(string name, int max)
     {
-        if (bolts.TryGetValue(key, out var list)) return list;
+        if (bolts.TryGetValue(name, out var list)) return list;
         var found = new List<Sprite>();
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < max; i++)
         {
-            var s = ArtStyle.Get($"vfx_{key}_bolt_{i}");
+            var s = ArtStyle.Get($"{name}_{i}");
             if (s != null) found.Add(s);
         }
-        return bolts[key] = found.ToArray();
+        return bolts[name] = found.ToArray();
     }
 
     static bool On => Settings.Enemy3D && ArtStyle.Current == ArtStyleId.Dusk;
 
-    // Skins a player projectile for its element. Length is in world units.
+    // Skins a player projectile for its element: an animated, centred head (the tail is pixel particles).
+    // Length is in world units.
     public static void Skin(Projectile p, Element e, float length)
     {
         string key = Key(e);
         if (!On || key == null) return;
-        var options = Bolts(key);
-        if (options.Length > 0) p.SetSkin(options[Random.Range(0, options.Length)], length);
+        var head = Frames($"vfx_{key}_head", 8);
+        if (head.Length > 0) p.SetSkin(head, length);
     }
 
-    // The hit: a bright flash and a ring of runes that spins outward and fades.
+    // The hit: a flash that blows out into a ragged shockwave ring, played frame by frame.
     public static void Impact(Vector2 pos, Element e, float size)
     {
         string key = Key(e);
         if (!On || key == null) return;
-        var burst = ArtStyle.Get($"vfx_{key}_burst");
-        var ring = ArtStyle.Get($"vfx_{key}_ring");
-        if (burst != null) Puff.Spawn(pos, burst, size * 0.9f, size * 1.4f, 0.18f, 0f);
-        if (ring != null) Puff.Spawn(pos, ring, size * 0.4f, size * 1.6f, 0.32f, Random.Range(-240f, 240f));
+        var frames = Frames($"vfx_{key}_hit", 12);
+        if (frames.Length > 0) Puff.Spawn(pos, frames, size * 1.8f, 0.4f);
     }
 
     class Puff : MonoBehaviour
     {
         SpriteRenderer sr;
-        float from, to, life, t, spin;
+        Sprite[] frames;
+        float life, t;
 
-        public static void Spawn(Vector2 pos, Sprite sprite, float fromSize, float toSize, float life, float spin)
+        public static void Spawn(Vector2 pos, Sprite[] frames, float size, float life)
         {
             var go = new GameObject("SpellPuff");
             go.transform.position = pos;
-            go.transform.rotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
             var p = go.AddComponent<Puff>();
-            p.sr = SpriteFactory.Add(go, sprite, Color.white, 86);
-            p.from = fromSize / (sprite.rect.width / sprite.pixelsPerUnit);
-            p.to = toSize / (sprite.rect.width / sprite.pixelsPerUnit);
+            p.frames = frames;
+            p.sr = SpriteFactory.Add(go, frames[0], Color.white, 86);
+            go.transform.localScale = Vector3.one * size / (frames[0].rect.width / frames[0].pixelsPerUnit);
             p.life = life;
-            p.spin = spin;
-            p.Step(0f);
         }
 
-        void Update() => Step(Time.deltaTime);
-
-        void Step(float dt)
+        void Update()
         {
-            t += dt;
-            float k = Mathf.Clamp01(t / life);
-            float ease = 1f - (1f - k) * (1f - k);
-            transform.localScale = Vector3.one * Mathf.Lerp(from, to, ease);
-            transform.Rotate(0f, 0f, spin * dt);
-            var c = sr.color; c.a = 1f - k * k; sr.color = c;
-            if (k >= 1f) Destroy(gameObject);
+            t += Time.deltaTime;
+            int i = (int)(t / life * frames.Length);
+            if (i >= frames.Length) { Destroy(gameObject); return; }
+            sr.sprite = frames[i];
         }
     }
 }

@@ -66,6 +66,21 @@ public static class Particles
         Emit(pos + Random.insideUnitCircle * radius * 0.5f, v, tint, radius * F("trail.size", 0.9f), F("trail.life", 0.25f));
     }
 
+    // The arcane bolt's tail: single-pixel motes in the bolt's own palette, shed just behind its centre
+    // and left to drift, so the trail is the same pixels as the head instead of a different style.
+    static readonly Color32[] arcane = { new Color32(232, 214, 255, 255), new Color32(190, 148, 255, 255), new Color32(138, 84, 236, 255), new Color32(90, 43, 176, 255) };
+    public static void ArcaneTrail(Vector2 pos, Vector2 velocity)
+    {
+        Vector2 back = -velocity.normalized;
+        for (int i = 0; i < 2; i++)
+        {
+            float shade = Random.value;
+            Color c = arcane[shade < 0.2f ? 0 : shade < 0.5f ? 1 : shade < 0.8f ? 2 : 3];
+            Vector2 side = new Vector2(-back.y, back.x) * Random.Range(-0.12f, 0.12f);
+            Emit(pos + back * Random.Range(0.1f, 0.35f) + side, back * Random.Range(0.1f, 0.5f) + Random.insideUnitCircle * 0.25f, c, 1f / 20f, Random.Range(0.2f, 0.45f));
+        }
+    }
+
     // Body debris when an enemy dies, in the colours its Dusk sprite is drawn in; much bigger for bosses.
     public static void Death(Vector2 pos, EnemyLook look, float radius, EnemyTier tier)
     {
