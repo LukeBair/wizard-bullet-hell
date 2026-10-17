@@ -50,7 +50,8 @@ public class Projectile : MonoBehaviour
             // enemy bullets always draw on top so they can never hide.
             if (team == Team.Player) go.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;
             p.Team = team;
-            p.body = SpriteFactory.Add(go, ArtStyle.Round, color, team == Team.Enemy ? 81 : 71);
+            // the orb is a child so painted skins can rotate and rescale it without touching the projectile's own size
+            p.body = SpriteFactory.Child(go.transform, "Body", ArtStyle.Round, color, Vector2.zero, 1f, team == Team.Enemy ? 81 : 71);
             p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, team == Team.Enemy ? Tune.F("bullets.enemyGlow", 1.4f) : 2.4f, team == Team.Enemy ? 80 : 70);
             // Enemy bullets get a hot white core so they never read as your own spells.
             if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, new Color(0.8f, 0.8f, 0.8f), Vector2.zero, 0.5f, 82);
