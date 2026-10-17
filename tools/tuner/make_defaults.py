@@ -70,8 +70,10 @@ tuning = {
         "_chaff": "Chaff per second in a zone = (chaffBase + seconds in zone*chaffPerSecond) * (1 + chaffPerThreat*swarms in zone) + run.zoneRateStep*zones cleared, capped at chaffMax.",
     },
     "run": {
-        "bosses": 4, "startTomeChoices": 3, "zoneShiftDelay": 3, "favoredWeight": 3,
+        "bosses": 4, "startZone": "", "startTome": "", "startTomeChoices": 3, "zoneShiftDelay": 3, "favoredWeight": 3,
         "_bosses": "Bosses per run. Each one (spawning.bossEvery apart) moves the run to a new zone; killing the last one wins. 0 = endless.",
+        "_startZone": "Force the first zone of a run (testing). Empty = random.",
+        "_startTome": "Force a starting tome to be offered (testing). Empty = random.",
         "_startTomeChoices": "How many starting tomes are offered at the start of a run.",
         "_zoneShiftDelay": "Seconds between a boss dying and the zone changing (time to grab the loot).",
         "_favoredWeight": "How much more often a zone's home medium enemies show up.",
