@@ -47,7 +47,7 @@ public static class SpellVfx
     {
         SpriteRenderer sr;
         Sprite[] frames;
-        float life, t;
+        float life, t, full;
 
         public static void Spawn(Vector2 pos, Sprite[] frames, float size, float life)
         {
@@ -56,7 +56,8 @@ public static class SpellVfx
             var p = go.AddComponent<Puff>();
             p.frames = frames;
             p.sr = SpriteFactory.Add(go, frames[0], Color.white, 86);
-            go.transform.localScale = Vector3.one * size / (frames[0].rect.width / frames[0].pixelsPerUnit);
+            p.full = size / (frames[0].rect.width / frames[0].pixelsPerUnit);
+            go.transform.localScale = Vector3.one * p.full * 0.1f;
             p.life = life;
         }
 
@@ -66,6 +67,9 @@ public static class SpellVfx
             int i = (int)(t / life * frames.Length);
             if (i >= frames.Length) { Destroy(gameObject); return; }
             sr.sprite = frames[i];
+            // grows out from a point: pops up over the first third, then keeps drifting outward
+            float k = t / life, grow = Mathf.Clamp01(k / 0.33f);
+            transform.localScale = Vector3.one * full * (Mathf.Lerp(0.1f, 0.85f, 1f - (1f - grow) * (1f - grow)) + 0.15f * k);
         }
     }
 }
