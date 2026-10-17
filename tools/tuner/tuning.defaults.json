@@ -378,7 +378,11 @@
   },
   "run": {
     "bosses": 4,
+    "startZone": "",
+    "startTome": "",
     "startTomeChoices": 3,
+    "_startZone": "Force the first zone of a run (testing). Empty = random.",
+    "_startTome": "Force a starting tome to be offered (testing). Empty = random.",
     "zoneShiftDelay": 3,
     "favoredWeight": 3,
     "_bosses": "Bosses per run. Each one (spawning.bossEvery apart) moves the run to a new zone; killing the last one wins. 0 = endless.",

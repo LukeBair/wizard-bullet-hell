@@ -122,6 +122,10 @@ const RUNS = "\u0000runs";       // gameplay telemetry page
 let phoneSave = {};
 
 const $ = (s) => document.querySelector(s);
+const CHOICES = {
+  "run.startZone": ["Whispering Forest", "Arcane Academy", "Crystal Caves"],
+  "run.startTome": ["ArcaneMissile", "Fireball", "FrostNova", "ChainLightning", "Wisps", "TidalLance", "Cyclone", "StoneSpikes", "SpectralBlades"],
+};
 const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
 const isNote = (k) => k.startsWith("_");
 const get = (obj, path) => path.reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -637,6 +641,11 @@ function row(path, text, showPath) {
   } else if (typeof value === "number") {
     input = document.createElement("input"); input.type = "number"; input.step = "any"; input.value = value;
     input.oninput = () => { if (input.value !== "" && !isNaN(+input.value)) { set(data, path, +input.value); mark(); } };
+  } else if (CHOICES[path.join(".")]) {
+    input = document.createElement("select");
+    for (const o of ["", ...CHOICES[path.join(".")]]) { const op = document.createElement("option"); op.value = o; op.textContent = o || "(random)"; input.appendChild(op); }
+    input.value = value ?? "";
+    input.onchange = () => { set(data, path, input.value); mark(); };
   } else {
     input = document.createElement("input"); input.type = "text"; input.value = value ?? "";
     input.oninput = () => { set(data, path, input.value); mark(); };

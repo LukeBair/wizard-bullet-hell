@@ -27,6 +27,13 @@ public abstract class UpgradeSystem
         Shuffle(startOffer);
         int n = Mathf.Clamp(Tune.I("run.startTomeChoices", 3), 1, startOffer.Count);
         startOffer.RemoveRange(n, startOffer.Count - n);
+        // Tuner override (run.startTome): always offer this tome first.
+        if (System.Enum.TryParse(Tune.S("run.startTome", ""), out SpellId forced) && Grimoire.HasTome(forced))
+        {
+            startOffer.Remove(forced);
+            startOffer.Insert(0, forced);
+            if (startOffer.Count > n) startOffer.RemoveRange(n, startOffer.Count - n);
+        }
     }
 
     // The starting tome screen. Returns true once a tome is picked.

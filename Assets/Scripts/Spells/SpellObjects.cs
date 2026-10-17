@@ -226,6 +226,7 @@ public class Spike : MonoBehaviour
     {
         var go = new GameObject("Spike");
         go.transform.position = at;
+        go.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;   // depth-sort with trees so it can stand behind one
         var s = go.AddComponent<Spike>();
         s.radius = radius;
         s.life = duration;
@@ -305,6 +306,7 @@ public class Blade : MonoBehaviour
     {
         var go = new GameObject("Blade");
         go.transform.position = owner.Position;
+        go.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;   // depth-sort with trees
         var b = go.AddComponent<Blade>();
         b.owner = owner;
         b.dir = dir.normalized;
