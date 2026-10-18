@@ -35,7 +35,7 @@ public class ArcaneMissile : Spell
     void Fire(Vector2 from, Vector2 dir, bool canSplit)
     {
         var p = Shoot(from, dir, TT("speed", 11f), 0.15f * Area);
-        SpellVfx.Skin(p, Element, 1.6f * Area);
+        SpellVfx.Skin(p, Element, 1.0f * Area);
         p.Homing = TT("homing", Tier == 1 ? 0f : Tier == 2 ? 180f : 420f);
         p.Lifetime = T("lifetime", 2f);
         p.OnHit = (proj, e) =>
