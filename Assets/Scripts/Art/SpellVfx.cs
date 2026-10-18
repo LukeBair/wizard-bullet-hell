@@ -40,7 +40,7 @@ public static class SpellVfx
         string key = Key(e);
         if (!On || key == null) return;
         var frames = Frames($"vfx_{key}_hit", 12);
-        if (frames.Length > 0) Puff.Spawn(pos, frames, size * 1.8f, 0.5f);
+        if (frames.Length > 0) Puff.Spawn(pos, frames, size * 1.8f, 0.3f);
     }
 
     class Puff : MonoBehaviour

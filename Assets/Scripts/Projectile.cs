@@ -108,7 +108,9 @@ public class Projectile : MonoBehaviour
     }
 
     bool skin;
+    const float SkinTilt = 13f;
     float skinScale, skinPhase;
+    int skinTick;
     Sprite[] skinFrames;
 
     // Draws the projectile as a painted effect (SpellVfx) instead of the plain orb: the sprite points
@@ -134,7 +136,8 @@ public class Projectile : MonoBehaviour
         if (skinFrames.Length > 1)
             body.sprite = skinFrames[(int)((age + skinPhase) * 14f) % skinFrames.Length];
         if (Velocity.sqrMagnitude < 1e-6f) return;
-        float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f;
+        // the painted comet's own axis is tilted ~13 degrees off the image's horizontal; cancel it so it flies straight
+        float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f - SkinTilt;
         body.transform.localRotation = Quaternion.Euler(0f, 0f, a);
     }
 
@@ -208,7 +211,9 @@ public class Projectile : MonoBehaviour
             if (trailTimer <= 0f)
             {
                 trailTimer = 1f / Tune.F("fx.trail.rate", 30f);
-                if (!skin) Particles.Trail(pos, color, Radius);   // painted skins carry their own tail
+                if (!skin) Particles.Trail(pos, color, Radius);
+                else if (Velocity.sqrMagnitude > 1e-6f && (skinTick++ & 1) == 0)
+                    Particles.Trail(pos - Velocity.normalized * skinScale * 0.25f, color, Radius * 0.5f);   // sparse motes behind the painted bolt
             }
 
             scratch.Clear();
