@@ -40,7 +40,7 @@ public static class SpellVfx
         string key = Key(e);
         if (!On || key == null) return;
         var frames = Frames($"vfx_{key}_hit", 12);
-        if (frames.Length > 0) Puff.Spawn(pos, frames, size * 1.8f, 0.3f);
+        if (frames.Length > 0) Puff.Spawn(pos, frames, size * 1.6f, 0.3f);
     }
 
     class Puff : MonoBehaviour
@@ -57,7 +57,7 @@ public static class SpellVfx
             p.frames = frames;
             p.sr = SpriteFactory.Add(go, frames[0], Color.white, 86);
             p.full = size / (frames[0].rect.width / frames[0].pixelsPerUnit);
-            go.transform.localScale = Vector3.one * p.full * 0.05f;
+            go.transform.localScale = Vector3.one * p.full * 0.06f;
             p.life = life;
         }
 
@@ -67,11 +67,10 @@ public static class SpellVfx
             int i = (int)(t / life * frames.Length);
             if (i >= frames.Length) { Destroy(gameObject); return; }
             sr.sprite = frames[i];
-            // explodes out from a point: bursts to a slight overshoot in the first ~15%, settles, then drifts
-            float k = t / life, grow = Mathf.Clamp01(k / 0.15f);
-            float burst = 1f - (1f - grow) * (1f - grow) * (1f - grow);
-            float overshoot = 0.15f * Mathf.Sin(grow * Mathf.PI);
-            transform.localScale = Vector3.one * full * (0.05f + 0.8f * burst + overshoot + 0.15f * k);
+            // starts as a speck and grows over most of its life, fast at first (ease-out), so the growth reads
+            float k = t / life, grow = Mathf.Clamp01(k / 0.7f);
+            float ease = 1f - (1f - grow) * (1f - grow);
+            transform.localScale = Vector3.one * full * Mathf.Lerp(0.06f, 0.9f, ease);
         }
     }
 }
