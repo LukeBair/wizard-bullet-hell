@@ -1,7 +1,9 @@
 """Trim rendered prop variants (render_prop.py) to the prop, scale them to their in-game pixel height,
 palette-reduce the colour and copy colour + normal map into the game as prop_<name>_<k>_<tier>(.png,
 _n.png): tier "hi" at the given height (the 128px Character art) and "lo" at half (the 64px one).
-Usage: python trim_props.py renders_dir game_art_dir name=height_px [name=height_px ...]"""
+Usage: python trim_props.py renders_dir game_art_dir name=height_px [name=height_px ...]
+XHI=1 writes a single full-colour "xhi" tier at the given height instead (no palette, soft alpha) from a
+high-res render (render_prop.py res=768); the game resamples it to its pixel size (PixelDensity.cs)."""
 import glob, json, os, sys
 import numpy as np
 from PIL import Image
@@ -31,13 +33,16 @@ for name, h in heights.items():
             half = Image.open(col).width // 2
             px, py = (bb[0] + bb[2]) / 2 + half, bb[3] - PIVOT_Y * (bb[3] - bb[1]) + half
             sbb = shadow.point(lambda v: 255 if v > 12 else 0).getbbox()
-        for tier, th, colors in (("hi", h, 48), ("lo", h // 2, 32)):
+        for tier, th, colors in ((("xhi", h, 0),) if os.environ.get("XHI") == "1" else (("hi", h, 48), ("lo", h // 2, 32))):
             w = max(1, round(c0.width * th / c0.height))
             c, n = c0.resize((w, th), Image.LANCZOS), n0.resize((w, th), Image.LANCZOS)
-            a = c.getchannel("A").point(lambda v: 255 if v > 110 else 0)
-            rgb = Image.new("RGB", c.size, (0, 0, 0)); rgb.paste(c.convert("RGB"), (0, 0), a)
-            rgb = rgb.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGBA")
-            rgb.putalpha(a)
+            if colors == 0:
+                a = c.getchannel("A"); rgb = c
+            else:
+                a = c.getchannel("A").point(lambda v: 255 if v > 110 else 0)
+                rgb = Image.new("RGB", c.size, (0, 0, 0)); rgb.paste(c.convert("RGB"), (0, 0), a)
+                rgb = rgb.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGBA")
+                rgb.putalpha(a)
             n.putalpha(a)
             rgb.save(os.path.join(dst, f"prop_{name}_{k}_{tier}.png"))
             n.save(os.path.join(dst, f"prop_{name}_{k}_{tier}_n.png"))

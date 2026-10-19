@@ -83,6 +83,7 @@ public class Projectile : MonoBehaviour
         if (p.core != null) p.core.sprite = ArtStyle.Round;
         p.skin = false;   // pooled: a reused projectile starts as the plain orb again
         p.body.transform.localRotation = Quaternion.identity;
+        p.body.transform.localPosition = Vector3.zero;
         p.body.transform.localScale = Vector3.one;
         p.glow.enabled = true;
         p.gameObject.SetActive(true);
@@ -111,6 +112,7 @@ public class Projectile : MonoBehaviour
     const float SkinTilt = 13f;
     float skinScale, skinPhase;
     int skinTick;
+    Vector2 headOffset;   // where the painted head sits from the sprite's centre, in sprite units
     Sprite[] skinFrames;
 
     // Draws the projectile as a painted effect (SpellVfx) instead of the plain orb: the sprite points
@@ -119,6 +121,7 @@ public class Projectile : MonoBehaviour
     {
         skin = true;
         skinFrames = frames;
+        headOffset = SpellVfx.HeadOffset(frames);
         skinPhase = UnityEngine.Random.value * 10f;
         body.sprite = frames[0];
         body.color = Color.white;
@@ -138,7 +141,9 @@ public class Projectile : MonoBehaviour
         if (Velocity.sqrMagnitude < 1e-6f) return;
         // the painted comet's own axis is tilted ~13 degrees off the image's horizontal; cancel it so it flies straight
         float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f - SkinTilt;
-        body.transform.localRotation = Quaternion.Euler(0f, 0f, a);
+        var rot = Quaternion.Euler(0f, 0f, a);
+        body.transform.localRotation = rot;
+        body.transform.localPosition = -(rot * (Vector3)headOffset) * skinScale;   // spin about the head, so it flies down its own line
     }
 
     // Takes the projectile out of play (use instead of Destroy) and parks it for reuse.

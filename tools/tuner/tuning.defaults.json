@@ -1108,6 +1108,12 @@
       "BulletDamage": 14
     }
   },
+  "art": {
+    "pxPerTexel": 2,
+    "_pxPerTexel": "On-screen size of one art texel, in screen pixels, for the 3D-rendered wizard, enemies, props and ground (0 = off, keep each sprite's own size). Sprites are resampled from the 128px renders; takes effect on the next run.",
+    "refHeight": 1080,
+    "_refHeight": "Screen height (px) the sizing assumes. 0 = the actual window height; 1080 pins it so the look doesn't change with window size."
+  },
   "lighting": {
     "enabled": true,
     "bloom": true,

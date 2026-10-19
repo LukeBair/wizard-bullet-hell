@@ -19,6 +19,9 @@ tuning = {
         "_pace": "Multiplies all movement (wizard, enemies, projectiles).",
         "_castRate": "Multiplies every spell cooldown and enemy attack interval.",
     },
+    "art": {"pxPerTexel": 2, "refHeight": 1080,
+        "_pxPerTexel": "On-screen size of one art texel, in screen pixels, for the 3D-rendered wizard, enemies, props and ground (0 = off). Takes effect on the next run.",
+        "_refHeight": "Screen height (px) the sizing assumes. 0 = the actual screen height (phones are ~2600px, so much finer)."},
     "audio": {"volume": 1.0},
     "hud": {
         "fontScale": 1.2,

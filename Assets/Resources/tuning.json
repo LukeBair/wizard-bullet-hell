@@ -418,7 +418,7 @@
   "run": {
     "bosses": 4,
     "startZone": "Whispering Forest",
-    "startTome": "ArcaneMissile",
+    "startTome": "Fireball",
     "startTomeChoices": 3,
     "_startZone": "Force the first zone of a run (testing). Empty = random.",
     "_startTome": "Force a starting tome to be offered (testing). Empty = random.",
@@ -1177,6 +1177,12 @@
       "BulletDamage": 14
     },
     "_MaxAlive": "Any medium can set MaxAlive: the spawner won't pick it while that many are alive (0 = no cap)."
+  },
+  "art": {
+    "pxPerTexel": 1.5,
+    "_pxPerTexel": "On-screen size of one art texel, in screen pixels, for the 3D-rendered wizard, enemies, props and ground (0 = off, keep each sprite's own size). Sprites are resampled from the 128px renders; takes effect on the next run.",
+    "refHeight": 1080,
+    "_refHeight": "Screen height (px) the sizing assumes. 0 = the actual window height; 1080 pins it so the look doesn't change with window size."
   },
   "lighting": {
     "enabled": true,

@@ -28,20 +28,40 @@ public class SpriteSheet
     [Serializable] class Meta { public Tag[] frameTags; }
     [Serializable] class Data { public Frame[] frames; public Meta meta; }
 
+    // Swaps every frame for a copy at the tuned pixel density (one shared atlas), keeping each frame's foot offset.
+    void Resample(float scale)
+    {
+        var all = new List<Sprite>();
+        foreach (var c in clips.Values) foreach (var f in c.Frames) if (!all.Contains(f)) all.Add(f);
+        var fitted = PixelDensity.Fit(all, scale);
+        var map = new Dictionary<Sprite, Sprite>();
+        for (int i = 0; i < all.Count; i++)
+        {
+            map[all[i]] = fitted[i];
+            if (fitted[i] != all[i] && feet.TryGetValue(all[i], out var foot)) feet[fitted[i]] = foot;
+        }
+        foreach (var c in clips.Values)
+            for (int i = 0; i < c.Frames.Length; i++) c.Frames[i] = map[c.Frames[i]];
+    }
+
     static readonly Dictionary<string, SpriteSheet> cache = new Dictionary<string, SpriteSheet>();
 
     // The current style's sheet with this name, or null (Classic, or no such sheet).
-    public static SpriteSheet Load(string name)
+    // scale: how big the body draws (its sprite's transform scale), so PixelDensity can resample the frames
+    // to the tuned on-screen pixel size.
+    public static SpriteSheet Load(string name, float scale = 1f)
     {
         if (ArtStyle.Current == ArtStyleId.Classic) return null;
         string style = ArtStyle.Current.ToString();
         string path = $"Art/{style}/{name}";
+        if (PixelDensity.On) path += $"@{Mathf.RoundToInt(scale * 1000f)}x{PixelDensity.Key}";
         if (cache.TryGetValue(path, out var sheet)) return sheet;
 
-        var tex = Resources.Load<Texture2D>(path);
-        var json = Resources.Load<TextAsset>(path);
+        string file = $"Art/{style}/{name}";
+        var tex = Resources.Load<Texture2D>(file);
+        var json = Resources.Load<TextAsset>(file);
         // <name>_n: a matching normal map (3D-rendered sheets), for the 2D lights.
-        var normals = Resources.Load<Texture2D>(path + "_n");
+        var normals = Resources.Load<Texture2D>(file + "_n");
         var secondary = normals != null ? new[] { new SecondarySpriteTexture { name = "_NormalMap", texture = normals } } : null;
         if (tex != null && json != null)
         {
@@ -67,6 +87,7 @@ public class SpriteSheet
                 }
                 sheet.clips[tag.name] = clip;
             }
+            if (PixelDensity.On) sheet.Resample(scale);
         }
         cache[path] = sheet;
         return sheet;

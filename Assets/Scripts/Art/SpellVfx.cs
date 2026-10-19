@@ -31,7 +31,49 @@ public static class SpellVfx
         string key = Key(e);
         if (!On || key == null) return;
         var head = Frames($"vfx_{key}_bolt", 12);
-        if (head.Length > 0) p.SetSkin(head, length);
+        if (head.Length > 0) p.SetSkin(PixelDensity.Fit(head, length / (head[0].rect.width / head[0].pixelsPerUnit), false), length);
+    }
+
+    static readonly Dictionary<Sprite, Vector2> heads = new Dictionary<Sprite, Vector2>();
+
+    // Where the bolt's head (the left quarter of its painted extent) sits from the sprite's centre, in sprite
+    // units, averaged over the frames. The projectile pivots about it so the head follows the flight line.
+    public static Vector2 HeadOffset(Sprite[] frames)
+    {
+        if (frames.Length == 0) return Vector2.zero;
+        if (heads.TryGetValue(frames[0], out var cached)) return cached;
+        Vector2 sum = Vector2.zero;
+        foreach (var f in frames) sum += HeadOf(f);
+        return heads[frames[0]] = sum / frames.Length;
+    }
+
+    static Vector2 HeadOf(Sprite s)
+    {
+        var r = s.textureRect;
+        int w = (int)r.width, h = (int)r.height;
+        var rt = RenderTexture.GetTemporary(s.texture.width, s.texture.height, 0, RenderTextureFormat.ARGB32);
+        Graphics.Blit(s.texture, rt);
+        var prev = RenderTexture.active;
+        RenderTexture.active = rt;
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        tex.ReadPixels(new Rect(r.x, r.y, w, h), 0, 0);
+        RenderTexture.active = prev;
+        RenderTexture.ReleaseTemporary(rt);
+        var px = tex.GetPixels32();
+        Object.Destroy(tex);
+
+        int minX = w, maxX = -1;
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                if (px[y * w + x].a > 100) { if (x < minX) minX = x; if (x > maxX) maxX = x; }
+        if (maxX < 0) return Vector2.zero;
+        int limit = minX + Mathf.Max(1, (maxX - minX + 1) / 4);
+        float sx = 0, sy = 0, n = 0;
+        for (int y = 0; y < h; y++)
+            for (int x = minX; x <= limit; x++)
+                if (px[y * w + x].a > 100) { sx += x + 0.5f; sy += y + 0.5f; n++; }
+        if (n < 1) return Vector2.zero;
+        return new Vector2(sx / n - s.pivot.x, sy / n - s.pivot.y) / s.pixelsPerUnit;
     }
 
     // The hit: an animated burst, played frame by frame.
@@ -42,7 +84,9 @@ public static class SpellVfx
         if (!On || key == null) return false;
         var frames = Frames($"vfx_{key}_hit", 12);
         if (frames.Length == 0) return false;
-        Puff.Spawn(pos, frames, size * 1.6f, 0.3f);
+        // the burst ends about 0.9 of its full size; that's the scale its pixels are judged at
+        float full = size * 1.6f;
+        Puff.Spawn(pos, PixelDensity.Fit(frames, full * 0.9f / (frames[0].rect.width / frames[0].pixelsPerUnit), false), full, 0.3f);
         return true;
     }
 

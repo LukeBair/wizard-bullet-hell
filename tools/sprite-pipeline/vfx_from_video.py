@@ -1,6 +1,7 @@
 """Turns two effect videos (a looping projectile on black, an impact on white) into the game's pixel frames.
   python vfx_from_video.py bolt.mp4 hit.mp4 <element> [outdir]
-Env overrides: HIT_BG=black|white (what the hit video sits on, default white), BOLT_W, HIT_PX, HIT_SECS.
+Env overrides: HIT_BG=black|white (what the hit video sits on, default white), BOLT_W, HIT_PX, HIT_SECS,
+HIRES=1 (keep full colour and smooth alpha for big frames; the game resamples them to its pixel size, PixelDensity.cs).
 Writes vfx_<element>_bolt_<n>.png (head on the left) and vfx_<element>_hit_<n>.png: shrunk to the game's
 pixel density, one shared 24-colour palette per effect, stepped alpha (0/128/255). Needs ffmpeg + Pillow."""
 import glob, os, subprocess, sys, tempfile
@@ -12,6 +13,7 @@ OUT = (sys.argv[4] if len(sys.argv) > 4 else "Assets/Resources/Art/Dusk") + "/"
 BOLT_W, BOLT_FRAMES, BOLT_START, BOLT_FPS = int(os.environ.get("BOLT_W", 44)), 12, 1.0, 12      # px wide, frames, seconds in, fps
 HIT_PX, HIT_FRAMES, HIT_SECS = int(os.environ.get("HIT_PX", 56)), 12, float(os.environ.get("HIT_SECS", 3.5))
 HIT_BG = os.environ.get("HIT_BG", "white")
+HIRES = os.environ.get("HIRES") == "1"
 
 def frames(mp4, start, secs, fps):
     d = tempfile.mkdtemp()
@@ -61,6 +63,11 @@ def pixelate(arrs, box, size, square):
     return out
 
 def save(arrs, name):
+    if HIRES:
+        for i, a in enumerate(arrs):
+            al = a[..., 3]; rgb = (a[..., :3] / np.maximum(al[..., None] / 255, 1e-3)).clip(0, 255).astype(np.uint8)
+            Image.fromarray(np.dstack([rgb, al.clip(0, 255).astype(np.uint8)]), "RGBA").save(f"{OUT}vfx_{el}_{name}_{i}.png")
+        return
     # shared palette from all frames' visible pixels
     px = np.concatenate([a[a[..., 3] > 40][:, :3] / np.maximum(a[a[..., 3] > 40][:, 3:] / 255, 1e-3) for a in arrs]).clip(0, 255).astype(np.uint8)
     pal = Image.fromarray(px.reshape(-1, 1, 3)).quantize(24, method=Image.MEDIANCUT, dither=Image.NONE)
