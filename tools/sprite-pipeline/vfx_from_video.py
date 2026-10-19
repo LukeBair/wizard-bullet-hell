@@ -1,5 +1,6 @@
 """Turns two effect videos (a looping projectile on black, an impact on white) into the game's pixel frames.
   python vfx_from_video.py bolt.mp4 hit.mp4 <element> [outdir]
+Env overrides: HIT_BG=black|white (what the hit video sits on, default white), BOLT_W, HIT_PX, HIT_SECS.
 Writes vfx_<element>_bolt_<n>.png (head on the left) and vfx_<element>_hit_<n>.png: shrunk to the game's
 pixel density, one shared 24-colour palette per effect, stepped alpha (0/128/255). Needs ffmpeg + Pillow."""
 import glob, os, subprocess, sys, tempfile
@@ -8,8 +9,9 @@ from PIL import Image, ImageDraw
 
 bolt_mp4, hit_mp4, el = sys.argv[1:4]
 OUT = (sys.argv[4] if len(sys.argv) > 4 else "Assets/Resources/Art/Dusk") + "/"
-BOLT_W, BOLT_FRAMES, BOLT_START, BOLT_FPS = 44, 12, 1.0, 12      # px wide, frames, seconds in, fps
-HIT_PX, HIT_FRAMES, HIT_SECS = 56, 12, 3.5
+BOLT_W, BOLT_FRAMES, BOLT_START, BOLT_FPS = int(os.environ.get("BOLT_W", 44)), 12, 1.0, 12      # px wide, frames, seconds in, fps
+HIT_PX, HIT_FRAMES, HIT_SECS = int(os.environ.get("HIT_PX", 56)), 12, float(os.environ.get("HIT_SECS", 3.5))
+HIT_BG = os.environ.get("HIT_BG", "white")
 
 def frames(mp4, start, secs, fps):
     d = tempfile.mkdtemp()
@@ -72,5 +74,5 @@ bolt = [from_black(f) for f in frames(bolt_mp4, BOLT_START, BOLT_FRAMES / BOLT_F
 save(pixelate(bolt, finish(bolt, BOLT_W), BOLT_W, False), "bolt")
 hf = frames(hit_mp4, 0, HIT_SECS, 24)
 hf = [hf[int(i * len(hf) / HIT_FRAMES)] for i in range(HIT_FRAMES)]
-hit = [from_white(f) for f in hf]
+hit = [(from_black if HIT_BG == "black" else from_white)(f) for f in hf]
 save(pixelate(hit, finish(hit, HIT_PX), HIT_PX, True), "hit")

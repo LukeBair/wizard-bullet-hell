@@ -8,7 +8,7 @@ public static class SpellVfx
 {
     static readonly Dictionary<string, Sprite[]> bolts = new Dictionary<string, Sprite[]>();
 
-    static string Key(Element e) => e == Element.Arcane ? "arcane" : null;
+    static string Key(Element e) => e == Element.Arcane ? "arcane" : e == Element.Fire ? "fireball" : null;
 
     static Sprite[] Frames(string name, int max)
     {
@@ -30,17 +30,20 @@ public static class SpellVfx
     {
         string key = Key(e);
         if (!On || key == null) return;
-        var head = Frames($"vfx_{key}_bolt", 8);
+        var head = Frames($"vfx_{key}_bolt", 12);
         if (head.Length > 0) p.SetSkin(head, length);
     }
 
     // The hit: an animated burst, played frame by frame.
-    public static void Impact(Vector2 pos, Element e, float size)
+    // Returns false when there's no painted effect, so callers can fall back to the plain flash.
+    public static bool Impact(Vector2 pos, Element e, float size)
     {
         string key = Key(e);
-        if (!On || key == null) return;
+        if (!On || key == null) return false;
         var frames = Frames($"vfx_{key}_hit", 12);
-        if (frames.Length > 0) Puff.Spawn(pos, frames, size * 1.6f, 0.3f);
+        if (frames.Length == 0) return false;
+        Puff.Spawn(pos, frames, size * 1.6f, 0.3f);
+        return true;
     }
 
     class Puff : MonoBehaviour
@@ -71,6 +74,7 @@ public static class SpellVfx
             float k = t / life, grow = Mathf.Clamp01(k / 0.7f);
             float ease = 1f - (1f - grow) * (1f - grow);
             transform.localScale = Vector3.one * full * Mathf.Lerp(0.06f, 0.9f, ease);
+            sr.color = new Color(1f, 1f, 1f, Mathf.Clamp01((1f - k) / 0.3f));   // fade out over the last 30%
         }
     }
 }

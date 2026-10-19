@@ -102,6 +102,7 @@ public class Fireball : Spell
     {
         float scale = shrapnel ? ShrapnelScale : 1f;
         var p = Shoot(from, dir, Speed, (Tier == 1 ? 0.22f : 0.34f) * Mathf.Sqrt(Area) * scale);
+        SpellVfx.Skin(p, Element, (Tier == 1 ? 1.3f : 1.8f) * Mathf.Sqrt(Area) * scale);
         p.Lifetime = life;
         p.OnHit = (proj, e) =>
         {
@@ -114,8 +115,11 @@ public class Fireball : Spell
     void Explode(Vector2 at, bool splits, float scale)
     {
         float radius = Radius * scale;
-        Fx.Burst(at, Color, radius * 2.2f);
-        Fx.Ring(at, Color, radius);
+        if (!SpellVfx.Impact(at, Element, radius * 1.4f))
+        {
+            Fx.Burst(at, Color, radius * 2.2f);
+            Fx.Ring(at, Color, radius);
+        }
         Sfx.Play("spells.Fireball.explode", Sound.Explosion, 0.5f);
         var caught = EnemiesWithin(at, radius);
         foreach (var e in caught)
