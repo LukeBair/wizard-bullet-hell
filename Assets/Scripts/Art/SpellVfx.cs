@@ -49,13 +49,31 @@ public static class SpellVfx
         SpriteRenderer sr;
         float from, to, life, t, spin;
 
+        // Spent puffs are parked and reused: every spell hit makes one or two.
+        static readonly Stack<Puff> pool = new Stack<Puff>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetPool() => pool.Clear();
+
         public static void Spawn(Vector2 pos, Sprite sprite, float fromSize, float toSize, float life, float spin)
         {
-            var go = new GameObject("SpellPuff");
-            go.transform.position = pos;
-            go.transform.rotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
-            var p = go.AddComponent<Puff>();
-            p.sr = SpriteFactory.Add(go, sprite, Color.white, 86);
+            Puff p = null;
+            while (p == null && pool.Count > 0) p = pool.Pop();   // skips any destroyed while parked
+            if (p == null)
+            {
+                var go = new GameObject("SpellPuff");
+                p = go.AddComponent<Puff>();
+                p.sr = SpriteFactory.Add(go, sprite, Color.white, 86);
+            }
+            else
+            {
+                p.sr.sprite = sprite;
+                p.sr.color = Color.white;
+                p.gameObject.SetActive(true);
+            }
+            p.transform.position = pos;
+            p.transform.rotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
+            p.t = 0f;
             p.from = fromSize / (sprite.rect.width / sprite.pixelsPerUnit);
             p.to = toSize / (sprite.rect.width / sprite.pixelsPerUnit);
             p.life = life;
@@ -73,7 +91,11 @@ public static class SpellVfx
             transform.localScale = Vector3.one * Mathf.Lerp(from, to, ease);
             transform.Rotate(0f, 0f, spin * dt);
             var c = sr.color; c.a = 1f - k * k; sr.color = c;
-            if (k >= 1f) Destroy(gameObject);
+            if (k >= 1f)
+            {
+                gameObject.SetActive(false);
+                pool.Push(this);
+            }
         }
     }
 }
