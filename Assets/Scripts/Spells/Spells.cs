@@ -40,7 +40,7 @@ public class ArcaneMissile : Spell
         p.Lifetime = T("lifetime", 2f);
         p.OnHit = (proj, e) =>
         {
-            SpellVfx.Impact(proj.Position, Element, 0.7f * Area);
+            SpellVfx.Impact(proj.Position, Element, 0.7f * Area, 0.3f, 0.7f);
             Hit(e, Damage, proj.Velocity.normalized * 2f);
             Grimoire.Feat(SpellId.ArcaneMissile);
             if (Tier == 3 && canSplit)
@@ -115,7 +115,7 @@ public class Fireball : Spell
     void Explode(Vector2 at, bool splits, float scale)
     {
         float radius = Radius * scale;
-        if (!SpellVfx.Impact(at, Element, radius * 1.4f))
+        if (!SpellVfx.Impact(at, Element, radius * 1.4f, 0.5f, 0.65f))
         {
             Fx.Burst(at, Color, radius * 2.2f);
             Fx.Ring(at, Color, radius);
@@ -189,13 +189,18 @@ public class FrostNova : Spell
     {
         Vector2 at = Owner.Position;
         Sfx.Play("spells.FrostNova.pulse", Sound.Nova, 0.45f);
-        Fx.Ring(at, Color, Radius, 0.4f);
-        Fx.Burst(at, new Color(Color.r, Color.g, Color.b, 0.4f), Radius * 2f);
+        if (!SpellVfx.Nova(at, Radius))
+        {
+            Fx.Ring(at, Color, Radius, 0.4f);
+            Fx.Burst(at, new Color(Color.r, Color.g, Color.b, 0.4f), Radius * 2f);
+        }
         Particles.Frost(at, Radius);
         float push = T("push", 4f) + T("pushPerPierce", 3f) * RuneCount(Rune.Pierce);
         float frostbite = T("frostbite_t3", 0.35f) + T("frostbitePerFrostRune_t3", 0.25f) * RuneCount(Rune.Frost);
+        int bursts = 0;
         foreach (var e in EnemiesWithin(at, Radius))
         {
+            if (bursts++ < 8) SpellVfx.Impact(e.Position, Element, 0.5f);   // a freeze burst on the first few foes caught
             if (Tier >= 2) e.ApplyChill(TT("chill", 1.8f) * Potency);
             if (Tier == 3) e.AddFrostbite(frostbite, T("shatterSpread_t3", 0.5f), T("shatterSpreadRadius_t3", 1.8f));
             Hit(e, Damage, (e.Position - at).normalized * push);
@@ -249,8 +254,8 @@ public class ChainLightning : Spell
                 target = Toughest();
                 if (target == null) return;
                 // Heavy bolt from the sky.
-                Fx.Bolt(target.Position + new Vector2(0.5f, 9f), target.Position, Color.white);
-                Fx.Bolt(target.Position + new Vector2(-0.4f, 9f), target.Position, Color);
+                Zap(target.Position + new Vector2(0.5f, 9f), target.Position);
+                Zap(target.Position + new Vector2(-0.4f, 9f), target.Position);
                 Splash(target.Position, T("strikeSplash_t3", 1.6f) * Area, dmg * T("strikeSplashDamage_t3", 1.2f), struck);
                 Hit(target, dmg * T("strikeMultiplier_t3", 3f));
                 struck.Add(target);
@@ -266,7 +271,7 @@ public class ChainLightning : Spell
             int jumps = Tier == 1 ? 0 : Jumps;
             for (int j = 0; j <= jumps && target != null; j++)
             {
-                Fx.Bolt(from, target.Position, Color);
+                Zap(from, target.Position);
                 struck.Add(target);
                 if (j == 0 && Tier < 3) Splash(target.Position, (TT("splash", 1f) + 0.25f * (Tier == 1 ? PierceCount : 0)) * Area, dmg * TT("splashDamage", 0.5f), struck);
                 from = target.Position;
@@ -277,10 +282,16 @@ public class ChainLightning : Spell
         }
     }
 
+    // painted lightning arc and a flash where it lands; the plain line when that art isn't there
+    void Zap(Vector2 from, Vector2 to)
+    {
+        if (SpellVfx.Arc(from, to)) { SpellVfx.Impact(to, Element, 0.25f); }
+        else Fx.Bolt(from, to, Color);
+    }
+
     void Splash(Vector2 at, float radius, float dmg, List<Enemy> exclude)
     {
-        Fx.Ring(at, Color, radius, 0.25f);
-        Particles.Crackle(at, radius, Color);
+        if (!SpellVfx.On) { Fx.Ring(at, Color, radius, 0.25f); Particles.Crackle(at, radius, Color); }
         foreach (var e in EnemiesWithin(at, radius))
             if (!exclude.Contains(e)) Hit(e, dmg);
     }
@@ -315,7 +326,6 @@ public class Wisps : Spell, IOrbiter
 
     readonly List<(Transform orb, int ring, int set, int index, int ringCount)> orbs = new List<(Transform, int, int, int, int)>();
     readonly List<float> bonusWisps = new List<float>();   // tier III: time left on each extra wisp
-    readonly List<Transform> tracks = new List<Transform>();
     readonly Dictionary<Enemy, float> lastHit = new Dictionary<Enemy, float>();
     float angle;
     float quietTimer;
@@ -379,13 +389,10 @@ public class Wisps : Spell, IOrbiter
     {
         if (Owner == null) return;
         foreach (var o in orbs) if (o.orb != null) Object.Destroy(o.orb.gameObject);
-        foreach (var t in tracks) if (t != null) Object.Destroy(t.gameObject);
         foreach (var st in states.Values) st.tint = -1;   // new sprites start in the spell's own color
         orbs.Clear();
-        tracks.Clear();
         for (int ring = 0; ring < OrbitRings; ring++)
         {
-            tracks.Add(SpriteFactory.Child(Owner.transform, "WispOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.22f), Vector2.zero, OrbitRadius(ring) * 2f + OrbRadius, 47).transform);
             int n = RingCount(ring);
             for (int set = 0; set < Sets; set++)
             for (int i = 0; i < n; i++)
@@ -393,8 +400,11 @@ public class Wisps : Spell, IOrbiter
                 var go = new GameObject("Wisp");
                 go.transform.SetParent(Owner.transform, false);
                 SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.5f), Vector2.zero, OrbRadius * 5f, 56);
-                SpriteFactory.Child(go.transform, "Halo", SpriteFactory.Ring, Color, Vector2.zero, OrbRadius * 2.4f, 57);
-                SpriteFactory.Child(go.transform, "Core", SpriteFactory.Diamond, Color.Lerp(Color, Color.white, 0.4f), Vector2.zero, OrbRadius * 1.4f, 58);
+                if (!SpellVfx.WispBody(go.transform, OrbRadius * 4f * T("bodyScale", 1f)))
+                {
+                    SpriteFactory.Child(go.transform, "Halo", SpriteFactory.Ring, Color, Vector2.zero, OrbRadius * 2.4f, 57);
+                    SpriteFactory.Child(go.transform, "Core", SpriteFactory.Diamond, Color.Lerp(Color, Color.white, 0.4f), Vector2.zero, OrbRadius * 1.4f, 58);
+                }
                 orbs.Add((go.transform, ring, set, i, n));
             }
         }
@@ -403,8 +413,6 @@ public class Wisps : Spell, IOrbiter
     protected override void OnTick(float dt)
     {
         angle += T("spinSpeed", 200f) / Cooldown * dt * Tuning.Pace;
-        // Rings shift outward when another orbiting spell is learned first, so keep the tracks in step.
-        for (int r = 0; r < tracks.Count; r++) tracks[r].localScale = Vector3.one * (OrbitRadius(r) * 2f + OrbRadius);
         float hitEvery = T("hitEvery", 0.5f) / (1f + 0.3f * RuneCount(Rune.Pierce));
         bool hitSomething = false;
         spawns.Clear();
@@ -461,9 +469,9 @@ public class Wisps : Spell, IOrbiter
                 if (lastHit.TryGetValue(e, out float t) && Time.time - t < hitEvery) continue;
                 lastHit[e] = Time.time;
                 hitSomething = true;
-                Fx.Burst(e.Position, Color, 1f);
+                if (!SpellVfx.Impact(e.Position, Element, 0.4f)) Fx.Burst(e.Position, Color, 1f);
                 Sfx.Play("spells.Wisps.orbit", Sound.WispHit, 0.35f, 0.2f);
-                Fx.Ring(world, Color, OrbRadius * 1.5f, 0.2f);
+                if (!SpellVfx.On) Fx.Ring(world, Color, OrbRadius * 1.5f, 0.2f);
                 Hit(e, Damage, local.normalized * 3f);
                 Credit(e);
             }
@@ -548,7 +556,7 @@ public class Wisps : Spell, IOrbiter
             st.absorbHits--;
         }
         Sfx.Play("spells.Wisps.dart", Sound.WispHit, 0.45f, 0.2f);
-        Fx.Burst(at, Color, 1.2f);
+        if (!SpellVfx.Impact(at, Element, 0.4f)) Fx.Burst(at, Color, 1.2f);
         Hit(e, Damage * T("huntDamage", 1.5f), dir * 3f);
         Credit(e);
         float power = Damage / Mathf.Max(0.01f, TT("damage", BaseDamage));   // potency, sunlit, overload
@@ -625,8 +633,10 @@ public class Wisps : Spell, IOrbiter
     void Tint(Transform orb, int reaction)
     {
         Color c = ElementColor(reaction);
+        SpellVfx.WispTint(orb, reaction);
         foreach (var r in orb.GetComponentsInChildren<SpriteRenderer>(true))
         {
+            if (r.name == "Painted") continue;   // the painted body is recoloured in its own frames
             Color want = r.name == "Core" ? Color.Lerp(c, Color.white, 0.4f) : c;
             r.color = new Color(want.r, want.g, want.b, r.color.a);
         }

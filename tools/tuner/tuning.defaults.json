@@ -1,4 +1,12 @@
 {
+  "vfx": {
+    "lightningHitScale": 3,
+    "fireballHitScale": 1,
+    "frostHitScale": 1,
+    "arcaneHitScale": 1,
+    "natureHitScale": 1,
+    "_about": "Painted spell effects: multiplies each element's hit burst size (pixel density is kept)."
+  },
   "_about": "Every tunable in Wizard Bullet Hell. Keys starting with _ are notes. Spell values for evolved tiers use _t2 / _t3 suffixes.",
   "global": {
     "pace": 0.75,
@@ -711,6 +719,7 @@
       "cooldown": 1,
       "count": 2,
       "wispSize": 0.28,
+      "bodyScale": 1,
       "spinSpeed": 200,
       "hitEvery": 0.5,
       "quietSeconds_t2": 3,

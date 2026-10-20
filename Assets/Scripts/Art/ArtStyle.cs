@@ -148,6 +148,9 @@ public static class ArtStyle
 
     static SpriteSheet Sheet3D(string name, float scale)
     {
+        // the pixel size tuner resamples from the 256px sheets (bosses), where they exist
+        if (PixelDensity.On && Resources.Load<TextAsset>($"Art/Dusk/enemy3d_{name}_sheet_256") != null)
+            return SpriteSheet.Load($"enemy3d_{name}_sheet_256", scale);
         int px = Settings.Enemy3DSharp ? 128 : 64;
         if (chunky3D.Contains(name)) px /= 2;
         return SpriteSheet.Load($"enemy3d_{name}_sheet_{px}", scale);

@@ -11,7 +11,7 @@ static class BuildIos
             scenes = new[] { "Assets/Scenes/Main.unity" },
             locationPathName = "Builds/iOS",
             target = BuildTarget.iOS,
-            options = BuildOptions.None,
+            options = BuildOptions.AcceptExternalModificationsToPlayer,   // "Append": keeps the Xcode project and its signing between builds
         });
         if (report.summary.result != BuildResult.Succeeded) EditorApplication.Exit(1);
     }

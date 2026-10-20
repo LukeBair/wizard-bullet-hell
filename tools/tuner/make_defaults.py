@@ -22,6 +22,8 @@ tuning = {
     "art": {"pxPerTexel": 2, "refHeight": 1080,
         "_pxPerTexel": "On-screen size of one art texel, in screen pixels, for the 3D-rendered wizard, enemies, props and ground (0 = off). Takes effect on the next run.",
         "_refHeight": "Screen height (px) the sizing assumes. 0 = the actual screen height (phones are ~2600px, so much finer)."},
+    "vfx": {"lightningHitScale": 3, "fireballHitScale": 1, "frostHitScale": 1, "arcaneHitScale": 1, "natureHitScale": 1,
+        "_about": "Painted spell effects: multiplies each element's hit burst size (pixel density is kept)."},
     "audio": {"volume": 1.0},
     "hud": {
         "fontScale": 1.2,
@@ -137,7 +139,7 @@ tuning = {
         "ChainLightning": {"damage": 18, "cooldown": 1.5, "count": 1, "splash": 1.0, "splash_t2": 1.0, "splashDamage": 0.5, "splashDamage_t2": 0.5,
                             "jumps_t2": 2, "jumps_t3": 2, "jumpRange": 3.5, "chainFalloff": 0.9,
                             "strikeMultiplier_t3": 3, "strikeSplash_t3": 1.6, "strikeSplashDamage_t3": 1.2, "potencyPerRune": 0.3, "areaPerRune": 0.2},
-        "Wisps": {"damage": 9, "cooldown": 1, "count": 2, "orbit": 1.7, "ringSpacing": 0.55, "wispSize": 0.28, "spinSpeed": 200, "hitEvery": 0.5,
+        "Wisps": {"damage": 9, "cooldown": 1, "count": 2, "orbit": 1.7, "ringSpacing": 0.55, "wispSize": 0.28, "bodyScale": 1, "spinSpeed": 200, "hitEvery": 0.5,
                    "quietSeconds_t2": 3, "quietHeal_t2": 0.1, "hitHeal_t3": 0.01, "potencyPerRune": 0.3, "areaPerRune": 0.15},
         "Rejuvenate": {"damage": 0.06, "cooldown": 9, "count": 1, "maxHealthPerPierce": 10, "_damage": "Fraction of max health healed per pulse."},
         "Overgrowth": {"damage": 6, "cooldown": 5, "count": 1, "radius": 1.8, "rootTime": 2.2, "potencyPerRune": 0.25},

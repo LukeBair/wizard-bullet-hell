@@ -18,7 +18,7 @@ public static class Settings
         set { PlayerPrefs.SetInt(WizardKey, value % WizardSheets.Length); PlayerPrefs.Save(); }
     }
 
-    public static string WizardSheet => WizardSheets[Enemy3DSharp && Wizard != 0 ? 2 : Wizard];
+    public static string WizardSheet => Wizard != 0 && PixelDensity.On ? (Resources.Load<TextAsset>("Art/Dusk/player_sheet_256") != null ? "player_sheet_256" : "player_sheet_128") : WizardSheets[Wizard];
     public static string WizardLabel => WizardLabels[Wizard];
 
     // The Character art setting covers enemies too: Original keeps their old sprites, and the 3D options

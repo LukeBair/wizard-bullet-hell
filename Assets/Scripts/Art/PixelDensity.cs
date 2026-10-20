@@ -56,7 +56,7 @@ public static class PixelDensity
         int cellW = 0, cellH = 0;
         for (int k = 0; k < n; k++)
         {
-            var r = src[todo[k]].textureRect;
+            var r = src[todo[k]].rect;   // the whole frame, not its trimmed textureRect, so every frame keeps the same size
             sizes[k] = new Vector2Int(Mathf.Max(2, Mathf.RoundToInt(r.width * f)), Mathf.Max(2, Mathf.RoundToInt(r.height * f)));
             cellW = Mathf.Max(cellW, sizes[k].x + 2);
             cellH = Mathf.Max(cellH, sizes[k].y + 2);
@@ -79,12 +79,16 @@ public static class PixelDensity
             var s = src[todo[k]];
             var rect = new Rect((k % cols) * cellW + 1, (k / cols) * cellH + 1, sizes[k].x, sizes[k].y);
             rects[k] = rect;
-            Blit(s.texture, s.textureRect, main, rect);
+            // the trimmed content goes where it sits in the frame; the rest of the cell stays clear
+            float sx = sizes[k].x / s.rect.width, sy = sizes[k].y / s.rect.height;
+            var tr = s.textureRect; var off = s.textureRectOffset;
+            var inner = new Rect(rect.x + off.x * sx, rect.y + off.y * sy, Mathf.Max(1, tr.width * sx), Mathf.Max(1, tr.height * sy));
+            Blit(s.texture, s.textureRect, main, inner);
             if (normals != null)
             {
                 var sec = new SecondarySpriteTexture[secondary.Length];
                 s.GetSecondaryTextures(sec);
-                Blit(sec[0].texture, s.textureRect, normals, rect);
+                Blit(sec[0].texture, s.textureRect, normals, inner);
             }
         }
         if (hardEdges) SnapAlpha(main, normals);
@@ -94,8 +98,8 @@ public static class PixelDensity
         for (int k = 0; k < n; k++)
         {
             var s = src[todo[k]];
-            var pivot = new Vector2(s.pivot.x / s.textureRect.width, s.pivot.y / s.textureRect.height);
-            float ppu = s.pixelsPerUnit * sizes[k].x / s.textureRect.width;
+            var pivot = new Vector2(s.pivot.x / s.rect.width, s.pivot.y / s.rect.height);   // pivot is measured in the full rect
+            float ppu = s.pixelsPerUnit * sizes[k].x / s.rect.width;
             var made = secondary.Length == 0
                 ? Sprite.Create(main, rects[k], pivot, ppu)
                 : Sprite.Create(main, rects[k], pivot, ppu, 0, SpriteMeshType.FullRect, Vector4.zero, false, secondary);
@@ -118,7 +122,7 @@ public static class PixelDensity
     static void Blit(Texture2D tex, Rect region, Texture2D dest, Rect outRect)
     {
         var rw = tex.isDataSRGB ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear;
-        int w = Mathf.RoundToInt(outRect.width), h = Mathf.RoundToInt(outRect.height);
+        int w = Mathf.Max(1, Mathf.RoundToInt(outRect.width)), h = Mathf.Max(1, Mathf.RoundToInt(outRect.height));
         int cw = Mathf.RoundToInt(region.width), ch = Mathf.RoundToInt(region.height);
 
         // exact crop at native size
