@@ -1117,6 +1117,7 @@
     "wizardIntensity": 0.0,
     "spellRadius": 2.8,
     "spellIntensity": 1.0,
+    "maxSpellLights": 6,
     "ambientTint": 0.0,
     "vignette": 0.12,
     "sun": 0.85,

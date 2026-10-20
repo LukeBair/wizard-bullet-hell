@@ -30,6 +30,10 @@ public class Projectile : MonoBehaviour
     static readonly List<Enemy> scratch = new List<Enemy>();
     SpriteRenderer body, glow, core;
     UnityEngine.Rendering.Universal.Light2D spellLight;
+    // Only the first few live spells get a Light2D (each one is a full extra light pass on the
+    // GPU); the rest stay unlit and lean on bloom. Cap: lighting.maxSpellLights.
+    bool lit;
+    static int litCount;
 
     // Spent projectiles are parked here and reused, since bosses and split spells fire hundreds a minute.
     static readonly Stack<Projectile>[] pool = { new Stack<Projectile>(), new Stack<Projectile>() };
@@ -55,8 +59,6 @@ public class Projectile : MonoBehaviour
             p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, team == Team.Enemy ? Tune.F("bullets.enemyGlow", 1.4f) : 2.4f, team == Team.Enemy ? 80 : 70);
             // Enemy bullets get a hot white core so they never read as your own spells.
             if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, new Color(0.8f, 0.8f, 0.8f), Vector2.zero, 0.5f, 82);
-            // your spells light up whatever they fly past (enemy bullets are too many; bloom does them)
-            if (team == Team.Player) p.spellLight = Lighting.Point(go.transform, color, 1f, Tune.F("lighting.spellIntensity", 1f));
         }
         else p.ResetState();
 
@@ -75,11 +77,20 @@ public class Projectile : MonoBehaviour
         p.body.sprite = ArtStyle.Round;
         p.body.color = color;
         p.glow.color = new Color(color.r, color.g, color.b, 0.6f);
-        if (p.spellLight != null)
+        // your spells light up whatever they fly past (enemy bullets are too many; bloom does them)
+        if (team == Team.Player && litCount < Tune.I("lighting.maxSpellLights", 6))
         {
-            p.spellLight.color = color;
-            Lighting.SetRadius(p.spellLight, Tune.F("lighting.spellRadius", 2.8f));
+            if (p.spellLight == null) p.spellLight = Lighting.Point(t, color, 1f, Tune.F("lighting.spellIntensity", 1f));
+            if (p.spellLight != null)
+            {
+                p.spellLight.enabled = true;
+                p.spellLight.color = color;
+                Lighting.SetRadius(p.spellLight, Tune.F("lighting.spellRadius", 2.8f));
+                p.lit = true;
+                litCount++;
+            }
         }
+        else if (p.spellLight != null) p.spellLight.enabled = false;
         if (p.core != null) p.core.sprite = ArtStyle.Round;
         p.skin = false;   // pooled: a reused projectile starts as the plain orb again
         p.body.transform.localRotation = Quaternion.identity;
@@ -150,10 +161,18 @@ public class Projectile : MonoBehaviour
     static void ResetPool()
     {
         foreach (var free in pool) free.Clear();
+        litCount = 0;
     }
 
     void OnEnable() => All.Add(this);
-    void OnDisable() => All.Remove(this);
+    void OnDisable()
+    {
+        All.Remove(this);
+        if (!lit) return;
+        lit = false;
+        litCount--;
+        if (spellLight != null) spellLight.enabled = false;
+    }
 
     void Update()
     {
