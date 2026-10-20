@@ -1111,6 +1111,7 @@
   "lighting": {
     "enabled": true,
     "bloom": true,
+    "bloomMobile": false,
     "normalMaps": true,
     "ambient": 0.8,
     "wizardRadius": 6.0,

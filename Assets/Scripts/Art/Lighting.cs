@@ -31,12 +31,15 @@ public static class Lighting
         foreach (var sr in root.GetComponentsInChildren<SpriteRenderer>(true)) MakeLit(sr);
     }
 
-    // Bloom and vignette on the game camera, from Resources/Render/PostFX.
+    // Bloom and vignette on the game camera, from Resources/Render/PostFX. Post-processing is a full-screen
+    // pass or two every frame, a big part of what heats a phone, so on phones it's off unless
+    // lighting.bloomMobile turns it on; lighting.bloom is the switch everywhere else.
     public static void SetupCamera(Camera cam)
     {
         if (GraphicsSettings.currentRenderPipeline == null) return;
         var data = cam.GetUniversalAdditionalCameraData();
-        data.renderPostProcessing = Active && Tune.B("lighting.bloom", true);
+        bool bloom = Application.isMobilePlatform ? Tune.B("lighting.bloomMobile", false) : Tune.B("lighting.bloom", true);
+        data.renderPostProcessing = Active && bloom;
         if (profile == null) profile = Resources.Load<VolumeProfile>("Render/PostFX");
         if (profile != null && profile.TryGet<Vignette>(out var vignette))
             vignette.intensity.value = Tune.F("lighting.vignette", 0.12f);
