@@ -29,6 +29,28 @@ public class SpriteSheet
     [Serializable] class Data { public Frame[] frames; public Meta meta; }
 
     static readonly Dictionary<string, SpriteSheet> cache = new Dictionary<string, SpriteSheet>();
+    // Sheets asked for since the last BeginMark; Sweep forgets the rest (see ArtStyle.BeginZoneArt).
+    static readonly HashSet<string> marked = new HashSet<string>();
+    static readonly List<string> stale = new List<string>();
+
+    public static void BeginMark() => marked.Clear();
+
+    // Drops every cached sheet not loaded since BeginMark, so Resources.UnloadUnusedAssets can free
+    // its texture once nothing in the scene still draws it. Returns how many were dropped.
+    public static int Sweep()
+    {
+        stale.Clear();
+        foreach (var path in cache.Keys) if (!marked.Contains(path)) stale.Add(path);
+        foreach (var path in stale)
+        {
+            var sheet = cache[path];
+            if (sheet != null)
+                foreach (var clip in sheet.clips.Values)
+                    foreach (var f in clip.Frames) feet.Remove(f);
+            cache.Remove(path);
+        }
+        return stale.Count;
+    }
 
     // The current style's sheet with this name, or null (Classic, or no such sheet).
     public static SpriteSheet Load(string name)
@@ -36,6 +58,7 @@ public class SpriteSheet
         if (ArtStyle.Current == ArtStyleId.Classic) return null;
         string style = ArtStyle.Current.ToString();
         string path = $"Art/{style}/{name}";
+        marked.Add(path);
         if (cache.TryGetValue(path, out var sheet)) return sheet;
 
         var tex = Resources.Load<Texture2D>(path);

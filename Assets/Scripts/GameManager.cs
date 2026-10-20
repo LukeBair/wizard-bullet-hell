@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -155,6 +156,21 @@ public class GameManager : MonoBehaviour
         Clear<WaterPillar>();
     }
 
+    // Preloads the zone's enemy sheets and lets go of the last zone's art (ArtStyle.BeginZoneArt).
+    void FinishZoneArt(Biome b)
+    {
+        // keeps the wizard's sheet marked as in use (same lookup as Player)
+        if (SpriteSheet.Load(Settings.WizardSheet) == null) SpriteSheet.Load("player_sheet");
+        if (ArtStyle.EndZoneArt(b.Roster)) StartCoroutine(UnloadUnused());
+    }
+
+    // A frame later, once the old arena and field are really destroyed.
+    static IEnumerator UnloadUnused()
+    {
+        yield return null;
+        Resources.UnloadUnusedAssets();
+    }
+
     static void Clear<T>() where T : MonoBehaviour
     {
         foreach (var o in FindObjectsByType<T>()) Destroy(o.gameObject);
@@ -165,6 +181,7 @@ public class GameManager : MonoBehaviour
         zones = Biome.RunZones();
         zoneIndex = 0;
         shiftAt = -1f;
+        ArtStyle.BeginZoneArt();
         BuildWorld(zones[0]);
         Score = 0;
         runGold = 0f;
@@ -172,6 +189,7 @@ public class GameManager : MonoBehaviour
         pendingLevelUps = 0;
         toasts.Clear();
         Director.ResetRun(Arena.Biome);
+        FinishZoneArt(Arena.Biome);
         Upgrades = new RuneSystem();
         Upgrades.Begin(Player);
         Grimoire.BeginRunFeats();
@@ -205,12 +223,14 @@ public class GameManager : MonoBehaviour
         if (zoneIndex + 1 >= zones.Count) zones.Add(Biome.Random());   // runs with more bosses than zones
         var next = zones[++zoneIndex];
         XpGem.CollectAll(Player);
+        ArtStyle.BeginZoneArt();
         ClearField();
         Destroy(Arena.gameObject);
         Arena = Arena.Create(next);
         Player.transform.position = Vector3.zero;
         camPos = Vector2.zero;
         Director.EnterZone(next);
+        FinishZoneArt(next);
         Telemetry.Zone(zoneIndex + 1, next.Name);
         Director.Holding = false;
         fadeInUntil = Time.time + FadeTime;

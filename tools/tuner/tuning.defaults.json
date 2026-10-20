@@ -1127,5 +1127,8 @@
     "shadows": true,
     "shadowAlpha": 0.55,
     "shadowLength": 0.55
+  },
+  "perf": {
+    "zoneUnload": true
   }
 }

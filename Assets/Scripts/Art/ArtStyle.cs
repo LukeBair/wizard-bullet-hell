@@ -177,9 +177,12 @@ public static class ArtStyle
     // 3D-rendered props (tools/sprite-pipeline/render_prop.py): Resources/Art/Dusk/prop_<name>_<k> with a
     // matching _n normal map, pivoted at the base. Null unless the Character art setting is on a 3D option.
     static readonly Dictionary<string, Sprite> props = new Dictionary<string, Sprite>();
+    static readonly HashSet<string> propsMarked = new HashSet<string>();
+    static readonly List<string> propsStale = new List<string>();
     public static Sprite Prop(string file)
     {
         if (!Settings.Enemy3D || Current != ArtStyleId.Dusk) return null;
+        propsMarked.Add(file);
         if (props.TryGetValue(file, out var s)) return s;
         var tex = Resources.Load<Texture2D>("Art/Dusk/" + file);
         var normals = Resources.Load<Texture2D>("Art/Dusk/" + file + "_n");
@@ -193,6 +196,34 @@ public static class ArtStyle
                     new[] { new SecondarySpriteTexture { name = "_NormalMap", texture = normals } });
         }
         return props[file] = s;
+    }
+
+    // Zone art memory. Call BeginZoneArt before a zone (or run) is built and EndZoneArt after: the new
+    // zone's enemy sheets load up front (no hitch the first time each enemy spawns), and every sheet
+    // and prop the new zone didn't ask for is forgotten so Resources.UnloadUnusedAssets can free it.
+    // perf.zoneUnload: false keeps everything cached forever (the old behaviour).
+    public static void BeginZoneArt()
+    {
+        SpriteSheet.BeginMark();
+        propsMarked.Clear();
+    }
+
+    public static bool EndZoneArt(EnemyRoster roster)
+    {
+        if (roster != null)
+            foreach (var group in new[] { roster.Chaff, roster.Medium, roster.Bosses })
+                if (group != null)
+                    foreach (var d in group)
+                    {
+                        EnemySheet(d.Look, d.Name);
+                        if (d.Look == EnemyLook.Headmaster) _ = TomeSheet;
+                    }
+        if (!Tune.B("perf.zoneUnload", true)) return false;
+        SpriteSheet.Sweep();
+        propsStale.Clear();
+        foreach (var k in props.Keys) if (!propsMarked.Contains(k)) propsStale.Add(k);
+        foreach (var k in propsStale) props.Remove(k);
+        return true;
     }
 
     // A prop's baked shadow (render_prop.py casts it from the 3D model onto a ground plane): <prop>_shadow,
