@@ -228,7 +228,7 @@ public class Projectile : MonoBehaviour
             }
 
             scratch.Clear();
-            scratch.AddRange(Enemy.All);
+            Enemy.Near(pos, Radius, scratch);   // only the foes in the grid cells around the shot
             foreach (var enemy in scratch)
             {
                 if (!enemy.IsAlive || enemy.Hidden || enemy.IsCharmed || hit.Contains(enemy)) continue;

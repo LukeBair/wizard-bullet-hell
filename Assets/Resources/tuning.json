@@ -1199,6 +1199,7 @@
     "shadowLength": 0.55
   },
   "perf": {
-    "zoneUnload": true
+    "zoneUnload": true,
+    "gridHits": true
   }
 }

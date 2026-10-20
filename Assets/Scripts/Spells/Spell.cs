@@ -434,7 +434,8 @@ public abstract class Spell
     public static List<Enemy> EnemiesWithin(Vector2 center, float radius)
     {
         List<Enemy> list = null;
-        foreach (var e in Enemy.All)
+        nearScratch.Clear();
+        foreach (var e in Enemy.Near(center, radius, nearScratch))
         {
             if (!e.IsAlive || e.Hidden || e.IsCharmed) continue;   // charmed foes are allies for now
             float r = radius + e.Radius;
@@ -443,6 +444,7 @@ public abstract class Spell
         return list ?? NoEnemies;
     }
     static readonly List<Enemy> NoEnemies = new List<Enemy>();
+    static readonly List<Enemy> nearScratch = new List<Enemy>();
 
     protected static string Roman(int tier) => tier == 1 ? "I" : tier == 2 ? "II" : "III";
 }

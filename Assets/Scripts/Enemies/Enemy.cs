@@ -307,6 +307,7 @@ public class Enemy : MonoBehaviour
     static readonly Dictionary<int, List<Enemy>> grid = new Dictionary<int, List<Enemy>>();
     static readonly Stack<List<Enemy>> spareCells = new Stack<List<Enemy>>();
     static int gridFrame = -1;
+    static float gridMaxRadius;   // the biggest foe in the grid, so Near reaches far enough for bosses
 
     static int Cell(float v) => Mathf.FloorToInt(v / GridCell);
     static int CellKey(int x, int y) => (x & 0xFFFF) | (y << 16);
@@ -321,13 +322,34 @@ public class Enemy : MonoBehaviour
             spareCells.Push(cell);
         }
         grid.Clear();
+        gridMaxRadius = 0f;
         foreach (var e in All)
         {
             if (e.IsBanished) continue;   // banished foes aren't there to bump into
+            if (e.Radius > gridMaxRadius) gridMaxRadius = e.Radius;
             int key = CellKey(Cell(e.Position.x), Cell(e.Position.y));
             if (!grid.TryGetValue(key, out var cell)) grid[key] = cell = spareCells.Count > 0 ? spareCells.Pop() : new List<Enemy>();
             cell.Add(e);
         }
+    }
+
+    // Adds to `into` every foe that could touch a circle of `radius` at `center` (a superset: callers
+    // still check the distance, against each foe's live Position). Uses the grid, so a spell hit or a
+    // blast checks only the foes in the few cells around it instead of all 200. Banished foes are
+    // left out (they're Hidden anyway). perf.gridHits: false scans All, the old way.
+    public static List<Enemy> Near(Vector2 center, float radius, List<Enemy> into)
+    {
+        if (!Tune.B("perf.gridHits", true)) { into.AddRange(All); return into; }
+        BuildGrid();
+        float reach = radius + gridMaxRadius + 0.5f;   // + a frame's movement since the grid was built
+        int x0 = Cell(center.x - reach), x1 = Cell(center.x + reach);
+        int y0 = Cell(center.y - reach), y1 = Cell(center.y + reach);
+        // a huge radius (screen-wide blasts) is cheaper as a plain scan
+        if ((x1 - x0 + 1) * (y1 - y0 + 1) > All.Count) { into.AddRange(All); return into; }
+        for (int gx = x0; gx <= x1; gx++)
+            for (int gy = y0; gy <= y1; gy++)
+                if (grid.TryGetValue(CellKey(gx, gy), out var cell)) into.AddRange(cell);
+        return into;
     }
 
     void Update()
