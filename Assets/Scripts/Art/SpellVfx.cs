@@ -122,13 +122,11 @@ public static class SpellVfx
         int n = Mathf.Max(1, Mathf.CeilToInt(dist / seg - 0.001f));
         for (int k = 0; k < n; k++)
         {
-            var go = new GameObject("SpellArc");
-            go.transform.position = k < n - 1 ? a + dir * (seg * (k + 0.5f)) : b - dir * (seg * 0.5f);   // the last tile is flush with b and overlaps its neighbour
-            go.transform.rotation = rot;
-            go.transform.localScale = new Vector3(sy, sy, 1f);
-            var arc = go.AddComponent<Puff>();
-            arc.frames = fit;
-            arc.sr = SpriteFactory.Add(go, fit[0], Color.white, 90);
+            var arc = Puff.Take(fit, 90);
+            var t = arc.transform;
+            t.position = k < n - 1 ? a + dir * (seg * (k + 0.5f)) : b - dir * (seg * 0.5f);   // the last tile is flush with b and overlaps its neighbour
+            t.rotation = rot;
+            t.localScale = new Vector3(sy, sy, 1f);
             arc.life = life; arc.fade = 0.5f; arc.line = true; arc.phase = k * 5;   // each tile forks differently
         }
         return true;
@@ -231,15 +229,44 @@ public static class SpellVfx
         float t, full;
         public bool line;   // an arc: keeps its scale and just flickers through its frames
 
+        // Spent puffs and arc tiles are parked and reused: every spell hit makes one or two.
+        static readonly Stack<Puff> pool = new Stack<Puff>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetPool() => pool.Clear();
+
+        // A live puff showing these frames, from the pool when one is parked.
+        internal static Puff Take(Sprite[] frames, int order)
+        {
+            Puff p = null;
+            while (p == null && pool.Count > 0) p = pool.Pop();   // skips any destroyed while parked
+            if (p == null)
+            {
+                var go = new GameObject("SpellPuff");
+                p = go.AddComponent<Puff>();
+                p.sr = SpriteFactory.Add(go, frames[0], Color.white, order);
+            }
+            else
+            {
+                p.sr.sprite = frames[0];
+                p.sr.color = Color.white;
+                p.sr.sortingOrder = order;
+                p.transform.rotation = Quaternion.identity;
+                p.gameObject.SetActive(true);
+            }
+            p.frames = frames;
+            p.t = 0f;
+            p.phase = 0;
+            p.line = false;
+            return p;
+        }
+
         public static void Spawn(Vector2 pos, Sprite[] frames, float size, float life, float fade)
         {
-            var go = new GameObject("SpellPuff");
-            go.transform.position = pos;
-            var p = go.AddComponent<Puff>();
-            p.frames = frames;
-            p.sr = SpriteFactory.Add(go, frames[0], Color.white, 86);
+            var p = Take(frames, 86);
+            p.transform.position = pos;
             p.full = size / (frames[0].rect.width / frames[0].pixelsPerUnit);
-            go.transform.localScale = Vector3.one * p.full * 0.9f;   // fixed: the frames already grow, and a changing scale would break the pixel grid
+            p.transform.localScale = Vector3.one * p.full * 0.9f;   // fixed: the frames already grow, and a changing scale would break the pixel grid
             p.life = life;
             p.fade = fade;
         }
@@ -248,7 +275,7 @@ public static class SpellVfx
         {
             t += Time.deltaTime;
             int i = (int)(t / life * frames.Length);
-            if (i >= frames.Length) { Destroy(gameObject); return; }
+            if (i >= frames.Length) { gameObject.SetActive(false); pool.Push(this); return; }
             sr.sprite = frames[(i + phase) % frames.Length];
             if (line) { sr.color = new Color(1f, 1f, 1f, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - t / life) / fade))); return; }
             float k = t / life;

@@ -5,7 +5,8 @@ using UnityEngine;
 // everything above it leans over by its height, the way a real shadow falls, so both feet, every
 // root of a tree and the base of a rock stay touching their shadow. Drawn as a 4-vertex mesh because
 // a Transform can rotate and scale but not shear. Props get one baked when the arena is built;
-// characters keep theirs live so it follows their animation frames.
+// characters keep theirs live so it follows their animation frames (rebuilt only when the frame,
+// flip or sprite transform changes).
 public class SpriteShadow : MonoBehaviour
 {
     SpriteRenderer src;
@@ -45,10 +46,42 @@ public class SpriteShadow : MonoBehaviour
         return s;
     }
 
+    // The sun's lean in world units per unit of height, re-read only when the tuning changes.
+    static Vector2 sunLean;
+    static int sunLeanVersion = -1;
+    static Vector2 SunLean
+    {
+        get
+        {
+            if (sunLeanVersion != Tune.Version)
+            {
+                sunLeanVersion = Tune.Version;
+                sunLean = Lighting.ShadowDirection * Tune.F("lighting.shadowLength", 0.55f);
+            }
+            return sunLean;
+        }
+    }
+
+    // What the mesh was last built from; a live shadow rebuilds only when one of these changes
+    // (a new animation frame, a flip, a bob or squash of the sprite), not every frame.
+    Sprite lastSprite;
+    bool lastFlip;
+    Vector3 lastPos, lastScale;
+    Quaternion lastRot;
+    Vector2 lastLean;
+    Texture2D lastTex;
+
     void LateUpdate()
     {
         if (src == null) { Destroy(gameObject); return; }
-        if (live) Apply();
+        if (!live) return;
+        mr.enabled = src.sprite != null && src.enabled && src.gameObject.activeInHierarchy;
+        if (!mr.enabled) return;
+        var t = src.transform;
+        Vector2 lean = SunLean * t.lossyScale.y;
+        if (src.sprite == lastSprite && src.flipX == lastFlip && lean == lastLean
+            && t.localPosition == lastPos && t.localScale == lastScale && t.localRotation == lastRot) return;
+        Apply();
     }
 
     void Apply()
@@ -57,7 +90,13 @@ public class SpriteShadow : MonoBehaviour
         mr.enabled = sprite != null && src.enabled && src.gameObject.activeInHierarchy;
         if (sprite == null) return;
 
-        Vector2 lean = Lighting.ShadowDirection * Tune.F("lighting.shadowLength", 0.55f) * src.transform.lossyScale.y;
+        Vector2 lean = SunLean * src.transform.lossyScale.y;
+        lastSprite = sprite;
+        lastFlip = src.flipX;
+        lastLean = lean;
+        lastPos = src.transform.localPosition;
+        lastScale = src.transform.localScale;
+        lastRot = src.transform.localRotation;
         var b = sprite.bounds;                                       // sprite space, relative to the pivot
         float foot = b.min.y + SpriteSheet.FootOffset(sprite);
         var t = src.transform;
@@ -82,6 +121,8 @@ public class SpriteShadow : MonoBehaviour
         mesh.vertices = verts;
         mesh.uv = uvs;
         mesh.RecalculateBounds();
+        if (tex == lastTex) return;   // sheet frames share one texture, so this is rarely set again
+        lastTex = tex;
         mr.GetPropertyBlock(block);
         block.SetTexture(MainTex, tex);
         mr.SetPropertyBlock(block);

@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -155,6 +156,21 @@ public class GameManager : MonoBehaviour
         Clear<WaterPillar>();
     }
 
+    // Preloads the zone's enemy sheets and lets go of the last zone's art (ArtStyle.BeginZoneArt).
+    void FinishZoneArt(Biome b)
+    {
+        // keeps the wizard's sheet marked as in use (same lookup as Player)
+        if (SpriteSheet.Load(Settings.WizardSheet) == null) SpriteSheet.Load("player_sheet");
+        if (ArtStyle.EndZoneArt(b.Roster)) StartCoroutine(UnloadUnused());
+    }
+
+    // A frame later, once the old arena and field are really destroyed.
+    static IEnumerator UnloadUnused()
+    {
+        yield return null;
+        Resources.UnloadUnusedAssets();
+    }
+
     static void Clear<T>() where T : MonoBehaviour
     {
         foreach (var o in FindObjectsByType<T>()) Destroy(o.gameObject);
@@ -165,6 +181,7 @@ public class GameManager : MonoBehaviour
         zones = Biome.RunZones();
         zoneIndex = 0;
         shiftAt = -1f;
+        ArtStyle.BeginZoneArt();
         BuildWorld(zones[0]);
         Score = 0;
         runGold = 0f;
@@ -172,6 +189,7 @@ public class GameManager : MonoBehaviour
         pendingLevelUps = 0;
         toasts.Clear();
         Director.ResetRun(Arena.Biome);
+        FinishZoneArt(Arena.Biome);
         Upgrades = new RuneSystem();
         Upgrades.Begin(Player);
         Grimoire.BeginRunFeats();
@@ -205,12 +223,14 @@ public class GameManager : MonoBehaviour
         if (zoneIndex + 1 >= zones.Count) zones.Add(Biome.Random());   // runs with more bosses than zones
         var next = zones[++zoneIndex];
         XpGem.CollectAll(Player);
+        ArtStyle.BeginZoneArt();
         ClearField();
         Destroy(Arena.gameObject);
         Arena = Arena.Create(next);
         Player.transform.position = Vector3.zero;
         camPos = Vector2.zero;
         Director.EnterZone(next);
+        FinishZoneArt(next);
         Telemetry.Zone(zoneIndex + 1, next.Name);
         Director.Holding = false;
         fadeInUntil = Time.time + FadeTime;
@@ -507,6 +527,28 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // OnGUI runs several times a frame, so the HUD's numbers keep their last text and rebuild it
+    // only when the number changes (no new strings, no GC spikes, while nothing happens).
+    sealed class CachedText
+    {
+        int last = int.MinValue;
+        string text;
+        readonly System.Func<int, string> format;
+        public CachedText(System.Func<int, string> format) => this.format = format;
+        public string For(int value)
+        {
+            if (value != last || text == null) { last = value; text = format(value); }
+            return text;
+        }
+    }
+    readonly CachedText hudLevel = new CachedText(v => $"LV {v}");
+    readonly CachedText hudGold = new CachedText(v => $"{v} gold");
+    readonly CachedText hudTime = new CachedText(v => FormatTime(v));
+    readonly CachedText hudHealth = new CachedText(v => v.ToString());
+    CachedText hudZone;
+    readonly List<CachedText> hudSpellLevel = new List<CachedText>();
+    readonly Dictionary<string, string> initials = new Dictionary<string, string>();
+
     void DrawHud()
     {
         if (Player == null || Upgrades == null) return;
@@ -520,10 +562,10 @@ public class GameManager : MonoBehaviour
         UI.Bar(new Rect(safe.xMin, top, safe.width, 16f * s), frac, ArtStyle.XpColor);
         top += 22f * s;
 
-        UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
-        UI.Text(new Rect(left + 130f * s, top + 8f * s, 200f * s, 30f * s), $"{Mathf.FloorToInt(runGold)} gold", 24, TextAnchor.UpperLeft, GoldColor);
-        UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
-        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
+        UI.Text(new Rect(left, top, 300f * s, 44f * s), hudLevel.For(Player.Level), 34);
+        UI.Text(new Rect(left + 130f * s, top + 8f * s, 200f * s, 30f * s), hudGold.For(Mathf.FloorToInt(runGold)), 24, TextAnchor.UpperLeft, GoldColor);
+        UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), hudTime.For((int)Director.Elapsed), 34, TextAnchor.UpperCenter);
+        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), (hudZone ??= new CachedText(v => $"Zone {v % 1000}/{v / 1000}")).For((zoneIndex + 1) + 1000 * zones.Count), 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
             Pause();
         top += 52f * s;
@@ -531,7 +573,7 @@ public class GameManager : MonoBehaviour
         // Health bar
         float hpW = 260f * s;
         UI.Bar(new Rect(left, top, hpW, 20f * s), Player.Health / Player.MaxHealth, ArtStyle.HealthColor);
-        UI.Text(new Rect(left + hpW + 10f * s, top - 6f * s, 200f * s, 30f * s), Mathf.CeilToInt(Mathf.Max(0f, Player.Health)).ToString(), 22);
+        UI.Text(new Rect(left + hpW + 10f * s, top - 6f * s, 200f * s, 30f * s), hudHealth.For(Mathf.CeilToInt(Mathf.Max(0f, Player.Health))), 22);
         top += 32f * s;
 
         if (DebugUi)
@@ -552,13 +594,17 @@ public class GameManager : MonoBehaviour
         float d = 92f * s, gap = 12f * s;
         float total = Player.Spells.Count * d + (Player.Spells.Count - 1) * gap;
         float x = safe.center.x - total * 0.5f, y = Screen.height - safe.yMin - d - 30f * s;
-        foreach (var spell in Player.Spells)
+        for (int i = 0; i < Player.Spells.Count; i++)
         {
+            var spell = Player.Spells[i];
             var slot = UI.Slot(new Rect(x, y, d, d));
             UI.Box(new Rect(slot.x, slot.y + slot.height * (1f - spell.CooldownProgress), slot.width, slot.height * spell.CooldownProgress), new Color(spell.Color.r, spell.Color.g, spell.Color.b, 0.45f));
-            UI.Text(new Rect(x, y + 6f * s, d, 40f * s), Initials(spell.Name), 30, TextAnchor.UpperCenter, spell.Color);
-            string tier = spell.CanEvolve ? (spell.Tier == 1 ? "I" : spell.Tier == 2 ? "II" : "III") + " · " : "";
-            UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"{tier}Lv{spell.Level}", 20, TextAnchor.UpperCenter);
+            if (!initials.TryGetValue(spell.Name, out var ini)) initials[spell.Name] = ini = Initials(spell.Name);
+            UI.Text(new Rect(x, y + 6f * s, d, 40f * s), ini, 30, TextAnchor.UpperCenter, spell.Color);
+            // keyed on tier and level together: tier 0 means the spell can't evolve
+            while (hudSpellLevel.Count <= i)
+                hudSpellLevel.Add(new CachedText(v => (v / 1000 == 0 ? "" : (v / 1000 == 1 ? "I" : v / 1000 == 2 ? "II" : "III") + " · ") + $"Lv{v % 1000}"));
+            UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), hudSpellLevel[i].For((spell.CanEvolve ? spell.Tier : 0) * 1000 + spell.Level), 20, TextAnchor.UpperCenter);
             x += d + gap;
         }
     }
