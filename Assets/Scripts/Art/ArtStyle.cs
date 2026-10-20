@@ -146,31 +146,35 @@ public static class ArtStyle
     // in place of _64, and _64 in place of _128.
     static readonly HashSet<string> chunky3D = new HashSet<string> { "moss", "bat", "pixie" };
 
-    static SpriteSheet Sheet3D(string name)
+    static SpriteSheet Sheet3D(string name, float scale)
     {
+        // the pixel size tuner resamples from the 256px sheets (bosses), where they exist
+        if (PixelDensity.On && Resources.Load<TextAsset>($"Art/Dusk/enemy3d_{name}_sheet_256") != null)
+            return SpriteSheet.Load($"enemy3d_{name}_sheet_256", scale);
         int px = Settings.Enemy3DSharp ? 128 : 64;
         if (chunky3D.Contains(name)) px /= 2;
-        return SpriteSheet.Load($"enemy3d_{name}_sheet_{px}");
+        return SpriteSheet.Load($"enemy3d_{name}_sheet_{px}", scale);
     }
 
-    public static SpriteSheet EnemySheet(EnemyLook look, string enemy = null)
+    // radius: the enemy's hitbox radius, which sets how big its body draws.
+    public static SpriteSheet EnemySheet(EnemyLook look, float radius, string enemy = null)
     {
         var e = Entry3D(look, enemy);
         if (e != null)
         {
-            var s = Sheet3D(e.Value.name);
+            var s = Sheet3D(e.Value.name, radius / e.Value.radius);
             if (s != null) return s;
         }
-        return sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet") : null;
+        return sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet", EnemySheetScale(look, radius, enemy)) : null;
     }
 
     // The Headmaster's orbiting tome: a 3D turntable spin, 32px frames (64px in 128px mode).
-    public static SpriteSheet TomeSheet => Settings.Enemy3D ? SpriteSheet.Load(Settings.Enemy3DSharp ? "enemy3d_tome_sheet_64" : "enemy3d_tome_sheet_32") : null;
+    public static SpriteSheet TomeSheet(float scale) => Settings.Enemy3D ? SpriteSheet.Load(Settings.Enemy3DSharp ? "enemy3d_tome_sheet_64" : "enemy3d_tome_sheet_32", scale) : null;
 
     public static float EnemySheetScale(EnemyLook look, float radius, string enemy = null)
     {
         var e = Entry3D(look, enemy);
-        if (e != null && Sheet3D(e.Value.name) != null) return radius / e.Value.radius;
+        if (e != null && Sheet3D(e.Value.name, radius / e.Value.radius) != null) return radius / e.Value.radius;
         return sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
     }
 

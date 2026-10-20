@@ -79,10 +79,10 @@ public class Player : MonoBehaviour
         if (!SpriteShadow.On) SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, -0.5f), 1f, -44)
             .transform.localScale = new Vector3(0.9f, 0.32f, 1f);
         SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, -43);
-        var sheet = SpriteSheet.Load(Settings.WizardSheet) ?? SpriteSheet.Load("player_sheet");
+        var sheet = SpriteSheet.Load(Settings.WizardSheet, BodyScale) ?? SpriteSheet.Load("player_sheet", BodyScale);
         var art = ArtStyle.Get("player");
         if (sheet != null && sheet["idle"] != null)
-            anim = WizardAnimator.Attach(SpriteFactory.Child(visual, "Sprite", sheet["idle"].Frames[0], Color.white, new Vector2(0f, 0.1f), 0.85f, 0), sheet);   // order 0: depth-sorted with enemies and props
+            anim = WizardAnimator.Attach(SpriteFactory.Child(visual, "Sprite", sheet["idle"].Frames[0], Color.white, new Vector2(0f, 0.1f), BodyScale, 0), sheet);   // order 0: depth-sorted with enemies and props
         else if (art != null)
             SpriteFactory.Child(visual, "Sprite", art, Color.white, new Vector2(0f, 0.15f), 1f, 0);
         else
@@ -171,7 +171,9 @@ public class Player : MonoBehaviour
     public void CastAnim() => anim?.Cast();
 
     // Re-read the Wizard art setting and switch the live wizard's sheet.
-    public void ReloadWizardSheet() => anim?.SetSheet(SpriteSheet.Load(Settings.WizardSheet) ?? SpriteSheet.Load("player_sheet"));
+    const float BodyScale = 0.85f;   // how big the sheet body draws
+
+    public void ReloadWizardSheet() => anim?.SetSheet(SpriteSheet.Load(Settings.WizardSheet, BodyScale) ?? SpriteSheet.Load("player_sheet", BodyScale));
 
     public T GetSpell<T>() where T : Spell
     {

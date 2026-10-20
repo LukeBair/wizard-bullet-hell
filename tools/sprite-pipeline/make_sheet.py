@@ -1,5 +1,6 @@
 """Pack rendered frames into the game's sheet layout (8 cols) + Aseprite-style JSON.
-Usage: python make_sheet.py clips_dir out_dir px colors game_sheet.json"""
+Usage: python make_sheet.py clips_dir out_dir px colors game_sheet.json
+colors=0 keeps full colour and soft alpha (for big sheets the game resamples, PixelDensity.cs)."""
 import glob, json, os, sys
 from PIL import Image
 
@@ -9,7 +10,7 @@ files = sorted(glob.glob(os.path.join(clips, "*.png")))
 frames = []
 for f in files:
     im = Image.open(f).convert("RGBA").resize((px, px), Image.BOX)
-    a = im.getchannel("A").point(lambda v: 255 if v > 110 else 0)
+    a = im.getchannel("A") if colors == 0 else im.getchannel("A").point(lambda v: 255 if v > 110 else 0)
     frames.append((im, a))
 
 # One shared palette for the whole sheet; transparent pixels filled with a robe tone
@@ -17,9 +18,10 @@ filler = (40, 10, 25)
 mosaic = Image.new("RGB", (px * len(frames), px), filler)
 for i, (im, a) in enumerate(frames):
     base = Image.new("RGB", (px, px), filler)
-    base.paste(im.convert("RGB"), (0, 0), a)
+    if colors == 0: base = im.convert("RGB")   # keep the edge colours; alpha is applied below
+    else: base.paste(im.convert("RGB"), (0, 0), a)
     mosaic.paste(base, (i * px, 0))
-pal = mosaic.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB")
+pal = mosaic if colors == 0 else mosaic.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB")
 
 cols = 8
 rows = (len(frames) + cols - 1) // cols

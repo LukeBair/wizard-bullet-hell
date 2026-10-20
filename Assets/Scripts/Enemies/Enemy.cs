@@ -161,11 +161,11 @@ public class Enemy : MonoBehaviour
         float s = d.Radius * 2f;
         bodyColor = d.Color;
         int o = d.Tier == EnemyTier.Boss ? 40 : 20;
-        bool castShadow = SpriteShadow.On && (ArtStyle.EnemySheet(d.Look, d.Name) != null || ArtStyle.Enemy(d.Look) != null);
+        bool castShadow = SpriteShadow.On && (ArtStyle.EnemySheet(d.Look, d.Radius, d.Name) != null || ArtStyle.Enemy(d.Look) != null);
         if (!castShadow) SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, -44);
 
         var art = ArtStyle.Enemy(d.Look);
-        var sheet = ArtStyle.EnemySheet(d.Look, d.Name);
+        var sheet = ArtStyle.EnemySheet(d.Look, d.Radius, d.Name);
         if (sheet?["walk"] != null)
         {
             bodyColor = Color.white;
@@ -263,7 +263,7 @@ public class Enemy : MonoBehaviour
         var book = new GameObject("Book").transform;
         book.SetParent(transform, false);
         SpriteFactory.Child(book, "Glow", SpriteFactory.Glow, new Color(Def.Accent.r, Def.Accent.g, Def.Accent.b, 0.5f), Vector2.zero, 1.1f, 44);
-        var tome = ArtStyle.TomeSheet;
+        var tome = ArtStyle.TomeSheet(0.5f);
         if (tome?["spin"] != null)
         {
             // the 3D tome, spinning; its frames are 2.4 units wide, so this makes it about a unit across
