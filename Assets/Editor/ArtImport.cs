@@ -3,13 +3,13 @@ using UnityEditor;
 using UnityEngine;
 
 // Import settings for generated art in Assets/Resources/Art/<Style>/: sprites, uncompressed and
-// point-filtered for the pixel styles, and the style's pixels-per-unit.
+// point-filtered for the pixel styles (Dusk compresses to ASTC on phones), and the style's pixels-per-unit.
 class ArtImport : AssetPostprocessor
 {
     const string Root = "Assets/Resources/Art/";
 
     // Bump when these settings change, so Unity reimports the art with them.
-    public override uint GetVersion() => 2;
+    public override uint GetVersion() => 3;
 
     void OnPreprocessTexture()
     {
@@ -19,7 +19,7 @@ class ArtImport : AssetPostprocessor
         var ti = (TextureImporter)assetImporter;
         ti.GetSourceTextureWidthAndHeight(out int width, out _);
 
-        // <sheet>_n.png: a normal map for the 2D lights. Linear data, never compressed or filtered.
+        // <sheet>_n.png: a normal map for the 2D lights. Linear data, never filtered (compressed only on phones, for Dusk).
         if (file.EndsWith("_n"))
         {
             ti.textureType = TextureImporterType.Default;
@@ -28,6 +28,7 @@ class ArtImport : AssetPostprocessor
             ti.textureCompression = TextureImporterCompression.Uncompressed;
             ti.wrapMode = TextureWrapMode.Clamp;
             ti.filterMode = FilterMode.Point;
+            if (style == "Dusk") CompressForPhones(ti);
             return;
         }
 
@@ -42,5 +43,25 @@ class ArtImport : AssetPostprocessor
         ti.textureCompression = style == "Vector" ? TextureImporterCompression.CompressedHQ : TextureImporterCompression.Uncompressed;
         ti.wrapMode = TextureWrapMode.Clamp;
         ti.filterMode = style == "Vector" ? FilterMode.Bilinear : FilterMode.Point;
+        if (style == "Dusk") CompressForPhones(ti);
+    }
+
+    // Dusk's sheets (and their normal maps) are huge: about 356 MB uncompressed, which the phone has
+    // to keep in memory and stream every frame. On iOS and Android they compress to ASTC 4x4
+    // (a quarter of the size, the finest ASTC block, so the painted shading survives); the editor
+    // and desktop keep the exact uncompressed pixels. Normal maps stay linear (sRGB off above),
+    // which ASTC stores as-is. Point filtering is untouched.
+    static void CompressForPhones(TextureImporter ti)
+    {
+        foreach (var platform in new[] { "iPhone", "Android" })
+        {
+            var s = ti.GetPlatformTextureSettings(platform);
+            s.overridden = true;
+            s.format = TextureImporterFormat.ASTC_4x4;
+            s.textureCompression = TextureImporterCompression.CompressedHQ;
+            s.compressionQuality = 100;
+            s.maxTextureSize = Mathf.Max(s.maxTextureSize, 8192);
+            ti.SetPlatformTextureSettings(s);
+        }
     }
 }
