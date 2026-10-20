@@ -25,7 +25,7 @@ public class GameManager : MonoBehaviour
     }
     float fps = 60f;
     const float FadeTime = 0.6f;
-    const float CameraSize = 7.5f;
+    public const float CameraSize = 7.5f;
     static readonly Color GoldColor = new Color(1f, 0.85f, 0.4f);
 
     public GameState State { get; private set; }

@@ -9,7 +9,7 @@ class ArtImport : AssetPostprocessor
     const string Root = "Assets/Resources/Art/";
 
     // Bump when these settings change, so Unity reimports the art with them.
-    public override uint GetVersion() => 3;
+    public override uint GetVersion() => 4;
 
     void OnPreprocessTexture()
     {
@@ -19,16 +19,27 @@ class ArtImport : AssetPostprocessor
         var ti = (TextureImporter)assetImporter;
         ti.GetSourceTextureWidthAndHeight(out int width, out _);
 
-        // <sheet>_n.png: a normal map for the 2D lights. Linear data, never filtered (compressed only on phones, for Dusk).
+        // Big sheets (the 128px boss sheets are 1280x4096) must keep their size, or Unity's 2048 default
+        // shrinks them and the sheet JSON's frame rects no longer land on the frames.
+        ti.maxTextureSize = 8192;
+        // The 256px sheets are only sources the game resamples (PixelDensity), so they compress (ASTC on iOS).
+        bool source = file.EndsWith("_256") || file.EndsWith("_256_n");
+        if (source)
+        {
+            ti.SetPlatformTextureSettings(new TextureImporterPlatformSettings { name = "iPhone", overridden = true, maxTextureSize = 8192, format = TextureImporterFormat.ASTC_6x6 });
+            ti.SetPlatformTextureSettings(new TextureImporterPlatformSettings { name = "Standalone", overridden = true, maxTextureSize = 8192, format = TextureImporterFormat.RGBA32 });
+        }
+
+        // <sheet>_n.png: a normal map for the 2D lights. Linear data, never filtered (compressed on phones for Dusk and the 256 sources).
         if (file.EndsWith("_n"))
         {
             ti.textureType = TextureImporterType.Default;
             ti.sRGBTexture = false;
             ti.mipmapEnabled = false;
-            ti.textureCompression = TextureImporterCompression.Uncompressed;
+            ti.textureCompression = source ? TextureImporterCompression.CompressedHQ : TextureImporterCompression.Uncompressed;
             ti.wrapMode = TextureWrapMode.Clamp;
             ti.filterMode = FilterMode.Point;
-            if (style == "Dusk") CompressForPhones(ti);
+            if (style == "Dusk" && !source) CompressForPhones(ti);
             return;
         }
 
@@ -40,10 +51,10 @@ class ArtImport : AssetPostprocessor
         ti.alphaIsTransparency = true;
         // Pixel styles stay uncompressed so every pixel keeps its exact palette colour; the smooth
         // Vector art compresses (ASTC on iOS) to a quarter of the size with no visible difference.
-        ti.textureCompression = style == "Vector" ? TextureImporterCompression.CompressedHQ : TextureImporterCompression.Uncompressed;
+        ti.textureCompression = style == "Vector" || source ? TextureImporterCompression.CompressedHQ : TextureImporterCompression.Uncompressed;
         ti.wrapMode = TextureWrapMode.Clamp;
         ti.filterMode = style == "Vector" ? FilterMode.Bilinear : FilterMode.Point;
-        if (style == "Dusk") CompressForPhones(ti);
+        if (style == "Dusk" && !source) CompressForPhones(ti);
     }
 
     // Dusk's sheets (and their normal maps) are huge: about 356 MB uncompressed, which the phone has

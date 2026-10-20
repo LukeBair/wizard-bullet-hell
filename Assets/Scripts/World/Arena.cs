@@ -66,10 +66,10 @@ public class Arena : MonoBehaviour
                         if (shroom != null)
                         {
                             float ms = 1.1f / (shroom.rect.width / shroom.pixelsPerUnit);
-                            SpriteFactory.Child(transform, "Mushrooms", shroom, Color.white, p, ms, 0).spriteSortPoint = SpriteSortPoint.Pivot;
                             var shroomShadow = SpriteShadow.On ? ArtStyle.PropShadow(shroom.texture.name) : null;
+                            SpriteFactory.Child(transform, "Mushrooms", PixelDensity.Fit(shroom, ms), Color.white, p, ms, 0).spriteSortPoint = SpriteSortPoint.Pivot;
                             if (shroomShadow != null)
-                                SpriteFactory.Child(transform, "CastShadow", shroomShadow, new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), p, ms, -44);
+                                SpriteFactory.Child(transform, "CastShadow", PixelDensity.Fit(shroomShadow, ms, false), new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), p, ms, -44);
                             Lighting.Point(transform, new Color(0.45f, 0.75f, 1f), 2.4f, 0.7f, p + new Vector2(0f, 0.4f));
                             break;
                         }
@@ -135,7 +135,7 @@ public class Arena : MonoBehaviour
         string zone = Biome.Name == "Whispering Forest" ? "forest" : null;
         var baseTex = zone == null ? null : Resources.Load<Texture2D>($"Art/Dusk/ground_{zone}_base");
         if (baseTex == null) return false;
-        float ppu = Tune.F("ground.pixelsPerUnit", 20f);
+        float ppu = PixelDensity.On ? PixelDensity.TexelsPerUnit : Tune.F("ground.pixelsPerUnit", 20f);   // art.pxPerTexel sets the floor's pixel size too
         baseTex.wrapMode = TextureWrapMode.Repeat;
         var tile = Sprite.Create(baseTex, new Rect(0, 0, baseTex.width, baseTex.height), new Vector2(0.5f, 0.5f), ppu, 0, SpriteMeshType.FullRect);
         var ground = SpriteFactory.Child(transform, "Ground", tile, Color.white, Vector2.zero, 1f, -100);
@@ -172,7 +172,13 @@ public class Arena : MonoBehaviour
     };
 
     // Each prop is rendered from six angles, in a sharp tier (128px Character art) and a chunky one (64px).
-    static string PropFile(string name, int variant) => $"prop_{name}_{variant}_{(Settings.Enemy3DSharp ? "hi" : "lo")}";
+    // With the pixel size tuner on, the full-resolution "xhi" render (resampled by PixelDensity), when it exists.
+    static string PropFile(string name, int variant)
+    {
+        string xhi = $"prop_{name}_{variant}_xhi";
+        if (PixelDensity.On && ArtStyle.Prop(xhi) != null) return xhi;
+        return $"prop_{name}_{variant}_{(Settings.Enemy3DSharp ? "hi" : "lo")}";
+    }
 
     bool UseForestProps => Biome.Name == "Whispering Forest" && ArtStyle.Prop(PropFile("tree_oak", 0)) != null;
 
@@ -187,13 +193,14 @@ public class Arena : MonoBehaviour
             SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), basePos + new Vector2(0.15f, 0.05f), r * 2f, -45)
                 .transform.localScale = new Vector3(r * 2.2f, r * 1.1f, 1f);
         float scale = pick.width * r / (sprite.rect.width / sprite.pixelsPerUnit);
-        var sr = SpriteFactory.Child(transform, "Prop", sprite, Color.white, basePos, scale, 0);   // depth-sorted at its base
+        var baked = SpriteShadow.On ? ArtStyle.PropShadow(sprite.texture.name) : null;
+        var shown = PixelDensity.Fit(sprite, scale);
+        var sr = SpriteFactory.Child(transform, "Prop", shown, Color.white, basePos, scale, 0);   // depth-sorted at its base
         sr.spriteSortPoint = SpriteSortPoint.Pivot;
         // The shadow baked from the 3D model touches every root and stone; it only matches the unflipped
         // render (and the default sun), so props that have one aren't mirrored.
-        var baked = SpriteShadow.On ? ArtStyle.PropShadow(sprite.texture.name) : null;
         if (baked != null)
-            SpriteFactory.Child(transform, "CastShadow", baked, new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), basePos, scale, -44);
+            SpriteFactory.Child(transform, "CastShadow", PixelDensity.Fit(baked, scale, false), new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), basePos, scale, -44);
         else
         {
             sr.flipX = Random.value < 0.5f;

@@ -94,6 +94,7 @@ public class Projectile : MonoBehaviour
         if (p.core != null) p.core.sprite = ArtStyle.Round;
         p.skin = false;   // pooled: a reused projectile starts as the plain orb again
         p.body.transform.localRotation = Quaternion.identity;
+        p.body.transform.localPosition = Vector3.zero;
         p.body.transform.localScale = Vector3.one;
         p.glow.enabled = true;
         p.gameObject.SetActive(true);
@@ -119,31 +120,41 @@ public class Projectile : MonoBehaviour
     }
 
     bool skin;
+    float skinTilt;       // the painted bolt's own axis, degrees off the image's horizontal
     float skinScale, skinPhase;
+    int skinTick;
+    Vector2 headOffset;   // where the painted head sits from the sprite's centre, in sprite units
+    Sprite[] skinFrames;
 
     // Draws the projectile as a painted effect (SpellVfx) instead of the plain orb: the sprite points
     // its head along the flight (head drawn on the left of the image), `length` world units long.
-    public void SetSkin(Sprite sprite, float length)
+    public void SetSkin(Sprite[] frames, float length)
     {
         skin = true;
+        skinFrames = frames;
+        (headOffset, skinTilt) = SpellVfx.Axis(frames);
         skinPhase = UnityEngine.Random.value * 10f;
-        body.sprite = sprite;
+        body.sprite = frames[0];
         body.color = Color.white;
         glow.enabled = false;
-        float unitsLong = sprite.rect.width / sprite.pixelsPerUnit;
+        float unitsLong = frames[0].rect.width / frames[0].pixelsPerUnit;
         skinScale = length / (unitsLong * Mathf.Max(0.0001f, transform.localScale.x));
+        body.transform.localRotation = Quaternion.identity;
         body.transform.localScale = Vector3.one * skinScale;
         Orient();
     }
 
+    // Animated skins step through their frames and point their head (drawn on the left) along the flight.
     void Orient()
     {
+        if (skinFrames.Length > 1)
+            body.sprite = skinFrames[(int)((age + skinPhase) * 14f) % skinFrames.Length];
         if (Velocity.sqrMagnitude < 1e-6f) return;
-        float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f;
-        body.transform.localRotation = Quaternion.Euler(0f, 0f, a);
-        // a little flicker so the energy feels alive
-        float pulse = 1f + 0.08f * Mathf.Sin((age + skinPhase) * 38f);
-        body.transform.localScale = new Vector3(skinScale * pulse, skinScale * (2f - pulse), 1f);
+        // the painted comet's own axis is tilted off the image's horizontal (measured per skin); cancel it so it flies straight
+        float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f - skinTilt;
+        var rot = Quaternion.Euler(0f, 0f, a);
+        body.transform.localRotation = rot;
+        body.transform.localPosition = -(rot * (Vector3)headOffset) * skinScale;   // spin about the head, so it flies down its own line
     }
 
     // Takes the projectile out of play (use instead of Destroy) and parks it for reuse.
@@ -224,7 +235,9 @@ public class Projectile : MonoBehaviour
             if (trailTimer <= 0f)
             {
                 trailTimer = 1f / Tune.F("fx.trail.rate", 30f);
-                Particles.Trail(pos, color, Radius);
+                if (!skin) Particles.Trail(pos, color, Radius);
+                else if (Velocity.sqrMagnitude > 1e-6f && (skinTick++ & 1) == 0)
+                    Particles.Trail(pos - Velocity.normalized * skinScale * 0.25f, color, Radius * 0.5f);   // sparse motes behind the painted bolt
             }
 
             scratch.Clear();
