@@ -96,6 +96,9 @@ public class Enemy : MonoBehaviour
     SpriteRenderer body;
     SpriteRenderer[] renderers;
     SpriteRenderer curseMark, vines, charmAura, bugs;
+    float markSize; int markOrder; bool charmPainted;
+    float charmAge;   // seconds charmed, for the hearts' fade in
+    PaintedLoop vineArt; bool vinesPainted;   // painted vines round a rooted foe, made the first time it's rooted   // the painted charm sigil is made the first time it's needed
     readonly List<Transform> books = new List<Transform>();
     EnemyAnimator anim;   // set when the body plays a sprite sheet
     Color bodyColor, shownColor;
@@ -249,6 +252,7 @@ public class Enemy : MonoBehaviour
         curseMark = SpriteFactory.Child(transform, "Curse", SpriteFactory.Diamond, new Color(0.7f, 0.3f, 0.9f), new Vector2(0f, 0.75f) * s, 0.3f, o + 5);
         vines = SpriteFactory.Child(transform, "Vines", SpriteFactory.Ring, new Color(0.25f, 0.7f, 0.2f, 0.9f), Vector2.zero, s * 1.3f, o + 4);
         charmAura = SpriteFactory.Child(transform, "Charm", SpriteFactory.Glow, new Color(1f, 0.4f, 0.75f, 0.7f), Vector2.zero, s * 2f, o - 3);
+        markSize = s; markOrder = o - 3;
         bugs = SpriteFactory.Child(transform, "Bugs", SpriteFactory.Ring, new Color(0.55f, 0.7f, 0.15f, 0.9f), Vector2.zero, s * 0.9f, o + 4);
 
         if (d.Look == EnemyLook.Headmaster)
@@ -285,6 +289,11 @@ public class Enemy : MonoBehaviour
         Hidden = hidden;
         foreach (var r in renderers) r.enabled = !hidden;
         if (!hidden) curseMark.enabled = vines.enabled = charmAura.enabled = bugs.enabled = false;
+        else
+        {
+            if (charmPainted) charmAura.enabled = false;   // the painted art isn't in `renderers`
+            if (vineArt != null) vines.enabled = false;
+        }
     }
 
     void Wing(float s, int side, int order)
@@ -951,7 +960,13 @@ public class Enemy : MonoBehaviour
             Show(curseMark, curseBonus > 0f);
             if (curseBonus > 0f) curseMark.transform.localScale = Vector3.one * (0.25f + 0.05f * curseBonus * 2f);
             Show(vines, IsRooted);
+            if (IsRooted && vineArt != null) vines.color = new Color(1f, 1f, 1f, Mathf.Min(1f, rootTimer / 0.3f));   // withers away at the end
             Show(charmAura, IsCharmed);
+            if (IsCharmed && charmPainted)
+            {
+                charmAge += dt;
+                charmAura.color = new Color(1f, 1f, 1f, Mathf.Min(1f, charmAge / 0.3f, charmTimer / 0.4f));   // hearts fade in and out
+            }
             Show(bugs, IsInfested);
             Particles.Status(Position, Radius, IsBurning, IsChilled, IsWet, IsInfested, IsRooted, dt);
             if (IsInfested) bugs.transform.Rotate(0f, 0f, 500f * dt);
@@ -1102,6 +1117,14 @@ public class Enemy : MonoBehaviour
 
     public void Root(float duration, float vulnerability, float thornsDps = 0f, bool spreads = false, Action<Vector2> deathBloom = null)
     {
+        if (!vinesPainted)
+        {
+            vinesPainted = true;
+            vineArt = SpellVfx.VineTrap(transform, markSize, markOrder + 1);
+            // the ring stays in `renderers` (hiding toggles it), so it's made invisible rather than removed
+            if (vineArt != null) { vines.color = Color.clear; vines = vineArt.Sr; vines.enabled = false; }
+        }
+        if (vineArt != null && !IsRooted) vineArt.Restart();   // sprout again for each new trapping
         if (deathBloom != null) rootDeathBloom = deathBloom;
         rootTimer = Mathf.Max(rootTimer, IsBoss ? duration * Tune.F("status.rootBossFactor", 0.25f) : duration);
         rootVuln = Mathf.Max(rootVuln, vulnerability);
@@ -1168,6 +1191,14 @@ public class Enemy : MonoBehaviour
     {
         if (IsBoss) return;
         aggro = null;
+        if (!charmPainted)
+        {
+            charmPainted = true;
+            var hearts = SpellVfx.CharmHearts(transform, markSize, markOrder + 8);
+            // the glow stays in `renderers` (hiding toggles it), so it's made invisible rather than removed
+            if (hearts != null) { charmAura.color = Color.clear; charmAura = hearts.Sr; charmAura.enabled = false; }
+        }
+        if (!IsCharmed && charmPainted) { SpellVfx.CharmSigil(transform, markSize, markOrder); charmAge = 0f; }
         // Newly charmed foes act at once instead of finishing a cooldown or a wind-up aimed at the wizard,
         // which often outlasted a short charm.
         if (!IsCharmed)

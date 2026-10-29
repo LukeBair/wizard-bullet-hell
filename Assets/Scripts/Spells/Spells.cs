@@ -596,7 +596,7 @@ public class Wisps : Spell, IOrbiter
             {
                 if (arcs <= 0) break;
                 if (x == e || (!x.IsWet && forced == 0)) continue;   // absorbed water arcs to any foe
-                Fx.Bolt(from, x.Position, new Color(1f, 0.95f, 0.5f));
+                SpellVfx.Spark(from, x.Position, new Color(1f, 0.95f, 0.5f));
                 Hit(x, Damage * T("arcDamage", 1.5f));
                 Credit(x);
                 arcs--;

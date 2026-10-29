@@ -22,8 +22,8 @@ tuning = {
     "art": {"pxPerTexel": 2, "refHeight": 1080,
         "_pxPerTexel": "On-screen size of one art texel, in screen pixels, for the 3D-rendered wizard, enemies, props and ground (0 = off). Takes effect on the next run.",
         "_refHeight": "Screen height (px) the sizing assumes. 0 = the actual screen height (phones are ~2600px, so much finer)."},
-    "vfx": {"lightningHitScale": 3, "fireballHitScale": 1, "frostHitScale": 1, "arcaneHitScale": 1, "natureHitScale": 1,
-        "_about": "Painted spell effects: multiplies each element's hit burst size (pixel density is kept)."},
+    "vfx": {"lightningHitScale": 3, "fireballHitScale": 1, "frostHitScale": 1, "arcaneHitScale": 1, "natureHitScale": 1, "spikeHeight": 3, "waterHitScale": 1, "waterBeamWidth": 2.2, "waterBeamGrow": 0.25, "waterBeamFps": 30, "bladeSize": 3, "bladesHitScale": 1, "flameSize": 3, "sunSize": 2.7, "banishSize": 1, "rejuvSize": 3, "overgrowthSize": 1.15, "overgrowthTime": 0.8, "vineTrapSize": 1.6, "veilSize": 2.2, "cycloneSize": 1, "enthrallSize": 1.2, "mirrorSize": 2.5, "heartsSize": 1.2, "heartsFps": 24, "veilFps": 18, "veilAlpha": 0.55, "veilTime": 0.6,
+        "_about": "Painted spell effects: multiplies each element's hit burst size (pixel density is kept). spikeHeight: painted stone spike height in spike radii. waterBeamWidth: painted Tidal Lance jet height in beam widths; waterBeamGrow: seconds for it to grow to full length; waterBeamFps: how fast the jet flows. bladeSize: painted spectral blade frame size in blade radii. flameSize: painted Comet Trail flame frame size in patch radii. sunSize: painted Sunspots frame size in pool radii. banishSize: multiplies the painted Banish vortex. rejuvSize/veilSize: painted Rejuvenate burst and Veil size in world units. overgrowthSize, cycloneSize: painted vines and whirlwind size in their radii; overgrowthTime: how long the big vine burst lasts; vineTrapSize: the vines round each trapped foe, in foe sizes. enthrallSize: charm sigil in foe sizes; heartsSize: charmed hearts column width in foe sizes, heartsFps its speed. mirrorSize: painted mirror crystal in shard thicknesses (crystals tile along the shard). veilFps/veilAlpha: Veil speed and opacity; veilTime: longest the Veil shows (seconds)."},
     "audio": {"volume": 1.0},
     "hud": {
         "fontScale": 1.2,
@@ -103,8 +103,10 @@ tuning = {
         "_about": "Run logs sent to the tuner (Runs page; files in tools/tuner/telemetry). enabled = record runs at all. enemyEvents = one line per enemy spawn and kill (the summary always has per-enemy totals). snapshotEvery = seconds of play between tick lines (health, level, enemies alive). flushEvery = real seconds between uploads during a run.",
     },
     "runes": {
-        "startSockets": 2, "socketsPerBoss": 1, "evolveAt": 4, "maxSpells": 5, "tomeEveryLevels": 2, "resonanceCount": 3,
+        "startSockets": 2, "socketsPerBoss": 1, "evolveAt": 4, "maxSpells": 6, "tier3Slots": 2, "tier2Bosses": 0, "tier3Bosses": 1, "tomeEveryLevels": 2, "resonanceCount": 3,
         "evolveRetain": 0.75,
+        "_tier3Slots": "Spell slots: maxSpells in all; a tier III spell fills tier3Slots of them (6 slots: 5 spells with one tier III, 4 with two). Tier III is only offered when there is room.",
+        "_tier3Bosses": "Boss kills needed before any spell can evolve to tier II (tier2Bosses) or tier III (tier3Bosses).",
         "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A full spell with at least evolveAt runes can evolve.",
         "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",
         "Potency": {"weight": 10},

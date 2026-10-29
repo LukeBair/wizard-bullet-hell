@@ -4,11 +4,59 @@ using UnityEngine;
 // Painted spell effects (Resources/Art/Dusk/vfx_<element>_*), animated in code: projectiles get a
 // streaking sprite that flies head first and flickers; impacts layer a quick flash with an
 // expanding, spinning ring that fades. Only with 3D Character art; otherwise spells keep their orbs.
+// A painted effect: plays `intro` once, then cycles `loop` (or holds intro's last frame). With a life it fades
+// over its last quarter and removes itself; without one it runs until its owner turns it off or destroys it.
+public class PaintedLoop : MonoBehaviour
+{
+    public SpriteRenderer Sr { get; private set; }
+    Sprite[] intro, loop;
+    float fps, loopFps, t, life, alpha;
+
+    public static PaintedLoop Attach(Transform parent, Vector2 at, Sprite[] intro, Sprite[] loop, float scale, float fps, int order, float life = 0f, float alpha = 1f)
+    {
+        var go = new GameObject("Painted");
+        if (parent != null) go.transform.SetParent(parent, false);
+        go.transform.localPosition = at;
+        go.transform.localScale = Vector3.one * scale;   // the frames are fitted for this scale
+        var p = go.AddComponent<PaintedLoop>();
+        p.intro = intro;
+        p.loop = loop;
+        p.fps = p.loopFps = fps;
+        p.life = life;
+        p.alpha = alpha;
+        p.Sr = SpriteFactory.Add(go, (intro ?? loop)[0], new Color(1f, 1f, 1f, alpha), order);
+        p.Sr.flipX = Random.value < 0.5f;
+        return p;
+    }
+
+    // The loop's own speed, when it differs from the intro's.
+    public PaintedLoop Hold(float fps) { loopFps = fps; return this; }
+
+    // Plays the intro again from the start.
+    public void Restart() => t = 0f;
+
+    // Starts `seconds` into the effect, so copies side by side don't move in step.
+    public PaintedLoop Skip(float seconds) { t = seconds; return this; }
+
+    void Update()
+    {
+        t += Time.deltaTime;
+        int n = intro?.Length ?? 0;
+        float introTime = n / fps;
+        if (t < introTime) Sr.sprite = intro[(int)(t * fps)];
+        else if (loop != null) Sr.sprite = loop[(int)((t - introTime) * loopFps) % loop.Length];
+        else Sr.sprite = intro[n - 1];
+        if (life <= 0f) return;
+        if (t >= life) { Destroy(gameObject); return; }
+        Sr.color = new Color(1f, 1f, 1f, alpha * Mathf.Clamp01((life - t) / (life * 0.25f)));
+    }
+}
+
 public static class SpellVfx
 {
     static readonly Dictionary<string, Sprite[]> bolts = new Dictionary<string, Sprite[]>();
 
-    static string Key(Element e) => e == Element.Arcane ? "arcane" : e == Element.Fire ? "fireball" : e == Element.Frost ? "frost" : e == Element.Storm ? "lightning" : e == Element.Nature ? "nature" : null;
+    static string Key(Element e) => e == Element.Arcane ? "arcane" : e == Element.Fire ? "fireball" : e == Element.Frost ? "frost" : e == Element.Storm ? "lightning" : e == Element.Nature ? "nature" : e == Element.Water ? "water" : null;
 
     static Sprite[] Frames(string name, int max)
     {
@@ -91,16 +139,20 @@ public static class SpellVfx
         return key != null && Play($"vfx_{key}_hit", pos, size * 1.6f * Tune.F($"vfx.{key}HitScale", 1f), life, fade);   // tuner: vfx.<element>HitScale
     }
 
+    // Banish: the shadow vortex opening and collapsing, `size` world units across at its widest.
+    public static bool Banish(Vector2 pos, float size) => Play("vfx_banish_hit", pos, size * Tune.F("vfx.banishSize", 1f), 0.9f, 0.15f);
+
     // The frost nova's expanding ring, `radius` world units out at its widest.
     public static bool Nova(Vector2 pos, float radius) => Play("vfx_frostnova_hit", pos, radius * 2f / 0.9f, 0.4f, 0.4f);
 
-    static bool Play(string name, Vector2 pos, float full, float life, float fade)
+    static bool Play(string name, Vector2 pos, float full, float life, float fade, float angle = 0f)
     {
         if (!On) return false;
         var frames = Frames(name, 12);
         if (frames.Length == 0) return false;
         // the burst ends about 0.9 of its full size; that's the scale its pixels are judged at
-        Puff.Spawn(pos, PixelDensity.Fit(frames, full * 0.9f / (frames[0].rect.width / frames[0].pixelsPerUnit), false), full, life, fade);
+        var p = Puff.Spawn(pos, PixelDensity.Fit(frames, full * 0.9f / (frames[0].rect.width / frames[0].pixelsPerUnit), false), full, life, fade);
+        if (angle != 0f) p.transform.rotation = Quaternion.Euler(0f, 0f, angle);
         return true;
     }
 
@@ -130,6 +182,191 @@ public static class SpellVfx
             arc.life = life; arc.fade = 0.5f; arc.line = true; arc.phase = k * 5;   // each tile forks differently
         }
         return true;
+    }
+
+    // A quick lightning jump between two foes (Static sparks, wet arcs): the painted arc and a small hit,
+    // or the plain line when there's no painted art.
+    public static void Spark(Vector2 a, Vector2 b, Color fallback)
+    {
+        if (Arc(a, b, 0.18f)) Impact(b, Element.Storm, 0.2f);
+        else Fx.Bolt(a, b, fallback);
+    }
+
+    // ---- Tidal Lance: the painted jet, whole tiles laid end to end along the beam ----
+
+    // Frames and scale for a beam `length` long; the scale is nudged so whole tiles fill it exactly.
+    // The first tile takes the start frames (narrowing to the wizard), the last the tip frames (pointed).
+    public static bool BeamArt(float length, float width, out Sprite[] frames, out Sprite[] start, out Sprite[] tip, out float scale, out int tiles)
+    {
+        frames = start = tip = null; scale = 0f; tiles = 0;
+        if (!On) return false;
+        var src = Frames("vfx_water_beam", 12);
+        var s0 = Frames("vfx_water_beamstart", 12);
+        var s1 = Frames("vfx_water_beamtip", 12);
+        if (src.Length == 0 || s0.Length != src.Length || s1.Length != src.Length) return false;
+        float unitsLong = src[0].rect.width / src[0].pixelsPerUnit, unitsHigh = src[0].rect.height / src[0].pixelsPerUnit;
+        float want = width * Tune.F("vfx.waterBeamWidth", 2.2f) / unitsHigh;   // the strip includes the spray around the jet
+        tiles = Mathf.Max(2, Mathf.RoundToInt(length / (unitsLong * want)));
+        scale = length / (tiles * unitsLong);
+        frames = PixelDensity.Fit(src, scale, false);
+        start = PixelDensity.Fit(s0, scale, false);
+        tip = PixelDensity.Fit(s1, scale, false);
+        return true;
+    }
+
+    // ---- Spectral Blades: the painted crescent (one turn in steps, picked by the blade's spin) and its slash ----
+
+    public static Sprite[] BladeFrames(float size)
+    {
+        if (!On) return null;
+        var src = Frames("vfx_blades_spin", 12);
+        if (src.Length == 0) return null;
+        return PixelDensity.Fit(src, BladeScale(src, size), false);
+    }
+
+    public static float BladeScale(Sprite[] src, float size) => size * Tune.F("vfx.bladeSize", 3f) / (src[0].rect.width / src[0].pixelsPerUnit);
+    public static float BladeScale(float size) { var src = Frames("vfx_blades_spin", 12); return src.Length == 0 ? 1f : BladeScale(src, size); }
+
+    // Each slash at its own random angle, so several on one foe cross instead of stacking into one line.
+    public static bool Slash(Vector2 pos, float size) => Play("vfx_blades_hit", pos, size * Tune.F("vfx.bladesHitScale", 1f), 0.3f, 0.6f, Random.Range(0f, 360f));
+
+    // ---- Comet Trail: a looping patch of flame ----
+
+    public static Sprite[] FlameFrames(float radius, out float scale)
+    {
+        scale = 1f;
+        if (!On) return null;
+        var src = Frames("vfx_flame", 12);
+        if (src.Length == 0) return null;
+        scale = radius * Tune.F("vfx.flameSize", 3f) / (src[0].rect.width / src[0].pixelsPerUnit);
+        return PixelDensity.Fit(src, scale, false);
+    }
+
+    // ---- The utility spells: painted loops that sit on the ground, a foe or the wizard ----
+
+    // `name`'s frames fitted so a frame is `size` world units across; null without painted art.
+    public static Sprite[] Sized(string name, float size, out float scale)
+    {
+        scale = 1f;
+        if (!On) return null;
+        var src = Frames(name, 24);
+        if (src.Length == 0) return null;
+        scale = size / (src[0].rect.width / src[0].pixelsPerUnit);
+        return PixelDensity.Fit(src, scale, false);
+    }
+
+    // Rejuvenate: the heal burst spreading out on the ground around the wizard's feet (the frames are baked
+    // as a flat oval, so they lie on the floor in the game's perspective).
+    public static bool Heal(Transform wizard)
+    {
+        var f = Sized("vfx_rejuv", Tune.F("vfx.rejuvSize", 3f), out float s);
+        if (f == null) return false;
+        PaintedLoop.Attach(wizard, new Vector2(0f, -0.45f), f, null, s, f.Length / 0.9f, -46, 0.9f);
+        return true;
+    }
+
+    // Overgrowth: vines bursting up on the ground in a ring `radius` across, gone again quickly (the vines that
+    // hold each trapped foe are its own, small, VineTrap).
+    public static bool Vines(Vector2 at, float radius)
+    {
+        var rise = Sized("vfx_overgrowth_rise", radius * 2f * Tune.F("vfx.overgrowthSize", 1.15f), out float s);
+        if (rise == null) return false;
+        var hold = Sized("vfx_overgrowth_hold", radius * 2f * Tune.F("vfx.overgrowthSize", 1.15f), out _);
+        PaintedLoop.Attach(null, at, rise, hold, s, 20f, -47, Tune.F("vfx.overgrowthTime", 0.8f)).Hold(8f);
+        return true;
+    }
+
+    // Overgrowth: small vines wrapped round a rooted foe of body size `size` (its owner shows, hides and restarts it).
+    public static PaintedLoop VineTrap(Transform foe, float size, int order)
+    {
+        float across = FoeSize(size, Tune.F("vfx.vineTrapSize", 1.6f));
+        var rise = Sized("vfx_overgrowth_rise", across, out float s);
+        if (rise == null) return null;
+        return PaintedLoop.Attach(foe, Vector2.zero, rise, Sized("vfx_overgrowth_hold", across, out _), s, 20f, order).Hold(8f);
+    }
+
+    // Veil: the shimmering veil wrapping the wizard as it phases out; shown for vfx.veilTime at most.
+    public static bool Veil(Transform wizard, float life)
+    {
+        var f = Sized("vfx_veil", Tune.F("vfx.veilSize", 2.2f), out float s);
+        if (f == null) return false;
+        PaintedLoop.Attach(wizard, Vector2.zero, null, f, s, Tune.F("vfx.veilFps", 18f), 61, Mathf.Min(life, Tune.F("vfx.veilTime", 0.6f)), Tune.F("vfx.veilAlpha", 0.55f));
+        return true;
+    }
+
+    // Cyclone: the whirlwind on the ground, `radius` out, for its whole life.
+    public static bool Whirlwind(Transform vortex, float radius, float life)
+    {
+        var f = Sized("vfx_cyclone", radius * 2f * Tune.F("vfx.cycloneSize", 1f), out float s);
+        if (f == null) return false;
+        PaintedLoop.Attach(vortex, Vector2.zero, null, f, s, 16f, -47, life);
+        return true;
+    }
+
+    // Sizes for foe-sized art are rounded to a quarter unit so foes share atlases.
+    static float FoeSize(float size, float k) => Mathf.Max(0.5f, Mathf.Round(size * k * 4f) / 4f);
+
+    // Enthrall: the charm sigil turning once under a foe (body size `size`) as it's charmed, then fading.
+    public static void CharmSigil(Transform foe, float size, int order)
+    {
+        var f = Sized("vfx_enthrall", FoeSize(size, 2f * Tune.F("vfx.enthrallSize", 1.2f)), out float s);
+        if (f != null) PaintedLoop.Attach(foe, Vector2.zero, f, null, s, f.Length / 1.2f, order, 1.2f);
+    }
+
+    // Enthrall: hearts rising from a charmed foe for as long as it stays charmed (its owner shows and hides it).
+    public static PaintedLoop CharmHearts(Transform foe, float size, int order)
+    {
+        var f = Sized("vfx_hearts", FoeSize(size, Tune.F("vfx.heartsSize", 1.2f)), out float s);
+        if (f == null) return null;
+        float tall = f[0].rect.height / f[0].pixelsPerUnit * s;
+        return PaintedLoop.Attach(foe, new Vector2(0f, tall * 0.5f - size * 0.4f), null, f, s, Tune.F("vfx.heartsFps", 24f), order);   // rising from its feet
+    }
+
+    // Mirror Ward: one crystal, `across` world units wide; kept upright, its owner moves it round the ring.
+    public static PaintedLoop MirrorCrystal(Transform wizard, float across)
+    {
+        var f = Sized("vfx_mirror", across, out float s);
+        return f == null ? null : PaintedLoop.Attach(wizard, Vector2.zero, null, f, s, 10f, 58).Skip(Random.Range(0f, 2f));
+    }
+
+    // ---- Sunspots: the painted pool of light, its ring `radius` world units across ----
+
+    public static Sprite[] SunFrames(float radius, out float scale)
+    {
+        scale = 1f;
+        if (!On) return null;
+        var src = Frames("vfx_sun", 24);
+        if (src.Length == 0) return null;
+        scale = radius * Tune.F("vfx.sunSize", 2.7f) / (src[0].rect.width / src[0].pixelsPerUnit);
+        return PixelDensity.Fit(src, scale, false);
+    }
+
+    // ---- Stone Spikes: the painted spike erupting, standing with glowing cracks, and crumbling ----
+
+    // The three parts for a spike whose frame is `height` world units tall, at the game's pixel size.
+    public static bool SpikeArt(float height, out Sprite[] rise, out Sprite[] hold, out Sprite[] crumble, out float scale)
+    {
+        rise = hold = crumble = null; scale = 0f;
+        if (!On) return false;
+        var r = Frames("vfx_rockspike_rise", 8);
+        var h = Frames("vfx_rockspike_hold", 6);
+        var c = Frames("vfx_rockspike_crumble", 8);
+        if (r.Length == 0 || h.Length == 0 || c.Length == 0) return false;
+        scale = height / (r[0].rect.height / r[0].pixelsPerUnit);
+        rise = PixelDensity.Fit(r, scale, false);
+        hold = PixelDensity.Fit(h, scale, false);
+        crumble = PixelDensity.Fit(c, scale, false);
+        return true;
+    }
+
+    // The crumble plays out on its own once the spike is gone.
+    public static void SpikeCrumble(Vector2 centre, Sprite[] frames, float scale, float life)
+    {
+        var p = Puff.Take(frames, 62);
+        p.transform.position = centre;
+        p.transform.localScale = new Vector3(scale, scale, 1f);
+        p.life = life;
+        p.fade = 0.35f;
     }
 
     // ---- Forest Wisps: the painted orb, recoloured per absorbed element (reaction bit: 1 fire, 2 water, 4 frost, 8 storm, 16 earth) ----
@@ -261,7 +498,7 @@ public static class SpellVfx
             return p;
         }
 
-        public static void Spawn(Vector2 pos, Sprite[] frames, float size, float life, float fade)
+        public static Puff Spawn(Vector2 pos, Sprite[] frames, float size, float life, float fade)
         {
             var p = Take(frames, 86);
             p.transform.position = pos;
@@ -269,6 +506,7 @@ public static class SpellVfx
             p.transform.localScale = Vector3.one * p.full * 0.9f;   // fixed: the frames already grow, and a changing scale would break the pixel grid
             p.life = life;
             p.fade = fade;
+            return p;
         }
 
         void Update()

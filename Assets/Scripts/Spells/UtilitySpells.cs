@@ -88,8 +88,11 @@ public class Rejuvenate : Spell
         float missing = 1f - Owner.Health / Owner.MaxHealth;
         float amount = Owner.MaxHealth * Damage * (1f + missing * 0.5f * (Area - 1f) * 5f);
         Owner.Heal(amount, source: Id.ToString());
-        Fx.Ring(Owner.Position, Color, 1.2f, 0.4f);
-        Fx.Burst(Owner.Position, Color, 2f);
+        if (!SpellVfx.Heal(Owner.transform))
+        {
+            Fx.Ring(Owner.Position, Color, 1.2f, 0.4f);
+            Fx.Burst(Owner.Position, Color, 2f);
+        }
         DamageText.Spawn(Owner.Position + Vector2.up * 0.6f, amount, new Color(0.5f, 1f, 0.5f));
         Sfx.Play("spells.Rejuvenate.pulse", Sound.Gem, 0.5f, 0f);
     }
@@ -142,8 +145,11 @@ public class Overgrowth : Spell
 
     System.Collections.Generic.List<Enemy> Vines(Vector2 at, float radius)
     {
-        Fx.Ring(at, Color, radius, 0.5f);
-        Fx.Burst(at, new Color(0.2f, 0.6f, 0.15f, 0.6f), radius * 2f);
+        if (!SpellVfx.Vines(at, radius))
+        {
+            Fx.Ring(at, Color, radius, 0.5f);
+            Fx.Burst(at, new Color(0.2f, 0.6f, 0.15f, 0.6f), radius * 2f);
+        }
         var caught = EnemiesWithin(at, radius);
         foreach (var e in caught)
         {
@@ -236,7 +242,7 @@ public class Veil : Spell
         passed.Clear();
         Owner.Phase(PhaseTime);
         Sfx.Play("spells.Veil.absorb", Sound.Teleport, 0.7f);
-        Fx.Ring(Owner.Position, Color, 1.5f, 0.4f);
+        if (!SpellVfx.Veil(Owner.transform, PhaseTime)) Fx.Ring(Owner.Position, Color, 1.5f, 0.4f);
         if (RuneCount(Rune.Area) > 0)
             foreach (var e in EnemiesWithin(Owner.Position, 2f * Area))
                 e.TakeDamage(0f, (e.Position - Owner.Position).normalized * 10f);
@@ -412,7 +418,7 @@ public class Cyclone : Spell
                 Interactions.Trigger(Interaction.DeepFreeze, e.Position);
                 e.ConsumeWet();
             }
-            if (bolts++ < 6) Fx.Bolt(eye, e.Position, Color.Lerp(Color, Color.white, 0.3f));
+            if (bolts++ < 6) SpellVfx.Spark(eye, e.Position, Color.Lerp(Color, Color.white, 0.3f));
             using (Telemetry.By(Id.ToString())) e.TakeDamage(reaction * caught, default, Color.Lerp(Color, Color.white, 0.4f));
         }
         return passed;
@@ -486,7 +492,6 @@ public class Enthrall : Spell
             if (Tier == 1)
             {
                 used.Add(e);
-                Fx.Bolt(Owner.Position, e.Position, Color);
                 Fx.Ring(e.Position, Color, e.Radius * 2f, 0.4f);
                 e.Charm(duration, power, burst);
                 continue;

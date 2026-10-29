@@ -15,7 +15,8 @@ public static class ArtStyle
     // Dusk's 7-colour palette (20 Minutes Till Dawn look).
     static readonly Color DuskGround = Hex(0x1d1a2b), DuskNavy = Hex(0x2b2f4a), DuskSage = Hex(0x6f9b7a),
                           DuskDeepSage = Hex(0x3e5a4e), DuskCream = Hex(0xf0d2bc), DuskCoral = Hex(0xe5555f),
-                          DuskWine = Hex(0x8c3446);   // only in the boss robes
+                          DuskWine = Hex(0x8c3446),   // only in the boss robes
+                          DuskAutumn = Hex(0x7f4838), DuskDeepAutumn = Hex(0x4b231b);   // the treant (recoloured so it stands out on moss)
 
     // Enemy radius each sprite was drawn for (matches EnemyRoster); bigger variants scale up.
     static readonly Dictionary<EnemyLook, float> drawnRadius = new Dictionary<EnemyLook, float>
@@ -276,7 +277,7 @@ public static class ArtStyle
         { EnemyLook.Beast, new[] { DuskDeepSage, DuskNavy } }, { EnemyLook.Goblin, new[] { DuskSage, DuskDeepSage } },
         { EnemyLook.Wizard, new[] { DuskDeepSage, DuskCoral } }, { EnemyLook.Mushroom, new[] { DuskCoral, DuskWine } },
         { EnemyLook.Pixie, new[] { DuskSage, DuskCoral } }, { EnemyLook.Mole, new[] { DuskDeepSage, DuskNavy } },
-        { EnemyLook.Treant, new[] { DuskSage, DuskDeepSage } }, { EnemyLook.Witch, new[] { DuskWine, DuskSage } },
+        { EnemyLook.Treant, new[] { DuskAutumn, DuskDeepAutumn } }, { EnemyLook.Witch, new[] { DuskWine, DuskSage } },
         { EnemyLook.Headmaster, new[] { DuskWine, DuskNavy } }, { EnemyLook.Golem, new[] { DuskDeepSage, DuskSage } },
     };
 
