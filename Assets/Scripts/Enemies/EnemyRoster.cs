@@ -98,7 +98,7 @@ public class EnemyRoster
                 Color = new Color(0.9f, 0.85f, 0.75f), Accent = new Color(0.85f, 0.25f, 0.3f),
                 FireInterval = 2.8f, BulletDamage = 18, PreferredRange = 7f },
             new EnemyDef { Name = "Pixie Trickster", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Trickster, Look = EnemyLook.Pixie,
-                Health = 55, Speed = 2.6f, Radius = 0.3f, ContactDamage = 6, Xp = 6, EarlyGame = false,
+                Health = 41, Speed = 2.6f, Radius = 0.3f, ContactDamage = 6, Xp = 6, EarlyGame = false,
                 Color = new Color(1f, 0.75f, 0.95f), Accent = new Color(0.4f, 1f, 0.9f),
                 FireInterval = 1.8f, Bullets = 3, Spread = 20f, BulletSpeed = 4f, PreferredRange = 5f },
             new EnemyDef { Name = "Root Burrower", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Burrower, Look = EnemyLook.Mole,

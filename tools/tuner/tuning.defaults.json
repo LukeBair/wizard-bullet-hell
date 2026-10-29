@@ -539,9 +539,9 @@
     "startSockets": 2,
     "socketsPerBoss": 1,
     "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A spell with every socket filled can evolve.",
-    "maxSpells": 6,
-    "tier3Slots": 2,
-    "_tier3Slots": "Spell slots: maxSpells in all; a tier III spell fills tier3Slots of them (6 slots: 5 spells with one tier III, 4 with two). Tier III is only offered when there is room.",
+    "maxSpells": 5,
+    "tier3Free": 1,
+    "_tier3Free": "Most spells you can carry: maxSpells, less one for each tier III spell past tier3Free (5 spells with one tier III, 4 with two, 3 with three). Tier III is only offered when your spells fit.",
     "tier2Bosses": 0,
     "tier3Bosses": 1,
     "_tier3Bosses": "Boss kills needed before any spell can evolve to tier II (tier2Bosses) or tier III (tier3Bosses).",
@@ -1065,7 +1065,7 @@
       "PreferredRange": 7
     },
     "Pixie Trickster": {
-      "Health": 55,
+      "Health": 41,
       "Speed": 2.6,
       "Radius": 0.3,
       "ContactDamage": 6,

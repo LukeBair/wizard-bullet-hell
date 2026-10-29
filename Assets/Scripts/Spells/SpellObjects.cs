@@ -35,7 +35,7 @@ public class WaterBeam : MonoBehaviour
         b.coneHalf = coneHalfAngle;
         b.push = push;
         var target = Enemy.Nearest(owner.Position, GameManager.Instance.TargetRange);
-        b.dir = Quaternion.Euler(0, 0, angleOffset) * (target != null ? (target.Position - owner.Position).normalized : owner.Facing);
+        b.dir = Quaternion.Euler(0, 0, angleOffset) * (target != null || Joystick.MouseAim ? Joystick.Aim(owner.Position, target != null ? target.Position : owner.Position) : owner.Facing);
         var c = spell.Color;
         if (coneHalfAngle > 0f)
         {
@@ -91,9 +91,9 @@ public class WaterBeam : MonoBehaviour
         if (life <= 0f) { Destroy(gameObject); return; }
 
         var target = Enemy.Nearest(owner.Position, gm.TargetRange);
-        if (target != null)
+        if (target != null || Joystick.MouseAim)   // follows the foe, or the cursor with the mouse
         {
-            Vector2 want = Quaternion.Euler(0, 0, offset) * (target.Position - owner.Position).normalized;
+            Vector2 want = Quaternion.Euler(0, 0, offset) * Joystick.Aim(owner.Position, target != null ? target.Position : owner.Position);
             dir = Vector3.RotateTowards(dir, want, 120f * Mathf.Deg2Rad * dt, 0f);
         }
         Place();

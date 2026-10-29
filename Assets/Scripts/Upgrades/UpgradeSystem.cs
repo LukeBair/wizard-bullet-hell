@@ -90,15 +90,11 @@ public abstract class UpgradeSystem
         return list;
     }
 
-    protected static int MaxSpells => Tune.I("runes.maxSpells", 6);
-    // Spell slots: a tier III spell fills runes.tier3Slots of them, so the more you evolve that far, the fewer spells you carry.
-    protected static int Tier3Slots => Mathf.Max(1, Tune.I("runes.tier3Slots", 2));
-    protected int SlotsUsed()
-    {
-        int n = 0;
-        foreach (var s in Player.Spells) n += s.Tier >= 3 ? Tier3Slots : 1;
-        return n;
-    }
+    protected static int MaxSpells => Tune.I("runes.maxSpells", 5);
+    // The more tier III spells, the fewer spells you can carry: past runes.tier3Free of them, each costs a spell
+    // (5 spells with one tier III, 4 with two, 3 with three).
+    protected static int SpellLimit(int tier3s) => MaxSpells - Mathf.Max(0, tier3s - Tune.I("runes.tier3Free", 1));
+    protected int Tier3Count() => Player.Spells.FindAll(s => s.Tier >= 3).Count;
 
     protected static void Shuffle<T>(IList<T> list)
     {
