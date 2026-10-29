@@ -807,7 +807,7 @@
       "shrapnelRadiusScale_t3": 0.5
     },
     "FrostNova": {
-      "damage": 10,
+      "damage": 20,
       "cooldown": 2.6,
       "count": 1,
       "radius": 2,

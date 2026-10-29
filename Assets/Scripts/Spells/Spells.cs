@@ -147,7 +147,7 @@ public class FrostNova : Spell
     public override Element Element => Element.Frost;
     public override string Blurb => "Freezing pulse around you.";
     public override bool CanEvolve => true;
-    protected override float BaseDamage => 10f;
+    protected override float BaseDamage => 20f;
     protected override float BaseCooldown => 2.6f;
     protected override float PotencyPerRune => 0.2f;
     protected override float AreaPerRune => 0.15f;
