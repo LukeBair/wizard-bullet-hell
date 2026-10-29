@@ -27,8 +27,8 @@ public abstract class UpgradeSystem
         Shuffle(startOffer);
         int n = Mathf.Clamp(Tune.I("run.startTomeChoices", 3), 1, startOffer.Count);
         startOffer.RemoveRange(n, startOffer.Count - n);
-        // Tuner override (run.startTome): always offer this tome first.
-        if (System.Enum.TryParse(Tune.S("run.startTome", ""), out SpellId forced) && Grimoire.HasTome(forced))
+        // Tuner override (run.startTome): always offer this tome first, any spell, owned or not (for testing).
+        if (System.Enum.TryParse(Tune.S("run.startTome", ""), out SpellId forced))
         {
             startOffer.Remove(forced);
             startOffer.Insert(0, forced);
@@ -90,7 +90,15 @@ public abstract class UpgradeSystem
         return list;
     }
 
-    protected static int MaxSpells => Tune.I("runes.maxSpells", 5);
+    protected static int MaxSpells => Tune.I("runes.maxSpells", 6);
+    // Spell slots: a tier III spell fills runes.tier3Slots of them, so the more you evolve that far, the fewer spells you carry.
+    protected static int Tier3Slots => Mathf.Max(1, Tune.I("runes.tier3Slots", 2));
+    protected int SlotsUsed()
+    {
+        int n = 0;
+        foreach (var s in Player.Spells) n += s.Tier >= 3 ? Tier3Slots : 1;
+        return n;
+    }
 
     protected static void Shuffle<T>(IList<T> list)
     {

@@ -17,6 +17,7 @@ public class MirrorWard : Spell, IOrbiter
 
     readonly List<(Transform shard, int set, int index)> shards = new List<(Transform, int, int)>();
     readonly List<Transform> pieces = new List<Transform>();   // every shard's segments, laid along the ring
+    readonly List<(int shard, float along, Transform t)> art = new List<(int, float, Transform)>();   // painted crystals tiled along each shard, kept upright
     Transform track;
     float laidRadius;
     static readonly List<Projectile> scratch = new List<Projectile>();
@@ -57,9 +58,11 @@ public class MirrorWard : Spell, IOrbiter
     {
         if (Owner == null) return;
         foreach (var s in shards) if (s.shard != null) Object.Destroy(s.shard.gameObject);
+        foreach (var a in art) if (a.t != null) Object.Destroy(a.t.gameObject);
         if (track != null) Object.Destroy(track.gameObject);
         shards.Clear();
         pieces.Clear();
+        art.Clear();
         track = SpriteFactory.Child(Owner.transform, "MirrorOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.15f), Vector2.zero, OrbitRadius * 2f + ShardThickness, 47).transform;
         Color light = Color.Lerp(Color, Color.white, 0.6f);
         for (int set = 0; set < Sets; set++)
@@ -69,6 +72,17 @@ public class MirrorWard : Spell, IOrbiter
                 // The shard pivots on the wizard; its segments sit on the ring and bend with it.
                 var go = new GameObject("MirrorShard");
                 go.transform.SetParent(Owner.transform, false);
+                shards.Add((go.transform, set, i));
+                // painted: enough small crystals side by side to fill the shard's length
+                float crystal = ShardThickness * Tune.F("vfx.mirrorSize", 2.5f);
+                int tiles = Mathf.Max(1, Mathf.CeilToInt(ShardLength / (crystal * 0.75f)));
+                for (int k = 0; k < tiles; k++)
+                {
+                    var painted = SpellVfx.MirrorCrystal(Owner.transform, crystal);
+                    if (painted == null) break;
+                    art.Add((shards.Count - 1, ShardLength * ((k + 0.5f) / tiles - 0.5f), painted.transform));
+                }
+                if (art.Count > 0) continue;
                 for (int k = 0; k < Segments; k++)
                 {
                     var piece = new GameObject("Piece").transform;
@@ -77,7 +91,6 @@ public class MirrorWard : Spell, IOrbiter
                     SpriteFactory.Child(piece, "Bar", SpriteFactory.Square, light, Vector2.zero, 1f, 58);
                     pieces.Add(piece);
                 }
-                shards.Add((go.transform, set, i));
             }
         }
         laidRadius = 0f;   // lay the segments on the next tick
@@ -109,6 +122,13 @@ public class MirrorWard : Spell, IOrbiter
         float halfSpan = ShardLength / radius * 0.5f;
         scratch.Clear();
         foreach (var p in Projectile.All) if (p.Team == Team.Enemy && p.enabled) scratch.Add(p);
+
+        foreach (var c in art)
+        {
+            var s = shards[c.shard];
+            float a = Orbits.Angle(angle, 0, s.set, Sets, s.index, Count) * Mathf.Deg2Rad + c.along / radius;
+            c.t.localPosition = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * radius;
+        }
 
         foreach (var s in shards)
         {
@@ -542,7 +562,8 @@ public class Banish : Spell
         float duration = Duration;
         foreach (var t in targets)
         {
-            Fx.Ring(t.Position, Color, Tier >= 2 ? ExileRadius : t.Radius * 1.5f, 0.35f);
+            float ring = Tier >= 2 ? ExileRadius : t.Radius * 1.5f;
+            if (!SpellVfx.Banish(t.Position, ring * 2.4f)) Fx.Ring(t.Position, Color, ring, 0.35f);
             if (Tier >= 2) foreach (var x in EnemiesWithin(t.Position, ExileRadius)) Send(x, duration);
             else Send(t, duration);
         }
