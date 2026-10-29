@@ -200,7 +200,7 @@ public class FrostNova : Spell
         int bursts = 0;
         foreach (var e in EnemiesWithin(at, Radius))
         {
-            if (bursts++ < 8) SpellVfx.Impact(e.Position, Element, 0.5f);   // a freeze burst on the first few foes caught
+            if (bursts++ < 8) SpellVfx.Impact(e.Position, Element, 0.65f);   // a freeze burst on the first few foes caught
             if (Tier >= 2) e.ApplyChill(TT("chill", 1.8f) * Potency);
             if (Tier == 3) e.AddFrostbite(frostbite, T("shatterSpread_t3", 0.5f), T("shatterSpreadRadius_t3", 1.8f));
             Hit(e, Damage, (e.Position - at).normalized * push);

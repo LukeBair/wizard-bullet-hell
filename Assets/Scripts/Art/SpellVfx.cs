@@ -338,21 +338,21 @@ public static class SpellVfx
     {
         switch (i)
         {
-            case Interaction.Steam: return Burst("vfx_steam", at, Tune.F("vfx.steamSize", 3.6f));
-            case Interaction.Conductive: return Burst("vfx_conductive", at, Tune.F("vfx.conductiveSize", 1.8f));
-            case Interaction.DeepFreeze: return Burst("vfx_deepfreeze", at, Tune.F("vfx.deepFreezeSize", 1.8f));
-            case Interaction.Firebugs: return Burst("vfx_firebugs", at, Tune.F("vfx.firebugsSize", 4.5f));
-            default: return Burst("vfx_hexswarm", at, Tune.F("vfx.hexSwarmSize", 3.6f));
+            case Interaction.Steam: return Burst("vfx_steam", at, Tune.F("vfx.steamSize", 1.8f));
+            case Interaction.Conductive: return Burst("vfx_conductive", at, Tune.F("vfx.conductiveSize", 0.9f));
+            case Interaction.DeepFreeze: return Burst("vfx_deepfreeze", at, Tune.F("vfx.deepFreezeSize", 0.9f));
+            case Interaction.Firebugs: return Burst("vfx_firebugs", at, Tune.F("vfx.firebugsSize", 2.25f));
+            default: return Burst("vfx_hexswarm", at, Tune.F("vfx.hexSwarmSize", 1.8f));
         }
     }
 
     // An infested foe's bugs pouring out over `radius`.
-    public static bool Ants(Vector2 at, float radius) => Burst("vfx_ants", at, radius * 2f * Tune.F("vfx.antsSize", 1.4f));
+    public static bool Ants(Vector2 at, float radius) => Burst("vfx_ants", at, radius * 2f * Tune.F("vfx.antsSize", 0.7f));
 
     // Ward rune: the ring of light round the wizard while it has charges (its owner sets the colour).
     public static PaintedLoop WardRing(Transform wizard)
     {
-        var f = Sized("vfx_ward", Tune.F("vfx.wardSize", 2.2f), out float s);
+        var f = Sized("vfx_ward", Tune.F("vfx.wardSize", 1.1f), out float s);
         if (f == null) return null;
         return PaintedLoop.Attach(wizard, Vector2.zero, null, f, s, Tune.F("vfx.wardFps", 12f), 60, 0f, 0f);
     }
