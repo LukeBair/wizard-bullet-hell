@@ -83,13 +83,15 @@ public class RuneSystem : UpgradeSystem
         var unlearned = UnlearnedSpells();
         bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
         tome = null;
-        if (Player.Spells.Count < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
+        int slots = SlotsUsed();
+        if (slots < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
             tome = WeightedTome(unlearned);
 
-        // Evolving also waits for boss kills: tier2Bosses for tier II, tier3Bosses for tier III.
+        // Evolving also waits for boss kills: tier2Bosses for tier II, tier3Bosses for tier III. Tier III also
+        // needs room for its extra slots.
         int bosses = GameManager.Instance.Director.BossesDefeated;
         var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Sockets
-            && bosses >= (s.Tier + 1 < 3 ? Tune.I("runes.tier2Bosses", 0) : Tune.I("runes.tier3Bosses", 1)));
+            && (s.Tier + 1 < 3 ? bosses >= Tune.I("runes.tier2Bosses", 0) : bosses >= Tune.I("runes.tier3Bosses", 1) && slots + Tier3Slots - 1 <= MaxSpells));
         evolves.Clear();
         evolves.AddRange(ready);
         Telemetry.Offer(runeOffer, tome, evolves);
@@ -117,6 +119,7 @@ public class RuneSystem : UpgradeSystem
         spell.AddRune(rune);
         bool resonates = CountOf(list, rune) == Tune.I("runes.resonanceCount", 3);
         Telemetry.PickRune(rune, spell, resonates);
+        Sfx.Play("events.runeSocket", Sound.RuneSocket, resonates ? 0.9f : 0.6f, 0f);
         if (resonates)
         {
             spell.AddRune(rune);   // resonance: the third matching rune counts double
@@ -130,6 +133,7 @@ public class RuneSystem : UpgradeSystem
         spell.Evolve();
         Telemetry.PickEvolve(spell);
         GameManager.Instance.Toast($"{spell.Name} evolved: {spell.Title}!");
+        Sfx.Play("events.evolve", Sound.Evolve, 0.9f, 0f);
         Fx.Ring(Player.Position, spell.Color, 3f, 0.6f);
         Fx.Burst(Player.Position, spell.Color, 5f);
     }
@@ -174,7 +178,7 @@ public class RuneSystem : UpgradeSystem
             if (UI.Card(rect, $"{Spell.RuneName(r)} Rune", RuneSummary(r), Spell.RuneColor(r), rare ? "★ RARE" : "RUNE", anyRoom))
             {
                 held = r;
-                Sfx.Play(Sound.Select, 0.6f);
+                Sfx.Play("ui.runePick", Sound.Select, 0.6f);
                 Haptics.Selection();
             }
             y += h + gap;

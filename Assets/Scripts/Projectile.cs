@@ -29,6 +29,11 @@ public class Projectile : MonoBehaviour
     readonly HashSet<Enemy> hit = new HashSet<Enemy>();
     static readonly List<Enemy> scratch = new List<Enemy>();
     SpriteRenderer body, glow, core;
+    UnityEngine.Rendering.Universal.Light2D spellLight;
+    // Only the first few live spells get a Light2D (each one is a full extra light pass on the
+    // GPU); the rest stay unlit and lean on bloom. Cap: lighting.maxSpellLights.
+    bool lit;
+    static int litCount;
 
     // Spent projectiles are parked here and reused, since bosses and split spells fire hundreds a minute.
     static readonly Stack<Projectile>[] pool = { new Stack<Projectile>(), new Stack<Projectile>() };
@@ -45,11 +50,15 @@ public class Projectile : MonoBehaviour
             var go = new GameObject(team == Team.Player ? "Spell" : "Bullet");
             go.SetActive(false);
             p = go.AddComponent<Projectile>();
+            // Your spells depth-sort with characters and props (passing behind a tree hides them);
+            // enemy bullets always draw on top so they can never hide.
+            if (team == Team.Player) go.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;
             p.Team = team;
-            p.body = SpriteFactory.Add(go, ArtStyle.Round, color, team == Team.Enemy ? 81 : 71);
-            p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, 2.4f, team == Team.Enemy ? 80 : 70);
+            // the orb is a child so painted skins can rotate and rescale it without touching the projectile's own size
+            p.body = SpriteFactory.Child(go.transform, "Body", ArtStyle.Round, color, Vector2.zero, 1f, team == Team.Enemy ? 81 : 71);
+            p.glow = SpriteFactory.Child(go.transform, "Glow", SpriteFactory.Glow, color, Vector2.zero, team == Team.Enemy ? Tune.F("bullets.enemyGlow", 1.4f) : 2.4f, team == Team.Enemy ? 80 : 70);
             // Enemy bullets get a hot white core so they never read as your own spells.
-            if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, Color.white, Vector2.zero, 0.5f, 82);
+            if (team == Team.Enemy) p.core = SpriteFactory.Child(go.transform, "Core", ArtStyle.Round, new Color(0.8f, 0.8f, 0.8f), Vector2.zero, 0.5f, 82);
         }
         else p.ResetState();
 
@@ -68,7 +77,26 @@ public class Projectile : MonoBehaviour
         p.body.sprite = ArtStyle.Round;
         p.body.color = color;
         p.glow.color = new Color(color.r, color.g, color.b, 0.6f);
+        // your spells light up whatever they fly past (enemy bullets are too many; bloom does them)
+        if (team == Team.Player && litCount < Tune.I("lighting.maxSpellLights", 6))
+        {
+            if (p.spellLight == null) p.spellLight = Lighting.Point(t, color, 1f, Tune.F("lighting.spellIntensity", 1f));
+            if (p.spellLight != null)
+            {
+                p.spellLight.enabled = true;
+                p.spellLight.color = color;
+                Lighting.SetRadius(p.spellLight, Tune.F("lighting.spellRadius", 2.8f));
+                p.lit = true;
+                litCount++;
+            }
+        }
+        else if (p.spellLight != null) p.spellLight.enabled = false;
         if (p.core != null) p.core.sprite = ArtStyle.Round;
+        p.skin = false;   // pooled: a reused projectile starts as the plain orb again
+        p.body.transform.localRotation = Quaternion.identity;
+        p.body.transform.localPosition = Vector3.zero;
+        p.body.transform.localScale = Vector3.one;
+        p.glow.enabled = true;
         p.gameObject.SetActive(true);
         return p;
     }
@@ -91,6 +119,44 @@ public class Projectile : MonoBehaviour
         enabled = true;
     }
 
+    bool skin;
+    float skinTilt;       // the painted bolt's own axis, degrees off the image's horizontal
+    float skinScale, skinPhase;
+    int skinTick;
+    Vector2 headOffset;   // where the painted head sits from the sprite's centre, in sprite units
+    Sprite[] skinFrames;
+
+    // Draws the projectile as a painted effect (SpellVfx) instead of the plain orb: the sprite points
+    // its head along the flight (head drawn on the left of the image), `length` world units long.
+    public void SetSkin(Sprite[] frames, float length)
+    {
+        skin = true;
+        skinFrames = frames;
+        (headOffset, skinTilt) = SpellVfx.Axis(frames);
+        skinPhase = UnityEngine.Random.value * 10f;
+        body.sprite = frames[0];
+        body.color = Color.white;
+        glow.enabled = false;
+        float unitsLong = frames[0].rect.width / frames[0].pixelsPerUnit;
+        skinScale = length / (unitsLong * Mathf.Max(0.0001f, transform.localScale.x));
+        body.transform.localRotation = Quaternion.identity;
+        body.transform.localScale = Vector3.one * skinScale;
+        Orient();
+    }
+
+    // Animated skins step through their frames and point their head (drawn on the left) along the flight.
+    void Orient()
+    {
+        if (skinFrames.Length > 1)
+            body.sprite = skinFrames[(int)((age + skinPhase) * 14f) % skinFrames.Length];
+        if (Velocity.sqrMagnitude < 1e-6f) return;
+        // the painted comet's own axis is tilted off the image's horizontal (measured per skin); cancel it so it flies straight
+        float a = Mathf.Atan2(Velocity.y, Velocity.x) * Mathf.Rad2Deg + 180f - skinTilt;
+        var rot = Quaternion.Euler(0f, 0f, a);
+        body.transform.localRotation = rot;
+        body.transform.localPosition = -(rot * (Vector3)headOffset) * skinScale;   // spin about the head, so it flies down its own line
+    }
+
     // Takes the projectile out of play (use instead of Destroy) and parks it for reuse.
     public void Release()
     {
@@ -106,10 +172,18 @@ public class Projectile : MonoBehaviour
     static void ResetPool()
     {
         foreach (var free in pool) free.Clear();
+        litCount = 0;
     }
 
     void OnEnable() => All.Add(this);
-    void OnDisable() => All.Remove(this);
+    void OnDisable()
+    {
+        All.Remove(this);
+        if (!lit) return;
+        lit = false;
+        litCount--;
+        if (spellLight != null) spellLight.enabled = false;
+    }
 
     void Update()
     {
@@ -127,6 +201,7 @@ public class Projectile : MonoBehaviour
         }
 
         age += dt;
+        if (skin) Orient();
         if (Homing > 0f && age < HomingTime)
         {
             Vector2? target = null;
@@ -160,11 +235,13 @@ public class Projectile : MonoBehaviour
             if (trailTimer <= 0f)
             {
                 trailTimer = 1f / Tune.F("fx.trail.rate", 30f);
-                Particles.Trail(pos, color, Radius);
+                if (!skin) Particles.Trail(pos, color, Radius);
+                else if (Velocity.sqrMagnitude > 1e-6f && (skinTick++ & 1) == 0)
+                    Particles.Trail(pos - Velocity.normalized * skinScale * 0.25f, color, Radius * 0.5f);   // sparse motes behind the painted bolt
             }
 
             scratch.Clear();
-            scratch.AddRange(Enemy.All);
+            Enemy.Near(pos, Radius, scratch);   // only the foes in the grid cells around the shot
             foreach (var enemy in scratch)
             {
                 if (!enemy.IsAlive || enemy.Hidden || enemy.IsCharmed || hit.Contains(enemy)) continue;

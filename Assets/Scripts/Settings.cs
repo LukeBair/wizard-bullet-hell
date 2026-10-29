@@ -6,6 +6,26 @@ public static class Settings
 {
     const string VolumeKey = "set_volume", HapticsKey = "set_haptics", ShakeKey = "set_shake", NumbersKey = "set_numbers";
 
+    const string WizardKey = "set_wizard";
+    static readonly string[] WizardSheets = { "player_sheet", "player_sheet_64", "player_sheet_128" };
+    static readonly string[] WizardLabels = { "Original", "64px 3D", "128px 3D" };
+
+    // Which character art to use (Dusk art): 0 = the original sprites, 1 and 2 = the 3D-rendered 64px
+    // and 128px sheets for the wizard and enemies.
+    public static int Wizard
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetInt(WizardKey, 0), 0, WizardSheets.Length - 1);
+        set { PlayerPrefs.SetInt(WizardKey, value % WizardSheets.Length); PlayerPrefs.Save(); }
+    }
+
+    public static string WizardSheet => Wizard != 0 && PixelDensity.On ? (Resources.Load<TextAsset>("Art/Dusk/player_sheet_256") != null ? "player_sheet_256" : "player_sheet_128") : WizardSheets[Wizard];
+    public static string WizardLabel => WizardLabels[Wizard];
+
+    // The Character art setting covers enemies too: Original keeps their old sprites, and the 3D options
+    // use the 3D-rendered eight-facing enemy sheets at 64px or 128px frames.
+    public static bool Enemy3D => Wizard != 0;
+    public static bool Enemy3DSharp => Wizard == 2 || (Wizard != 0 && PixelDensity.On);   // the pixel size tuner resamples from the 128px renders
+
     // Sound volume in steps of settings.volumeStep, 0 = muted.
     public static float Volume
     {

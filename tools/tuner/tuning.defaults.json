@@ -1,4 +1,35 @@
 {
+  "vfx": {
+    "lightningHitScale": 3,
+    "fireballHitScale": 1,
+    "frostHitScale": 1,
+    "arcaneHitScale": 1,
+    "spikeHeight": 3,
+    "waterHitScale": 1,
+    "waterBeamWidth": 2.2,
+    "waterBeamGrow": 0.25,
+    "waterBeamFps": 30,
+    "bladeSize": 3,
+    "bladesHitScale": 1,
+    "flameSize": 3,
+    "sunSize": 2.7,
+    "banishSize": 1,
+    "rejuvSize": 3,
+    "overgrowthSize": 1.15,
+    "overgrowthTime": 0.8,
+    "vineTrapSize": 1.6,
+    "veilSize": 2.2,
+    "cycloneSize": 1,
+    "enthrallSize": 1.2,
+    "mirrorSize": 2.5,
+    "heartsSize": 1.2,
+    "heartsFps": 24,
+    "veilFps": 18,
+    "veilAlpha": 0.55,
+    "veilTime": 0.6,
+    "natureHitScale": 1,
+    "_about": "Painted spell effects: multiplies each element's hit burst size (pixel density is kept). spikeHeight: painted stone spike height in spike radii. waterBeamWidth: painted Tidal Lance jet height in beam widths; waterBeamGrow: seconds for it to grow to full length; waterBeamFps: how fast the jet flows. bladeSize: painted spectral blade frame size in blade radii. flameSize: painted Comet Trail flame frame size in patch radii. sunSize: painted Sunspots frame size in pool radii. banishSize: multiplies the painted Banish vortex. rejuvSize/veilSize: painted Rejuvenate burst and Veil size in world units. overgrowthSize, cycloneSize: painted vines and whirlwind size in their radii; overgrowthTime: how long the big vine burst lasts; vineTrapSize: the vines round each trapped foe, in foe sizes. enthrallSize: charm sigil in foe sizes; heartsSize: charmed hearts column width in foe sizes, heartsFps its speed. mirrorSize: painted mirror crystal in shard thicknesses (crystals tile along the shard). veilFps/veilAlpha: Veil speed and opacity; veilTime: longest the Veil shows (seconds)."
+  },
   "_about": "Every tunable in Wizard Bullet Hell. Keys starting with _ are notes. Spell values for evolved tiers use _t2 / _t3 suffixes.",
   "global": {
     "pace": 0.75,
@@ -16,7 +47,152 @@
     "music": {
       "volume": 0.6,
       "fade": 1.5,
-      "_about": "Zone music. volume multiplies audio.volume and the player's Settings volume; fade = crossfade seconds on zone changes and when a run starts or ends."
+      "_about": "Zone music. volume multiplies audio.volume and the player's Settings volume; fade = crossfade seconds on zone changes and when a run starts or ends.",
+      "crush": 0,
+      "crushMix": 1,
+      "_crush": "Bitcrusher on the music only: 0 = clean, 1 = very chunky (16 -> 4 bits, sample rate down to 1/16). Try 0.3-0.6 for a retro feel.",
+      "_crushMix": "How much crushed sound to blend in (0 = none, 1 = all).",
+      "tracks": {
+        "_about": "File name in Assets/Resources/Music without the extension; empty = none. Zones without a track play their chiptune takes; boss fights without one use boss.any, then the zone track.",
+        "title": "music_title_world_of_magic",
+        "grimoire": "",
+        "victory": "",
+        "gameOver": "",
+        "zone": {
+          "WhisperingForest": "",
+          "ArcaneAcademy": "",
+          "CrystalCaves": "music_zone_caves_shadows_and_dust",
+          "WitchsHollow": ""
+        },
+        "boss": {
+          "ElderTreant": "music_boss_treant_primal_carnage",
+          "HeadmasterVexley": "music_boss_vexley_fate_and_fortune",
+          "CrystalGolem": "music_boss_golem_juggernaut",
+          "TheHedgeWitch": "",
+          "any": ""
+        }
+      }
+    },
+    "lowHealthAt": 0.25,
+    "_lowHealthAt": "Health fraction below which the low-health warning plays (once per drop below it).",
+    "sfx": {
+      "boss": {
+        "arrive": 1,
+        "die": 1,
+        "golemSlam": 1
+      },
+      "combos": {
+        "combo": 1,
+        "shatter": 1,
+        "steam": 1
+      },
+      "enemies": {
+        "burrow": 1,
+        "die": 1,
+        "hazard": 1,
+        "hit": 1,
+        "shoot": 1,
+        "teleport": 1
+      },
+      "events": {
+        "evolve": 1,
+        "featDone": 1,
+        "fullyBuilt": 1,
+        "levelUp": 1,
+        "runeSocket": 1,
+        "swarm": 1,
+        "victory": 1,
+        "zoneChange": 1
+      },
+      "pickups": {
+        "midasGold": 1,
+        "xpGem": 1
+      },
+      "player": {
+        "die": 1,
+        "hurt": 1,
+        "lowHealth": 1,
+        "wardBlock": 1,
+        "wardReady": 1
+      },
+      "runes": {
+        "overload": 1,
+        "staticSpark": 1
+      },
+      "spells": {
+        "ArcaneMissile": {
+          "cast": 1
+        },
+        "Banish": {
+          "cast": 1
+        },
+        "ChainLightning": {
+          "cast": 1
+        },
+        "CometTrail": {
+          "drop": 1
+        },
+        "Cyclone": {
+          "cast": 1
+        },
+        "Enthrall": {
+          "cast": 1
+        },
+        "Fireball": {
+          "cast": 1,
+          "explode": 1
+        },
+        "FrostNova": {
+          "pulse": 1
+        },
+        "MirrorWard": {
+          "reflect": 1
+        },
+        "Overgrowth": {
+          "cast": 1
+        },
+        "Rejuvenate": {
+          "pulse": 1,
+          "revive": 1
+        },
+        "SpectralBlades": {
+          "cast": 1
+        },
+        "StoneSpikes": {
+          "cast": 1
+        },
+        "Sunspots": {
+          "burst": 1,
+          "cast": 1
+        },
+        "TidalLance": {
+          "cast": 1,
+          "pillar": 1
+        },
+        "Veil": {
+          "absorb": 1
+        },
+        "Wisps": {
+          "dart": 1,
+          "fireBurst": 1,
+          "orbit": 1,
+          "stormBurst": 1
+        }
+      },
+      "status": {
+        "burn": 1,
+        "chill": 1,
+        "infestBurst": 1,
+        "wet": 1,
+        "wither": 1
+      },
+      "ui": {
+        "button": 1,
+        "purchase": 1,
+        "purchaseCoin": 1,
+        "runePick": 1
+      },
+      "_about": "Volume of each individual sound (1 = default, 0 = off), on top of audio.volume and the Settings volume. Grouped by what plays it."
     }
   },
   "settings": {
@@ -31,7 +207,9 @@
     "artStylePicker": false,
     "_artStylePicker": "Show the art style picker on the title screen. Off = Dusk only (store builds).",
     "debugToggle": false,
-    "_debugToggle": "Show the Debug button on the title and pause screens in release builds (always shown in development builds)."
+    "_debugToggle": "Show the Debug button on the title and pause screens in release builds (always shown in development builds).",
+    "tunerButton": true,
+    "_tunerButton": "Show the Tuner row (Connect to the Mac's tuner) in Settings. Turn off for App Store builds."
   },
   "hud": {
     "fontScale": 1.2,
@@ -231,7 +409,11 @@
   },
   "run": {
     "bosses": 4,
+    "startZone": "",
+    "startTome": "",
     "startTomeChoices": 3,
+    "_startZone": "Force the first zone of a run (testing). Empty = random.",
+    "_startTome": "Force a starting tome to be offered (testing). Empty = random.",
     "zoneShiftDelay": 3,
     "favoredWeight": 3,
     "_bosses": "Bosses per run. Each one (spawning.bossEvery apart) moves the run to a new zone; killing the last one wins. 0 = endless.",
@@ -357,7 +539,12 @@
     "startSockets": 2,
     "socketsPerBoss": 1,
     "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A spell with every socket filled can evolve.",
-    "maxSpells": 5,
+    "maxSpells": 6,
+    "tier3Slots": 2,
+    "_tier3Slots": "Spell slots: maxSpells in all; a tier III spell fills tier3Slots of them (6 slots: 5 spells with one tier III, 4 with two). Tier III is only offered when there is room.",
+    "tier2Bosses": 0,
+    "tier3Bosses": 1,
+    "_tier3Bosses": "Boss kills needed before any spell can evolve to tier II (tier2Bosses) or tier III (tier3Bosses).",
     "tomeEveryLevels": 2,
     "resonanceCount": 3,
     "evolveRetain": 0.5,
@@ -560,6 +747,7 @@
       "cooldown": 1,
       "count": 2,
       "wispSize": 0.28,
+      "bodyScale": 1,
       "spinSpeed": 200,
       "hitEvery": 0.5,
       "quietSeconds_t2": 3,
@@ -956,5 +1144,36 @@
       "BulletSpeed": 3,
       "BulletDamage": 14
     }
+  },
+  "art": {
+    "pxPerTexel": 2,
+    "_pxPerTexel": "On-screen size of one art texel, in screen pixels, for the 3D-rendered wizard, enemies, props and ground (0 = off, keep each sprite's own size). Sprites are resampled from the 128px renders; takes effect on the next run.",
+    "refHeight": 1080,
+    "_refHeight": "Screen height (px) the sizing assumes. 0 = the actual window height; 1080 pins it so the look doesn't change with window size."
+  },
+  "lighting": {
+    "enabled": true,
+    "bloom": true,
+    "bloomMobile": false,
+    "normalMaps": true,
+    "ambient": 0.8,
+    "wizardRadius": 6.0,
+    "wizardIntensity": 0.0,
+    "spellRadius": 2.8,
+    "spellIntensity": 1.0,
+    "maxSpellLights": 6,
+    "ambientTint": 0.0,
+    "vignette": 0.12,
+    "sun": 0.85,
+    "sunAngle": 160.0,
+    "sunHeight": 0.8,
+    "sunCool": 0.4,
+    "shadows": true,
+    "shadowAlpha": 0.55,
+    "shadowLength": 0.55
+  },
+  "perf": {
+    "zoneUnload": true,
+    "gridHits": true
   }
 }

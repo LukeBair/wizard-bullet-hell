@@ -17,6 +17,7 @@ public class MirrorWard : Spell, IOrbiter
 
     readonly List<(Transform shard, int set, int index)> shards = new List<(Transform, int, int)>();
     readonly List<Transform> pieces = new List<Transform>();   // every shard's segments, laid along the ring
+    readonly List<(int shard, float along, Transform t)> art = new List<(int, float, Transform)>();   // painted crystals tiled along each shard, kept upright
     Transform track;
     float laidRadius;
     static readonly List<Projectile> scratch = new List<Projectile>();
@@ -57,9 +58,11 @@ public class MirrorWard : Spell, IOrbiter
     {
         if (Owner == null) return;
         foreach (var s in shards) if (s.shard != null) Object.Destroy(s.shard.gameObject);
+        foreach (var a in art) if (a.t != null) Object.Destroy(a.t.gameObject);
         if (track != null) Object.Destroy(track.gameObject);
         shards.Clear();
         pieces.Clear();
+        art.Clear();
         track = SpriteFactory.Child(Owner.transform, "MirrorOrbit", SpriteFactory.Ring, new Color(Color.r, Color.g, Color.b, 0.15f), Vector2.zero, OrbitRadius * 2f + ShardThickness, 47).transform;
         Color light = Color.Lerp(Color, Color.white, 0.6f);
         for (int set = 0; set < Sets; set++)
@@ -69,6 +72,17 @@ public class MirrorWard : Spell, IOrbiter
                 // The shard pivots on the wizard; its segments sit on the ring and bend with it.
                 var go = new GameObject("MirrorShard");
                 go.transform.SetParent(Owner.transform, false);
+                shards.Add((go.transform, set, i));
+                // painted: enough small crystals side by side to fill the shard's length
+                float crystal = ShardThickness * Tune.F("vfx.mirrorSize", 2.5f);
+                int tiles = Mathf.Max(1, Mathf.CeilToInt(ShardLength / (crystal * 0.75f)));
+                for (int k = 0; k < tiles; k++)
+                {
+                    var painted = SpellVfx.MirrorCrystal(Owner.transform, crystal);
+                    if (painted == null) break;
+                    art.Add((shards.Count - 1, ShardLength * ((k + 0.5f) / tiles - 0.5f), painted.transform));
+                }
+                if (art.Count > 0) continue;
                 for (int k = 0; k < Segments; k++)
                 {
                     var piece = new GameObject("Piece").transform;
@@ -77,7 +91,6 @@ public class MirrorWard : Spell, IOrbiter
                     SpriteFactory.Child(piece, "Bar", SpriteFactory.Square, light, Vector2.zero, 1f, 58);
                     pieces.Add(piece);
                 }
-                shards.Add((go.transform, set, i));
             }
         }
         laidRadius = 0f;   // lay the segments on the next tick
@@ -110,6 +123,13 @@ public class MirrorWard : Spell, IOrbiter
         scratch.Clear();
         foreach (var p in Projectile.All) if (p.Team == Team.Enemy && p.enabled) scratch.Add(p);
 
+        foreach (var c in art)
+        {
+            var s = shards[c.shard];
+            float a = Orbits.Angle(angle, 0, s.set, Sets, s.index, Count) * Mathf.Deg2Rad + c.along / radius;
+            c.t.localPosition = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * radius;
+        }
+
         foreach (var s in shards)
         {
             var shard = s.shard;
@@ -139,7 +159,7 @@ public class MirrorWard : Spell, IOrbiter
         float damage = Damage + bullet.Damage * T("reflectScale", 2f) * Potency;
         bullet.Release();   // leaves Projectile.All at once, so no other shard takes it
         Fx.Burst(at, Color, 1f);
-        Sfx.Play(Sound.WispHit, 0.3f, 0.3f);
+        Sfx.Play("spells.MirrorWard.reflect", Sound.WispHit, 0.3f, 0.3f);
         Grimoire.Feat(SpellId.MirrorWard);
 
         var target = Enemy.Nearest(at, Range);
@@ -193,7 +213,7 @@ public class StoneSpikes : Spell
     {
         var target = Enemy.Nearest(Owner.Position, Range);
         if (target == null) return;
-        Sfx.Play(Sound.Burrow, 0.5f, 0.2f);
+        Sfx.Play("spells.StoneSpikes.cast", Sound.Burrow, 0.5f, 0.2f);
         Vector2 from = Owner.Position;
         Vector2 dir = (target.Position - from).normalized;
         int spikes = SpikesPerLine;
@@ -275,7 +295,7 @@ public class SpectralBlades : Spell
     {
         var target = Enemy.Nearest(Owner.Position, Range);
         if (target == null) return;
-        Sfx.Play(Sound.Teleport, 0.35f, 0.3f);
+        Sfx.Play("spells.SpectralBlades.cast", Sound.Teleport, 0.35f, 0.3f);
         Vector2 dir = (target.Position - Owner.Position).normalized;
         int trips = Tier >= 2 ? 2 : 1;
         for (int i = 0; i < Count; i++)
@@ -352,7 +372,7 @@ public class Sunspots : Spell
             Vector2 at = arena.PushOut(Owner.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * dist, Radius);
             SunPool.Create(this, Owner, at, Radius, PoolTime, heal, Color);
         }
-        Sfx.Play(Sound.Gem, 0.4f, 0.2f);
+        Sfx.Play("spells.Sunspots.cast", Sound.Gem, 0.4f, 0.2f);
     }
 
     // Called by a pool every frame the wizard stands in it.
@@ -373,7 +393,7 @@ public class Sunspots : Spell
         float radius = Radius * T("burstRadius_t3", 2f);
         Fx.Ring(at, Color, radius, 0.5f);
         Fx.Burst(at, Color.white, radius * 2f);
-        Sfx.Play(Sound.Explosion, 0.6f, 0.1f);
+        Sfx.Play("spells.Sunspots.burst", Sound.Explosion, 0.6f, 0.1f);
         GameManager.Instance.Shake(0.15f);
         foreach (var e in EnemiesWithin(at, radius))
             Hit(e, T("burstDamage_t3", 80f) * Potency * (Owner != null ? Owner.DamageMultiplier : 1f), (e.Position - at).normalized * 6f);
@@ -433,6 +453,7 @@ public class CometTrail : Spell
         lastDrop = at;
         hasDropped = true;
         float damage = Damage;   // fixed at drop time, so an Overloaded patch stays strong
+        Sfx.Play("spells.CometTrail.drop", Sound.Comet, 0.35f, 0.15f);
         for (int i = 0; i < Count; i++)
         {
             Vector2 p = at + side * (i - (Count - 1) * 0.5f) * T("splitGap", 0.8f);
@@ -537,11 +558,12 @@ public class Banish : Spell
             if (boss != null && boss.IsBoss) { boss.Daze(T("bossDaze", 1f)); Fx.Ring(boss.Position, Color, boss.Radius * 1.5f, 0.3f); }
             return;
         }
-        Sfx.Play(Sound.Teleport, 0.4f, 0.3f);
+        Sfx.Play("spells.Banish.cast", Sound.Teleport, 0.4f, 0.3f);
         float duration = Duration;
         foreach (var t in targets)
         {
-            Fx.Ring(t.Position, Color, Tier >= 2 ? ExileRadius : t.Radius * 1.5f, 0.35f);
+            float ring = Tier >= 2 ? ExileRadius : t.Radius * 1.5f;
+            if (!SpellVfx.Banish(t.Position, ring * 2.4f)) Fx.Ring(t.Position, Color, ring, 0.35f);
             if (Tier >= 2) foreach (var x in EnemiesWithin(t.Position, ExileRadius)) Send(x, duration);
             else Send(t, duration);
         }

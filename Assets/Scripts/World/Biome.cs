@@ -35,6 +35,10 @@ public class Biome
             int j = UnityEngine.Random.Range(0, i + 1);
             (zones[i], zones[j]) = (zones[j], zones[i]);
         }
+        // Tuner override (run.startZone): move the named zone to the front to test it.
+        string want = Tune.S("run.startZone", "");
+        int at = zones.FindIndex(z => z.Name == want);
+        if (at > 0) (zones[0], zones[at]) = (zones[at], zones[0]);
         zones.Add(Hollow);
         return zones;
     }

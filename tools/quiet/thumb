@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Make small copies of images before the AI reads them. A full-size screenshot costs about
+# 1,500 image tokens per Read; a 512px copy costs about a fifth of that.
+#
+#   tools/quiet/thumb [-s max_px] image...      (default 512)
+#
+# Writes /tmp/quiet-thumbs/<name>.thumb.png and prints the paths to Read.
+set -euo pipefail
+size=512
+if [[ "${1:-}" == "-s" ]]; then size="$2"; shift 2; fi
+out=/tmp/quiet-thumbs; mkdir -p "$out"
+for f in "$@"; do
+  dst="$out/$(basename "${f%.*}").thumb.png"
+  if command -v sips >/dev/null; then
+    sips -s format png -Z "$size" "$f" --out "$dst" >/dev/null
+  elif command -v magick >/dev/null; then
+    magick "$f" -resize "${size}x${size}>" "$dst"
+  else
+    python3 -c "import sys;from PIL import Image;i=Image.open(sys.argv[1]);i.thumbnail((int(sys.argv[3]),)*2);i.save(sys.argv[2])" "$f" "$dst" "$size"
+  fi
+  echo "$dst"
+done

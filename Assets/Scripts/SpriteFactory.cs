@@ -43,6 +43,7 @@ public static class SpriteFactory
     public static SpriteRenderer Add(GameObject go, Sprite sprite, Color color, int order)
     {
         var sr = go.AddComponent<SpriteRenderer>();
+        if (Lighting.Active && Lighting.Unlit != null) sr.sharedMaterial = Lighting.Unlit;   // opt into lighting with Lighting.MakeLit
         sr.sprite = sprite;
         sr.color = color;
         sr.sortingOrder = order;

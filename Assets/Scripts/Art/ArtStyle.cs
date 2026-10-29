@@ -15,7 +15,8 @@ public static class ArtStyle
     // Dusk's 7-colour palette (20 Minutes Till Dawn look).
     static readonly Color DuskGround = Hex(0x1d1a2b), DuskNavy = Hex(0x2b2f4a), DuskSage = Hex(0x6f9b7a),
                           DuskDeepSage = Hex(0x3e5a4e), DuskCream = Hex(0xf0d2bc), DuskCoral = Hex(0xe5555f),
-                          DuskWine = Hex(0x8c3446);   // only in the boss robes
+                          DuskWine = Hex(0x8c3446),   // only in the boss robes
+                          DuskAutumn = Hex(0x7f4838), DuskDeepAutumn = Hex(0x4b231b);   // the treant (recoloured so it stands out on moss)
 
     // Enemy radius each sprite was drawn for (matches EnemyRoster); bigger variants scale up.
     static readonly Dictionary<EnemyLook, float> drawnRadius = new Dictionary<EnemyLook, float>
@@ -53,6 +54,12 @@ public static class ArtStyle
     public static float PixelsPerUnit(string style, string file, int width)
     {
         if (file.StartsWith("bullet") || file.StartsWith("gem")) return width;
+        // player_sheet_<px> are the 3D-rendered wizard at a bigger frame size: same world size as the 48px sheet.
+        if (style == "Dusk" && file.StartsWith("player_sheet_") && int.TryParse(file.Substring("player_sheet_".Length), out int px))
+            return 20f * px / 48f;
+        // enemy3d_*_<px> sheets from the 3D pipeline: a frame covers the same world size as a 48px PixelLab frame.
+        if (style == "Dusk" && file.StartsWith("enemy3d_") && int.TryParse(file.Substring(file.LastIndexOf('_') + 1), out int fpx))
+            return 20f * fpx / 48f;
         switch (style)
         {
             case "Dusk": return 20f;
@@ -103,9 +110,158 @@ public static class ArtStyle
         { EnemyLook.Witch, 0.88f }, { EnemyLook.Headmaster, 0.86f },
     };
 
-    public static SpriteSheet EnemySheet(EnemyLook look) =>
-        sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet") : null;
-    public static float EnemySheetScale(EnemyLook look, float radius) => sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
+    // 3D-rendered eight-facing sheets (tools/sprite-pipeline, Resources/Art/Dusk/enemy3d_<name>_sheet), the
+    // name each look uses, and the enemy radius its frames suit: half the model's median width in frame,
+    // so the body spans the hitbox (thin robed casters a bit more, so they don't tower over it).
+    static readonly Dictionary<EnemyLook, (string name, float radius)> sheet3D = new Dictionary<EnemyLook, (string, float)>
+    {
+        { EnemyLook.Blob, ("moss", 1.07f) },
+        { EnemyLook.Bat, ("bat", 0.71f) },
+        { EnemyLook.Beast, ("wolf", 0.94f) },
+        { EnemyLook.Goblin, ("goblin", 0.70f) },
+        { EnemyLook.Headmaster, ("headmaster", 0.6f) },
+        { EnemyLook.Mushroom, ("mushroom", 0.82f) },
+        { EnemyLook.Pixie, ("pixie", 0.75f) },
+        { EnemyLook.Mole, ("mole", 1.05f) },
+        { EnemyLook.Treant, ("treant", 0.84f) },
+        { EnemyLook.Witch, ("witch", 0.72f) },
+        { EnemyLook.Golem, ("golem", 0.66f) },
+        { EnemyLook.Wizard, ("apprentice", 0.55f) },
+    };
+
+    // Enemies that share a look but get their own 3D model, by enemy name.
+    static readonly Dictionary<string, (string name, float radius)> sheet3DByName = new Dictionary<string, (string, float)>
+    {
+        { "Mother Slime", ("blob", 1.05f) },
+    };
+
+    static (string name, float radius)? Entry3D(EnemyLook look, string enemy)
+    {
+        if (!Settings.Enemy3D) return null;
+        if (enemy != null && sheet3DByName.TryGetValue(enemy, out var e)) return e;
+        return sheet3D.TryGetValue(look, out var l) ? l : ((string, float)?)null;
+    }
+
+    // Every 3D enemy ships 64px and 128px frames (_64, _128), picked by the Character art setting. The small
+    // ones (moss slime, bat, fairy) are shrunk a lot to fit their hitboxes, so they go a step chunkier: _32
+    // in place of _64, and _64 in place of _128.
+    static readonly HashSet<string> chunky3D = new HashSet<string> { "moss", "bat", "pixie" };
+
+    static SpriteSheet Sheet3D(string name, float scale)
+    {
+        // the pixel size tuner resamples from the 256px sheets (bosses), where they exist
+        if (PixelDensity.On && Resources.Load<TextAsset>($"Art/Dusk/enemy3d_{name}_sheet_256") != null)
+            return SpriteSheet.Load($"enemy3d_{name}_sheet_256", scale);
+        int px = Settings.Enemy3DSharp ? 128 : 64;
+        if (chunky3D.Contains(name)) px /= 2;
+        return SpriteSheet.Load($"enemy3d_{name}_sheet_{px}", scale);
+    }
+
+    // radius: the enemy's hitbox radius, which sets how big its body draws.
+    public static SpriteSheet EnemySheet(EnemyLook look, float radius, string enemy = null)
+    {
+        var e = Entry3D(look, enemy);
+        if (e != null)
+        {
+            var s = Sheet3D(e.Value.name, radius / e.Value.radius);
+            if (s != null) return s;
+        }
+        return sheetRadius.ContainsKey(look) ? SpriteSheet.Load("enemy_" + look.ToString().ToLowerInvariant() + "_sheet", EnemySheetScale(look, radius, enemy)) : null;
+    }
+
+    // The Headmaster's orbiting tome: a 3D turntable spin, 32px frames (64px in 128px mode).
+    public static SpriteSheet TomeSheet(float scale) => Settings.Enemy3D ? SpriteSheet.Load(Settings.Enemy3DSharp ? "enemy3d_tome_sheet_64" : "enemy3d_tome_sheet_32", scale) : null;
+
+    public static float EnemySheetScale(EnemyLook look, float radius, string enemy = null)
+    {
+        var e = Entry3D(look, enemy);
+        if (e != null && Sheet3D(e.Value.name, radius / e.Value.radius) != null) return radius / e.Value.radius;
+        return sheetRadius.TryGetValue(look, out var r) ? radius / r : 1f;
+    }
+
+    // 3D-rendered props (tools/sprite-pipeline/render_prop.py): Resources/Art/Dusk/prop_<name>_<k> with a
+    // matching _n normal map, pivoted at the base. Null unless the Character art setting is on a 3D option.
+    static readonly Dictionary<string, Sprite> props = new Dictionary<string, Sprite>();
+    static readonly HashSet<string> propsMarked = new HashSet<string>();
+    static readonly List<string> propsStale = new List<string>();
+    public static Sprite Prop(string file)
+    {
+        if (!Settings.Enemy3D || Current != ArtStyleId.Dusk) return null;
+        propsMarked.Add(file);
+        if (props.TryGetValue(file, out var s)) return s;
+        var tex = Resources.Load<Texture2D>("Art/Dusk/" + file);
+        var normals = Resources.Load<Texture2D>("Art/Dusk/" + file + "_n");
+        if (tex != null)
+        {
+            tex.filterMode = FilterMode.Point;
+            var rect = new Rect(0, 0, tex.width, tex.height);
+            var pivot = new Vector2(0.5f, 0.08f);
+            s = normals == null ? Sprite.Create(tex, rect, pivot, 20f)
+                : Sprite.Create(tex, rect, pivot, 20f, 0, SpriteMeshType.FullRect, Vector4.zero, false,
+                    new[] { new SecondarySpriteTexture { name = "_NormalMap", texture = normals } });
+        }
+        return props[file] = s;
+    }
+
+    // Zone art memory. Call BeginZoneArt before a zone (or run) is built and EndZoneArt after: the new
+    // zone's enemy sheets load up front (no hitch the first time each enemy spawns), and every sheet
+    // and prop the new zone didn't ask for is forgotten so Resources.UnloadUnusedAssets can free it.
+    // perf.zoneUnload: false keeps everything cached forever (the old behaviour).
+    public static void BeginZoneArt()
+    {
+        SpriteSheet.BeginMark();
+        propsMarked.Clear();
+    }
+
+    public static bool EndZoneArt(EnemyRoster roster)
+    {
+        if (roster != null)
+            foreach (var group in new[] { roster.Chaff, roster.Medium, roster.Bosses })
+                if (group != null)
+                    foreach (var d in group)
+                    {
+                        EnemySheet(d.Look, d.Radius, d.Name);
+                        if (d.Look == EnemyLook.Headmaster) TomeSheet(0.5f);
+                    }
+        if (!Tune.B("perf.zoneUnload", true)) return false;
+        SpriteSheet.Sweep();
+        propsStale.Clear();
+        foreach (var k in props.Keys) if (!propsMarked.Contains(k)) propsStale.Add(k);
+        foreach (var k in propsStale) props.Remove(k);
+        return true;
+    }
+
+    // A prop's baked shadow (render_prop.py casts it from the 3D model onto a ground plane): <prop>_shadow,
+    // pivoted (Resources/Art/Dusk/prop_shadows.json) so placing it where the prop stands lines it up.
+    static Dictionary<string, Vector2> shadowPivots;
+    public static Sprite PropShadow(string file)
+    {
+        string key = file + "_shadow";
+        if (props.TryGetValue(key, out var s)) return s;
+        if (shadowPivots == null)
+        {
+            shadowPivots = new Dictionary<string, Vector2>();
+            var json = Resources.Load<TextAsset>("Art/Dusk/prop_shadows");
+            if (json != null)
+                foreach (var line in json.text.Split('\n'))
+                {
+                    // "prop_x_0_hi_shadow": [0.31, 0.62],
+                    var parts = line.Split('"');
+                    if (parts.Length < 3) continue;
+                    var nums = parts[2].Trim(' ', ':', '[', ']', ',').Split(',');
+                    if (nums.Length == 2 && float.TryParse(nums[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x)
+                        && float.TryParse(nums[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y))
+                        shadowPivots[parts[1]] = new Vector2(x, y);
+                }
+        }
+        var tex = Resources.Load<Texture2D>("Art/Dusk/" + key);
+        if (tex != null && shadowPivots.TryGetValue(key, out var pivot))
+        {
+            tex.filterMode = FilterMode.Point;
+            s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), pivot, 20f);
+        }
+        return props[key] = s;
+    }
 
     public static string ObstacleSprite(ObstacleStyle style) =>
         style == ObstacleStyle.Pillar ? "obstacle_pillar" : style == ObstacleStyle.Rock ? "obstacle_rock" : "obstacle_tree";
@@ -121,7 +277,7 @@ public static class ArtStyle
         { EnemyLook.Beast, new[] { DuskDeepSage, DuskNavy } }, { EnemyLook.Goblin, new[] { DuskSage, DuskDeepSage } },
         { EnemyLook.Wizard, new[] { DuskDeepSage, DuskCoral } }, { EnemyLook.Mushroom, new[] { DuskCoral, DuskWine } },
         { EnemyLook.Pixie, new[] { DuskSage, DuskCoral } }, { EnemyLook.Mole, new[] { DuskDeepSage, DuskNavy } },
-        { EnemyLook.Treant, new[] { DuskSage, DuskDeepSage } }, { EnemyLook.Witch, new[] { DuskWine, DuskSage } },
+        { EnemyLook.Treant, new[] { DuskAutumn, DuskDeepAutumn } }, { EnemyLook.Witch, new[] { DuskWine, DuskSage } },
         { EnemyLook.Headmaster, new[] { DuskWine, DuskNavy } }, { EnemyLook.Golem, new[] { DuskDeepSage, DuskSage } },
     };
 

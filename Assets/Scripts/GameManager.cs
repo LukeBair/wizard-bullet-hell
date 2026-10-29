@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -24,7 +25,7 @@ public class GameManager : MonoBehaviour
     }
     float fps = 60f;
     const float FadeTime = 0.6f;
-    const float CameraSize = 7.5f;
+    public const float CameraSize = 7.5f;
     static readonly Color GoldColor = new Color(1f, 0.85f, 0.4f);
 
     public GameState State { get; private set; }
@@ -101,6 +102,7 @@ public class GameManager : MonoBehaviour
         runGold += gold;
         DamageText.Spawn(at + Vector2.up * 0.4f, gold, GoldColor);
         Fx.Ring(at, GoldColor, 0.6f, 0.3f);
+        Sfx.Play("pickups.midasGold", Sound.Coin, 0.6f, 0.1f);
     }
 
     // Pays out the run's gold once: pickups plus time survived, plus the win bonus.
@@ -124,6 +126,8 @@ public class GameManager : MonoBehaviour
         cam.orthographicSize = CameraSize;
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = Color.black;
+        Lighting.SetupCamera(cam);
+        if (cam.transform.Find("Sun") == null) Lighting.Sun(cam.transform);
     }
 
     void BuildWorld(Biome biome = null)
@@ -152,6 +156,21 @@ public class GameManager : MonoBehaviour
         Clear<WaterPillar>();
     }
 
+    // Preloads the zone's enemy sheets and lets go of the last zone's art (ArtStyle.BeginZoneArt).
+    void FinishZoneArt(Biome b)
+    {
+        // keeps the wizard's sheet marked as in use (same lookup as Player)
+        if (SpriteSheet.Load(Settings.WizardSheet) == null) SpriteSheet.Load("player_sheet");
+        if (ArtStyle.EndZoneArt(b.Roster)) StartCoroutine(UnloadUnused());
+    }
+
+    // A frame later, once the old arena and field are really destroyed.
+    static IEnumerator UnloadUnused()
+    {
+        yield return null;
+        Resources.UnloadUnusedAssets();
+    }
+
     static void Clear<T>() where T : MonoBehaviour
     {
         foreach (var o in FindObjectsByType<T>()) Destroy(o.gameObject);
@@ -162,6 +181,7 @@ public class GameManager : MonoBehaviour
         zones = Biome.RunZones();
         zoneIndex = 0;
         shiftAt = -1f;
+        ArtStyle.BeginZoneArt();
         BuildWorld(zones[0]);
         Score = 0;
         runGold = 0f;
@@ -169,6 +189,7 @@ public class GameManager : MonoBehaviour
         pendingLevelUps = 0;
         toasts.Clear();
         Director.ResetRun(Arena.Biome);
+        FinishZoneArt(Arena.Biome);
         Upgrades = new RuneSystem();
         Upgrades.Begin(Player);
         Grimoire.BeginRunFeats();
@@ -202,17 +223,19 @@ public class GameManager : MonoBehaviour
         if (zoneIndex + 1 >= zones.Count) zones.Add(Biome.Random());   // runs with more bosses than zones
         var next = zones[++zoneIndex];
         XpGem.CollectAll(Player);
+        ArtStyle.BeginZoneArt();
         ClearField();
         Destroy(Arena.gameObject);
         Arena = Arena.Create(next);
         Player.transform.position = Vector3.zero;
         camPos = Vector2.zero;
         Director.EnterZone(next);
+        FinishZoneArt(next);
         Telemetry.Zone(zoneIndex + 1, next.Name);
         Director.Holding = false;
         fadeInUntil = Time.time + FadeTime;
         Toast(next.Name);
-        Sfx.Play(Sound.Warning, 0.5f, 0f);
+        Sfx.Play("events.zoneChange", Sound.Warning, 0.5f, 0f);
     }
 
     void Win()
@@ -226,6 +249,7 @@ public class GameManager : MonoBehaviour
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f)) PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
         PlayerPrefs.Save();
         if (Player != null) Particles.LevelUp(Player.Position);
+        Sfx.Play("events.victory", Sound.Victory, 0.9f, 0f);
         StartCoroutine(Tune.FetchFromMac());
     }
 
@@ -279,7 +303,7 @@ public class GameManager : MonoBehaviour
             if (rested && pendingLevelUps == 0)
             {
                 Toast("Fully built: rested");
-                Sfx.Play(Sound.LevelUp, 0.5f, 0f);
+                Sfx.Play("events.fullyBuilt", Sound.LevelUp, 0.5f, 0f);
                 if (Player != null) Particles.LevelUp(Player.Position);
             }
         }
@@ -288,7 +312,7 @@ public class GameManager : MonoBehaviour
             State = GameState.LevelUp;
             Time.timeScale = 0f;
             Joystick.Blocked = true;
-            Sfx.Play(Sound.LevelUp, 0.8f, 0f);
+            Sfx.Play("events.levelUp", Sound.LevelUp, 0.8f, 0f);
             if (Player != null) Particles.LevelUp(Player.Position);
             Haptics.Notification(Haptics.Notify.Success);
         }
@@ -337,7 +361,7 @@ public class GameManager : MonoBehaviour
             case GameState.TomePick:
                 if (Upgrades.DrawStart())
                 {
-                    Sfx.Play(Sound.Select, 0.8f);
+                    Sfx.Play("ui.button", Sound.Select, 0.8f);
                     Haptics.Selection();
                     BeginPlaying();
                 }
@@ -347,7 +371,7 @@ public class GameManager : MonoBehaviour
                 DrawHud();
                 if (Upgrades.Draw())
                 {
-                    Sfx.Play(Sound.Select, 0.8f);
+                    Sfx.Play("ui.button", Sound.Select, 0.8f);
                     Haptics.Selection();
                     pendingLevelUps--;
                     if (pendingLevelUps > 0) Upgrades.Open();
@@ -374,7 +398,7 @@ public class GameManager : MonoBehaviour
 
         if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 220f * s, col.width * 0.7f, 120f * s), "Play", new Color(0.6f, 0.45f, 1f)))
         {
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
             Haptics.Selection();
             StartRun();
         }
@@ -428,7 +452,7 @@ public class GameManager : MonoBehaviour
 
     void OpenGrimoire()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         grimoirePage = 0;
         grimoireReturn = State;
@@ -477,7 +501,8 @@ public class GameManager : MonoBehaviour
 
     void Bought()
     {
-        Sfx.Play(Sound.LevelUp, 0.6f, 0f);
+        Sfx.Play("ui.purchaseCoin", Sound.Coin, 0.9f, 0f);
+        Sfx.Play("ui.purchase", Sound.LevelUp, 0.4f, 0f);
         Haptics.Notification(Haptics.Notify.Success);
     }
 
@@ -494,13 +519,35 @@ public class GameManager : MonoBehaviour
             var accent = on ? new Color(1f, 0.85f, 0.4f) : new Color(0.45f, 0.45f, 0.55f);
             if (UI.Button(new Rect(r.x + i * (w + gap), r.y + 40f * s, w, 70f * s), ArtStyle.Label(styles[i]), accent) && !on)
             {
-                Sfx.Play(Sound.Select, 0.8f);
+                Sfx.Play("ui.button", Sound.Select, 0.8f);
                 Haptics.Selection();
                 ArtStyle.Current = styles[i];
                 BuildWorld();
             }
         }
     }
+
+    // OnGUI runs several times a frame, so the HUD's numbers keep their last text and rebuild it
+    // only when the number changes (no new strings, no GC spikes, while nothing happens).
+    sealed class CachedText
+    {
+        int last = int.MinValue;
+        string text;
+        readonly System.Func<int, string> format;
+        public CachedText(System.Func<int, string> format) => this.format = format;
+        public string For(int value)
+        {
+            if (value != last || text == null) { last = value; text = format(value); }
+            return text;
+        }
+    }
+    readonly CachedText hudLevel = new CachedText(v => $"LV {v}");
+    readonly CachedText hudGold = new CachedText(v => $"{v} gold");
+    readonly CachedText hudTime = new CachedText(v => FormatTime(v));
+    readonly CachedText hudHealth = new CachedText(v => v.ToString());
+    CachedText hudZone;
+    readonly List<CachedText> hudSpellLevel = new List<CachedText>();
+    readonly Dictionary<string, string> initials = new Dictionary<string, string>();
 
     void DrawHud()
     {
@@ -515,10 +562,10 @@ public class GameManager : MonoBehaviour
         UI.Bar(new Rect(safe.xMin, top, safe.width, 16f * s), frac, ArtStyle.XpColor);
         top += 22f * s;
 
-        UI.Text(new Rect(left, top, 300f * s, 44f * s), $"LV {Player.Level}", 34);
-        UI.Text(new Rect(left + 130f * s, top + 8f * s, 200f * s, 30f * s), $"{Mathf.FloorToInt(runGold)} gold", 24, TextAnchor.UpperLeft, GoldColor);
-        UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), FormatTime(Director.Elapsed), 34, TextAnchor.UpperCenter);
-        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), $"Zone {zoneIndex + 1}/{zones.Count}", 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
+        UI.Text(new Rect(left, top, 300f * s, 44f * s), hudLevel.For(Player.Level), 34);
+        UI.Text(new Rect(left + 130f * s, top + 8f * s, 200f * s, 30f * s), hudGold.For(Mathf.FloorToInt(runGold)), 24, TextAnchor.UpperLeft, GoldColor);
+        UI.Text(new Rect(safe.center.x - 150f * s, top, 300f * s, 44f * s), hudTime.For((int)Director.Elapsed), 34, TextAnchor.UpperCenter);
+        UI.Text(new Rect(safe.center.x - 150f * s, top + 40f * s, 300f * s, 30f * s), (hudZone ??= new CachedText(v => $"Zone {v % 1000}/{v / 1000}")).For((zoneIndex + 1) + 1000 * zones.Count), 20, TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.6f), false);
         if (State == GameState.Playing && UI.Button(new Rect(right - 120f * s, top, 120f * s, 56f * s), "Menu", new Color(0.6f, 0.6f, 0.7f)))
             Pause();
         top += 52f * s;
@@ -526,7 +573,7 @@ public class GameManager : MonoBehaviour
         // Health bar
         float hpW = 260f * s;
         UI.Bar(new Rect(left, top, hpW, 20f * s), Player.Health / Player.MaxHealth, ArtStyle.HealthColor);
-        UI.Text(new Rect(left + hpW + 10f * s, top - 6f * s, 200f * s, 30f * s), Mathf.CeilToInt(Mathf.Max(0f, Player.Health)).ToString(), 22);
+        UI.Text(new Rect(left + hpW + 10f * s, top - 6f * s, 200f * s, 30f * s), hudHealth.For(Mathf.CeilToInt(Mathf.Max(0f, Player.Health))), 22);
         top += 32f * s;
 
         if (DebugUi)
@@ -547,13 +594,17 @@ public class GameManager : MonoBehaviour
         float d = 92f * s, gap = 12f * s;
         float total = Player.Spells.Count * d + (Player.Spells.Count - 1) * gap;
         float x = safe.center.x - total * 0.5f, y = Screen.height - safe.yMin - d - 30f * s;
-        foreach (var spell in Player.Spells)
+        for (int i = 0; i < Player.Spells.Count; i++)
         {
+            var spell = Player.Spells[i];
             var slot = UI.Slot(new Rect(x, y, d, d));
             UI.Box(new Rect(slot.x, slot.y + slot.height * (1f - spell.CooldownProgress), slot.width, slot.height * spell.CooldownProgress), new Color(spell.Color.r, spell.Color.g, spell.Color.b, 0.45f));
-            UI.Text(new Rect(x, y + 6f * s, d, 40f * s), Initials(spell.Name), 30, TextAnchor.UpperCenter, spell.Color);
-            string tier = spell.CanEvolve ? (spell.Tier == 1 ? "I" : spell.Tier == 2 ? "II" : "III") + " · " : "";
-            UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), $"{tier}Lv{spell.Level}", 20, TextAnchor.UpperCenter);
+            if (!initials.TryGetValue(spell.Name, out var ini)) initials[spell.Name] = ini = Initials(spell.Name);
+            UI.Text(new Rect(x, y + 6f * s, d, 40f * s), ini, 30, TextAnchor.UpperCenter, spell.Color);
+            // keyed on tier and level together: tier 0 means the spell can't evolve
+            while (hudSpellLevel.Count <= i)
+                hudSpellLevel.Add(new CachedText(v => (v / 1000 == 0 ? "" : (v / 1000 == 1 ? "I" : v / 1000 == 2 ? "II" : "III") + " · ") + $"Lv{v % 1000}"));
+            UI.Text(new Rect(x, y + d - 36f * s, d, 32f * s), hudSpellLevel[i].For((spell.CanEvolve ? spell.Tier : 0) * 1000 + spell.Level), 20, TextAnchor.UpperCenter);
             x += d + gap;
         }
     }
@@ -576,7 +627,7 @@ public class GameManager : MonoBehaviour
 
     void Pause()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         confirming = null;
         State = GameState.Paused;
@@ -585,7 +636,7 @@ public class GameManager : MonoBehaviour
 
     void Resume()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         State = GameState.Playing;
         Time.timeScale = 1f;
@@ -668,7 +719,7 @@ public class GameManager : MonoBehaviour
 
     void OpenSettings()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         settingsReturn = State;
         State = GameState.Settings;
@@ -676,7 +727,7 @@ public class GameManager : MonoBehaviour
 
     void CloseSettings()
     {
-        Sfx.Play(Sound.Select, 0.8f);
+        Sfx.Play("ui.button", Sound.Select, 0.8f);
         Haptics.Selection();
         State = settingsReturn;
     }
@@ -701,13 +752,13 @@ public class GameManager : MonoBehaviour
         if (UI.Button(new Rect(bx, row.y + 8f * s, bw, rowH - 16f * s), "+", pct < 100 ? GoldColor : dim) && pct < 100)
         {
             Settings.StepVolume(1);
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
         }
         UI.Text(new Rect(bx - 150f * s, row.y, 150f * s, rowH), pct == 0 ? "Off" : $"{pct}%", 32, TextAnchor.MiddleCenter, pct == 0 ? new Color(1f, 1f, 1f, 0.5f) : Color.white);
         if (UI.Button(new Rect(bx - 150f * s - bw, row.y + 8f * s, bw, rowH - 16f * s), "-", pct > 0 ? GoldColor : dim) && pct > 0)
         {
             Settings.StepVolume(-1);
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
         }
         y += rowH + gap;
 
@@ -725,11 +776,46 @@ public class GameManager : MonoBehaviour
         y += rowH + gap;
         if (SettingRow(new Rect(col.x, y, col.width, rowH), "Damage numbers", Settings.DamageNumbers))
             Settings.DamageNumbers = !Settings.DamageNumbers;
-        y += rowH + gap * 3f;
+        y += rowH + gap;
+
+        if (ArtStyle.Current == ArtStyleId.Dusk)
+        {
+            // Character art: the original sprites or the 3D-rendered 64px / 128px sheets, for the wizard
+            // straight away and for enemies spawned from then on.
+            var wr = new Rect(col.x, y, col.width, rowH);
+            UI.Box(wr, new Color(1f, 1f, 1f, 0.06f));
+            UI.Text(new Rect(wr.x + 20f * s, wr.y, wr.width * 0.5f, rowH), "Character art", 32, TextAnchor.MiddleLeft);
+            float ww = 260f * s;
+            if (UI.Button(new Rect(wr.xMax - 12f * s - ww, wr.y + 8f * s, ww, rowH - 16f * s), Settings.WizardLabel, new Color(0.6f, 0.45f, 1f)))
+            {
+                Settings.Wizard++;
+                if (Player != null) Player.ReloadWizardSheet();
+                Sfx.Play("ui.button", Sound.Select, 0.8f);
+            }
+            y += rowH + gap;
+        }
+
+        // Tuner: pull the latest tuning.json (and save edits) from the Mac's tuner server.
+        if (Tune.B("ui.tunerButton", true))
+        {
+            row = new Rect(col.x, y, col.width, rowH);
+            UI.Box(row, new Color(1f, 1f, 1f, 0.06f));
+            UI.Text(new Rect(row.x + 20f * s, row.y + 6f * s, row.width * 0.55f, rowH * 0.5f), "Tuner", 32, TextAnchor.MiddleLeft);
+            string status = Tune.Fetching ? "connecting..." : Tune.LastFetch;
+            UI.Text(new Rect(row.x + 20f * s, row.y + rowH * 0.5f, row.width * 0.6f, rowH * 0.45f), status, 18, TextAnchor.UpperLeft, new Color(1f, 1f, 1f, 0.5f), false);
+            float tw = 210f * s;
+            if (UI.Button(new Rect(row.xMax - 12f * s - tw, row.y + 8f * s, tw, rowH - 16f * s), Tune.Fetching ? "..." : "Connect", Tune.Fetching ? dim : GoldColor) && !Tune.Fetching)
+            {
+                Sfx.Play("ui.button", Sound.Select, 0.8f);
+                StartCoroutine(Tune.FetchFromMac());
+            }
+            y += rowH + gap;
+        }
+        y += gap * 2f;
 
         if (UI.Button(new Rect(col.x + col.width * 0.15f, y, col.width * 0.7f, 90f * s), "Credits", new Color(0.6f, 0.6f, 0.7f)))
         {
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
             Haptics.Selection();
             State = GameState.Credits;
         }
@@ -748,7 +834,7 @@ public class GameManager : MonoBehaviour
         float bw = 170f * s;
         bool tapped = UI.Button(new Rect(r.xMax - 12f * s - bw, r.y + 8f * s, bw, r.height - 16f * s), on ? "On" : "Off",
             on ? new Color(0.5f, 0.85f, 0.6f) : new Color(0.45f, 0.45f, 0.55f));
-        if (tapped) Sfx.Play(Sound.Select, 0.8f);
+        if (tapped) Sfx.Play("ui.button", Sound.Select, 0.8f);
         return tapped;
     }
 
@@ -759,15 +845,20 @@ public class GameManager : MonoBehaviour
         var col = UI.Column(0.08f, 0.88f);
         UI.Text(new Rect(col.x, col.y, col.width, 60f * s), "Credits", 52, TextAnchor.UpperCenter, new Color(0.8f, 0.65f, 1f));
         var soft = new Color(1f, 1f, 1f, 0.8f);
-        UI.Text(new Rect(col.x, col.y + 110f * s, col.width, 560f * s),
+        var music = new System.Text.StringBuilder("<color=#ffd966>Music</color>\n");
+        foreach (var title in Music.Buckley.Values)
+            music.Append($"<size={Mathf.RoundToInt(20 * s)}>'{title}' by Scott Buckley, released under CC-BY 4.0.\nwww.scottbuckley.com.au</size>\n");
+        music.Append("Zone music made with ACE-Step\n\n");
+        UI.Text(new Rect(col.x, col.y + 90f * s, col.width, 760f * s),
             $"<color=#ffd966>{Application.productName}</color>\nMade by {Application.companyName}\n\n" +
+            music +
             "<color=#ffd966>Font</color>\nVT323 by Peter Hull\nSIL Open Font License 1.1\n\n" +
             "<color=#ffd966>Engine</color>\nMade with Unity\n\n" +
             "<color=#ffd966>Privacy</color>\nThis game collects no personal data.\nYour progress is saved only on this device.",
-            28, TextAnchor.UpperCenter, soft, false);
-        if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 700f * s, col.width * 0.7f, 110f * s), "Back", new Color(0.6f, 0.45f, 1f)))
+            26, TextAnchor.UpperCenter, soft, false);
+        if (UI.Button(new Rect(col.x + col.width * 0.15f, col.y + 860f * s, col.width * 0.7f, 110f * s), "Back", new Color(0.6f, 0.45f, 1f)))
         {
-            Sfx.Play(Sound.Select, 0.8f);
+            Sfx.Play("ui.button", Sound.Select, 0.8f);
             Haptics.Selection();
             State = GameState.Settings;
         }

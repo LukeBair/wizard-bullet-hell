@@ -209,7 +209,7 @@ public abstract class Spell
         if (overloaded)
         {
             Fx.Ring(Owner.Position, Color.Lerp(Color, Color.white, 0.5f), 1.6f, 0.4f);
-            Sfx.Play(Sound.Lightning, 0.35f, 0.3f);
+            Sfx.Play("runes.overload", Sound.Lightning, 0.35f, 0.3f);
         }
         Cast();
         if (CastAnimates) Owner?.CastAnim();
@@ -416,7 +416,8 @@ public abstract class Spell
         }
         if (to == null) return;
         nextSpark = Time.time + Tune.F("runes.Static.cooldown", 0.1f);
-        Fx.Bolt(from.Position, to.Position, ElementColor(Element.Storm));
+        SpellVfx.Spark(from.Position, to.Position, ElementColor(Element.Storm));
+        Sfx.Play("runes.staticSpark", Sound.Spark, 0.4f, 0.2f);
         Strike(to, damage * Tune.F("runes.Static.damagePerRune", 0.2f) * stat, default, Element.Storm, false);
     }
 
@@ -433,7 +434,8 @@ public abstract class Spell
     public static List<Enemy> EnemiesWithin(Vector2 center, float radius)
     {
         List<Enemy> list = null;
-        foreach (var e in Enemy.All)
+        nearScratch.Clear();
+        foreach (var e in Enemy.Near(center, radius, nearScratch))
         {
             if (!e.IsAlive || e.Hidden || e.IsCharmed) continue;   // charmed foes are allies for now
             float r = radius + e.Radius;
@@ -442,6 +444,7 @@ public abstract class Spell
         return list ?? NoEnemies;
     }
     static readonly List<Enemy> NoEnemies = new List<Enemy>();
+    static readonly List<Enemy> nearScratch = new List<Enemy>();
 
     protected static string Roman(int tier) => tier == 1 ? "I" : tier == 2 ? "II" : "III";
 }

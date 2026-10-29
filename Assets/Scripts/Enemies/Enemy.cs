@@ -96,7 +96,11 @@ public class Enemy : MonoBehaviour
     SpriteRenderer body;
     SpriteRenderer[] renderers;
     SpriteRenderer curseMark, vines, charmAura, bugs;
+    float markSize; int markOrder; bool charmPainted;
+    float charmAge;   // seconds charmed, for the hearts' fade in
+    PaintedLoop vineArt; bool vinesPainted;   // painted vines round a rooted foe, made the first time it's rooted   // the painted charm sigil is made the first time it's needed
     readonly List<Transform> books = new List<Transform>();
+    EnemyAnimator anim;   // set when the body plays a sprite sheet
     Color bodyColor, shownColor;
     Enemy[] self;
 
@@ -160,20 +164,21 @@ public class Enemy : MonoBehaviour
         float s = d.Radius * 2f;
         bodyColor = d.Color;
         int o = d.Tier == EnemyTier.Boss ? 40 : 20;
-        SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, o - 2);
+        bool castShadow = SpriteShadow.On && (ArtStyle.EnemySheet(d.Look, d.Radius, d.Name) != null || ArtStyle.Enemy(d.Look) != null);
+        if (!castShadow) SpriteFactory.Child(transform, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0.05f, -0.35f) * s, s, -44);
 
         var art = ArtStyle.Enemy(d.Look);
-        var sheet = ArtStyle.EnemySheet(d.Look);
+        var sheet = ArtStyle.EnemySheet(d.Look, d.Radius, d.Name);
         if (sheet?["walk"] != null)
         {
             bodyColor = Color.white;
-            body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius), o);
-            EnemyAnimator.Attach(body, sheet);
+            body = SpriteFactory.Child(transform, "Body", sheet["walk"].Frames[0], bodyColor, Vector2.zero, ArtStyle.EnemySheetScale(d.Look, d.Radius, d.Name), 0);   // depth-sorted
+            anim = EnemyAnimator.Attach(body, sheet);
         }
         else if (art != null)
         {
             bodyColor = Color.white;
-            body = SpriteFactory.Child(transform, "Body", art, bodyColor, Vector2.zero, ArtStyle.EnemyScale(d.Look, d.Radius), o);
+            body = SpriteFactory.Child(transform, "Body", art, bodyColor, Vector2.zero, ArtStyle.EnemyScale(d.Look, d.Radius), 0);
         }
         else
         {
@@ -241,10 +246,13 @@ public class Enemy : MonoBehaviour
             SpriteFactory.Child(transform, "PupilR", SpriteFactory.Circle, Color.black, new Vector2(0.17f, 0.03f) * s, s * 0.08f, o + 2);
         }
 
+        if (body != null) { Lighting.MakeLit(body); if (sheet != null || art != null) SpriteShadow.Add(body, true); }
+
         // Status markers, hidden until needed.
         curseMark = SpriteFactory.Child(transform, "Curse", SpriteFactory.Diamond, new Color(0.7f, 0.3f, 0.9f), new Vector2(0f, 0.75f) * s, 0.3f, o + 5);
         vines = SpriteFactory.Child(transform, "Vines", SpriteFactory.Ring, new Color(0.25f, 0.7f, 0.2f, 0.9f), Vector2.zero, s * 1.3f, o + 4);
         charmAura = SpriteFactory.Child(transform, "Charm", SpriteFactory.Glow, new Color(1f, 0.4f, 0.75f, 0.7f), Vector2.zero, s * 2f, o - 3);
+        markSize = s; markOrder = o - 3;
         bugs = SpriteFactory.Child(transform, "Bugs", SpriteFactory.Ring, new Color(0.55f, 0.7f, 0.15f, 0.9f), Vector2.zero, s * 0.9f, o + 4);
 
         if (d.Look == EnemyLook.Headmaster)
@@ -259,8 +267,20 @@ public class Enemy : MonoBehaviour
         var book = new GameObject("Book").transform;
         book.SetParent(transform, false);
         SpriteFactory.Child(book, "Glow", SpriteFactory.Glow, new Color(Def.Accent.r, Def.Accent.g, Def.Accent.b, 0.5f), Vector2.zero, 1.1f, 44);
-        SpriteFactory.Child(book, "Cover", SpriteFactory.Square, new Color(0.55f, 0.15f, 0.2f), Vector2.zero, 0.45f, 45);
-        SpriteFactory.Child(book, "Pages", SpriteFactory.Square, new Color(0.95f, 0.9f, 0.8f), new Vector2(0.05f, 0f), 0.35f, 46);
+        var tome = ArtStyle.TomeSheet(0.5f);
+        if (tome?["spin"] != null)
+        {
+            // the 3D tome, spinning; its frames are 2.4 units wide, so this makes it about a unit across
+            var sr = SpriteFactory.Child(book, "Tome", tome["spin"].Frames[0], Color.white, Vector2.zero, 0.5f, 0);
+            Lighting.MakeLit(sr);
+            Lighting.Point(book, Def.Accent, 2.2f, 0.7f);
+            EnemyAnimator.Attach(sr, tome, "spin", false);
+        }
+        else
+        {
+            SpriteFactory.Child(book, "Cover", SpriteFactory.Square, new Color(0.55f, 0.15f, 0.2f), Vector2.zero, 0.45f, 45);
+            SpriteFactory.Child(book, "Pages", SpriteFactory.Square, new Color(0.95f, 0.9f, 0.8f), new Vector2(0.05f, 0f), 0.35f, 46);
+        }
         books.Add(book);
     }
 
@@ -269,6 +289,11 @@ public class Enemy : MonoBehaviour
         Hidden = hidden;
         foreach (var r in renderers) r.enabled = !hidden;
         if (!hidden) curseMark.enabled = vines.enabled = charmAura.enabled = bugs.enabled = false;
+        else
+        {
+            if (charmPainted) charmAura.enabled = false;   // the painted art isn't in `renderers`
+            if (vineArt != null) vines.enabled = false;
+        }
     }
 
     void Wing(float s, int side, int order)
@@ -291,6 +316,7 @@ public class Enemy : MonoBehaviour
     static readonly Dictionary<int, List<Enemy>> grid = new Dictionary<int, List<Enemy>>();
     static readonly Stack<List<Enemy>> spareCells = new Stack<List<Enemy>>();
     static int gridFrame = -1;
+    static float gridMaxRadius;   // the biggest foe in the grid, so Near reaches far enough for bosses
 
     static int Cell(float v) => Mathf.FloorToInt(v / GridCell);
     static int CellKey(int x, int y) => (x & 0xFFFF) | (y << 16);
@@ -305,13 +331,34 @@ public class Enemy : MonoBehaviour
             spareCells.Push(cell);
         }
         grid.Clear();
+        gridMaxRadius = 0f;
         foreach (var e in All)
         {
             if (e.IsBanished) continue;   // banished foes aren't there to bump into
+            if (e.Radius > gridMaxRadius) gridMaxRadius = e.Radius;
             int key = CellKey(Cell(e.Position.x), Cell(e.Position.y));
             if (!grid.TryGetValue(key, out var cell)) grid[key] = cell = spareCells.Count > 0 ? spareCells.Pop() : new List<Enemy>();
             cell.Add(e);
         }
+    }
+
+    // Adds to `into` every foe that could touch a circle of `radius` at `center` (a superset: callers
+    // still check the distance, against each foe's live Position). Uses the grid, so a spell hit or a
+    // blast checks only the foes in the few cells around it instead of all 200. Banished foes are
+    // left out (they're Hidden anyway). perf.gridHits: false scans All, the old way.
+    public static List<Enemy> Near(Vector2 center, float radius, List<Enemy> into)
+    {
+        if (!Tune.B("perf.gridHits", true)) { into.AddRange(All); return into; }
+        BuildGrid();
+        float reach = radius + gridMaxRadius + 0.5f;   // + a frame's movement since the grid was built
+        int x0 = Cell(center.x - reach), x1 = Cell(center.x + reach);
+        int y0 = Cell(center.y - reach), y1 = Cell(center.y + reach);
+        // a huge radius (screen-wide blasts) is cheaper as a plain scan
+        if ((x1 - x0 + 1) * (y1 - y0 + 1) > All.Count) { into.AddRange(All); return into; }
+        for (int gx = x0; gx <= x1; gx++)
+            for (int gy = y0; gy <= y1; gy++)
+                if (grid.TryGetValue(CellKey(gx, gy), out var cell)) into.AddRange(cell);
+        return into;
     }
 
     void Update()
@@ -534,7 +581,7 @@ public class Enemy : MonoBehaviour
                             state = 1; stateTimer = IsCharmed ? 1.2f : 2.2f;
                             SetHidden(true);
                             Fx.Burst(Position, Def.Color, 1.5f);
-                            Sfx.Play(Sound.Burrow, 0.5f);
+                            Sfx.Play("enemies.burrow", Sound.Burrow, 0.5f);
                         }
                         return dir * speed * 0.4f;
                     case 1:
@@ -577,6 +624,7 @@ public class Enemy : MonoBehaviour
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate * (Health < MaxHealth * 0.5f ? 0.7f : 1f);
+            anim?.PlayCast();   // branches up, then slammed down
             var roster = GameManager.Instance.Arena.Biome.Roster;
             bool brood = Health < MaxHealth * Def.SummonBelow;
             switch (attackIndex++ % (brood ? 5 : 4))
@@ -617,6 +665,7 @@ public class Enemy : MonoBehaviour
         fireTimer -= dt * FireRate;
         if (fireTimer <= 0f)
         {
+            anim?.PlayCast();
             if (state == 0)
             {
                 fireTimer = Def.FireInterval * Tuning.CastRate;
@@ -656,6 +705,7 @@ public class Enemy : MonoBehaviour
         if (fireTimer <= 0f)
         {
             fireTimer = Def.FireInterval * Tuning.CastRate;
+            anim?.PlayCast();
             switch (attackIndex++ % 4)
             {
                 case 0:
@@ -707,12 +757,13 @@ public class Enemy : MonoBehaviour
             case 0:   // walk
                 if (stateTimer <= 0f)
                 {
+                    anim?.PlayCast();   // the slam wind-up
                     int attack = attackIndex++ % 3;
                     if (attack == 0)
                     {
                         state = 1; stateTimer = 1.1f; lockedDir = dir;
                         Fx.Telegraph(Position, lockedDir, 11f, Radius * 2f, new Color(0.5f, 0.95f, 1f, 0.35f), 1.1f);
-                        Sfx.Play(Sound.Warning, 0.4f, 0f);
+                        Sfx.Play("boss.golemSlam", Sound.Warning, 0.4f, 0f);
                     }
                     else if (attack == 1)
                     {
@@ -776,7 +827,7 @@ public class Enemy : MonoBehaviour
         fireTimer -= dt * FireRate;
         if (fireTimer > 0f) return;
         fireTimer = Def.FireInterval * Tuning.CastRate;
-        if (dist < 11f && (!IsCharmed || dist > 0.01f)) fire();
+        if (dist < 11f && (!IsCharmed || dist > 0.01f)) { anim?.PlayCast(); fire(); }
     }
 
     void Blink(float range)
@@ -798,7 +849,7 @@ public class Enemy : MonoBehaviour
         p = arena.PushOut(p, Radius);
         Fx.Burst(Position, Def.Accent, Radius * 3f);
         Fx.Ring(Position, Def.Accent, Radius * 1.5f);
-        Sfx.Play(Sound.Teleport, 0.35f);
+        Sfx.Play("enemies.teleport", Sound.Teleport, 0.35f);
         MoveTo(p);
         Fx.Burst(p, Def.Accent, Radius * 3f);
     }
@@ -866,7 +917,7 @@ public class Enemy : MonoBehaviour
         }
         p.Lifetime = 6f;
         if (IsBoss) Particles.Muzzle(from, v, ArtStyle.EnemyBullet(Def.Accent));
-        Sfx.Play(Sound.EnemyShoot, 0.2f, 0.15f);
+        Sfx.Play("enemies.shoot", Sound.EnemyShoot, 0.2f, 0.15f);
         return p;
     }
 
@@ -909,7 +960,13 @@ public class Enemy : MonoBehaviour
             Show(curseMark, curseBonus > 0f);
             if (curseBonus > 0f) curseMark.transform.localScale = Vector3.one * (0.25f + 0.05f * curseBonus * 2f);
             Show(vines, IsRooted);
+            if (IsRooted && vineArt != null) vines.color = new Color(1f, 1f, 1f, Mathf.Min(1f, rootTimer / 0.3f));   // withers away at the end
             Show(charmAura, IsCharmed);
+            if (IsCharmed && charmPainted)
+            {
+                charmAge += dt;
+                charmAura.color = new Color(1f, 1f, 1f, Mathf.Min(1f, charmAge / 0.3f, charmTimer / 0.4f));   // hearts fade in and out
+            }
             Show(bugs, IsInfested);
             Particles.Status(Position, Radius, IsBurning, IsChilled, IsWet, IsInfested, IsRooted, dt);
             if (IsInfested) bugs.transform.Rotate(0f, 0f, 500f * dt);
@@ -941,7 +998,7 @@ public class Enemy : MonoBehaviour
             flash = 1f;
             DamageText.Spawn(Position + Vector2.up * Radius, amount, numberColor ?? Color.white);
             Particles.Hit(Position, numberColor ?? Color.white, push);
-            Sfx.Play(Sound.EnemyHit, 0.25f, 0.15f);
+            Sfx.Play("enemies.hit", Sound.EnemyHit, 0.25f, 0.15f);
         }
         if (!IsBoss && !IsRooted) knockback += push;
         if (Health <= 0f) Die();
@@ -964,6 +1021,7 @@ public class Enemy : MonoBehaviour
         // Gauge: fire meeting ice reacts (Steam) and the two cancel one unit for one unit.
         if (Gauge && IsChilled && steamCooldown <= 0f) { Steam(); UseChill(); return; }
         bool had = burnTimer > 0f;
+        if (!had) Sfx.Play("status.burn", Sound.Sizzle, 0.5f, 0.2f);
         burnDps = Mathf.Max(had ? burnDps : 0f, dps);
         burnTimer = Mathf.Max(burnTimer, duration);
         burnUnits = Mathf.Min(GaugeMax, (had ? burnUnits : 0) + 1);
@@ -974,6 +1032,7 @@ public class Enemy : MonoBehaviour
     {
         if (Gauge && IsBurning && steamCooldown <= 0f) { Steam(); UseBurn(); return; }
         bool had = chillTimer > 0f;
+        if (!had) Sfx.Play("status.chill", Sound.Chill, 0.5f, 0.2f);
         chillTimer = Mathf.Max(chillTimer, duration);
         chillUnits = Mathf.Min(GaugeMax, (had ? chillUnits : 0) + 1);
         if (!Gauge && IsBurning) Steam();
@@ -1018,6 +1077,7 @@ public class Enemy : MonoBehaviour
 
     public void Wither(float amount, float slow, float duration)
     {
+        if (witherTimer <= 0f) Sfx.Play("status.wither", Sound.Wither, 0.5f, 0.2f);
         witherAmount = witherTimer > 0f ? Mathf.Max(witherAmount, amount) : amount;
         witherSlow = witherTimer > 0f ? Mathf.Max(witherSlow, slow) : slow;
         witherTimer = Mathf.Max(witherTimer, duration);
@@ -1033,6 +1093,7 @@ public class Enemy : MonoBehaviour
 
     public void ApplyWet(float duration)
     {
+        if (wetTimer <= 0f) Sfx.Play("status.wet", Sound.Splash, 0.5f, 0.2f);
         wetUnits = Mathf.Min(GaugeMax, (wetTimer > 0f ? wetUnits : 0) + 1);
         wetTimer = Mathf.Max(wetTimer, duration);
     }
@@ -1056,6 +1117,14 @@ public class Enemy : MonoBehaviour
 
     public void Root(float duration, float vulnerability, float thornsDps = 0f, bool spreads = false, Action<Vector2> deathBloom = null)
     {
+        if (!vinesPainted)
+        {
+            vinesPainted = true;
+            vineArt = SpellVfx.VineTrap(transform, markSize, markOrder + 1);
+            // the ring stays in `renderers` (hiding toggles it), so it's made invisible rather than removed
+            if (vineArt != null) { vines.color = Color.clear; vines = vineArt.Sr; vines.enabled = false; }
+        }
+        if (vineArt != null && !IsRooted) vineArt.Restart();   // sprout again for each new trapping
         if (deathBloom != null) rootDeathBloom = deathBloom;
         rootTimer = Mathf.Max(rootTimer, IsBoss ? duration * Tune.F("status.rootBossFactor", 0.25f) : duration);
         rootVuln = Mathf.Max(rootVuln, vulnerability);
@@ -1085,7 +1154,7 @@ public class Enemy : MonoBehaviour
         Fx.Burst(Position, new Color(0.7f, 0.95f, 1f), Radius * 4f);
         Fx.Ring(Position, Color.white, Radius * 2f);
         Particles.Frost(Position, Radius * 2f);
-        Sfx.Play(Sound.Lightning, 0.5f, 0.3f);
+        Sfx.Play("combos.shatter", Sound.Lightning, 0.5f, 0.3f);
         using (Telemetry.By("Shatter")) TakeDamage(dmg, default, new Color(0.7f, 0.95f, 1f));
     }
 
@@ -1122,6 +1191,14 @@ public class Enemy : MonoBehaviour
     {
         if (IsBoss) return;
         aggro = null;
+        if (!charmPainted)
+        {
+            charmPainted = true;
+            var hearts = SpellVfx.CharmHearts(transform, markSize, markOrder + 8);
+            // the glow stays in `renderers` (hiding toggles it), so it's made invisible rather than removed
+            if (hearts != null) { charmAura.color = Color.clear; charmAura = hearts.Sr; charmAura.enabled = false; }
+        }
+        if (!IsCharmed && charmPainted) { SpellVfx.CharmSigil(transform, markSize, markOrder); charmAge = 0f; }
         // Newly charmed foes act at once instead of finishing a cooldown or a wind-up aimed at the wizard,
         // which often outlasted a short charm.
         if (!IsCharmed)
@@ -1156,7 +1233,7 @@ public class Enemy : MonoBehaviour
         Interactions.Trigger(Interaction.Steam, Position);
         float dmg = Mathf.Min(Tune.F("combos.steamMaxDamage", 60f), Tune.F("combos.steamBaseDamage", 10f) + MaxHealth * Tune.F("combos.steamHealthFraction", 0.08f));
         Fx.Burst(Position, new Color(0.95f, 0.95f, 0.95f, 0.8f), 3f);
-        Sfx.Play(Sound.FireballCast, 0.35f, 0.3f);
+        Sfx.Play("combos.steam", Sound.FireballCast, 0.35f, 0.3f);
         using (Telemetry.By("Steam"))
         foreach (var e in Spell.EnemiesWithin(Position, 1.6f))
             e.TakeDamage(dmg, (e.Position - Position).normalized * 3f, new Color(0.95f, 0.95f, 0.95f));
@@ -1173,7 +1250,7 @@ public class Enemy : MonoBehaviour
         Fx.Burst(Position, c, radius * 2f);
         Fx.Ring(Position, c, radius, 0.3f);
         Particles.Ants(Position, radius, fire);
-        Sfx.Play(Sound.EnemyDie, 0.5f, 0.3f);
+        Sfx.Play("status.infestBurst", Sound.EnemyDie, 0.5f, 0.3f);
         foreach (var e in Spell.EnemiesWithin(Position, radius))
         {
             if (e == this) continue;
@@ -1219,7 +1296,7 @@ public class Enemy : MonoBehaviour
 
         Fx.Burst(Position, Def.Color, Radius * 2.5f, false);   // Particles.Death throws the debris
         Particles.Death(Position, Def.Look, Radius, Def.Tier);
-        if (!IsBoss) Sfx.Play(Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
+        if (!IsBoss) Sfx.Play("enemies.die", Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();
         if (IsRooted) rootDeathBloom?.Invoke(Position);
         if (IsRooted && VineTrapped) Grimoire.Feat(SpellId.Overgrowth);
@@ -1235,6 +1312,7 @@ public class Enemy : MonoBehaviour
                 child.knockback = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 6f;
             }
         }
+        anim?.PlayDeath();   // a sheet with a death clip leaves the body behind to play it
         Destroy(gameObject);
     }
 }

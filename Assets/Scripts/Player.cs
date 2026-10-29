@@ -76,15 +76,15 @@ public class Player : MonoBehaviour
         visual.SetParent(transform, false);
         var robe = new Color(0.45f, 0.25f, 0.85f);
         // Flat shadow centred under the feet (the visual flips on x, so it must sit at x = 0).
-        SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, -0.5f), 1f, 48)
+        if (!SpriteShadow.On) SpriteFactory.Child(visual, "Shadow", SpriteFactory.Circle, new Color(0f, 0f, 0f, 0.35f), new Vector2(0f, -0.5f), 1f, -44)
             .transform.localScale = new Vector3(0.9f, 0.32f, 1f);
-        SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, 49);
-        var sheet = SpriteSheet.Load("player_sheet");
+        SpriteFactory.Child(visual, "Aura", SpriteFactory.Glow, new Color(0.6f, 0.4f, 1f, 0.35f), Vector2.zero, 1.8f, -43);
+        var sheet = SpriteSheet.Load(Settings.WizardSheet, BodyScale) ?? SpriteSheet.Load("player_sheet", BodyScale);
         var art = ArtStyle.Get("player");
         if (sheet != null && sheet["idle"] != null)
-            anim = WizardAnimator.Attach(SpriteFactory.Child(visual, "Sprite", sheet["idle"].Frames[0], Color.white, new Vector2(0f, 0.1f), 0.85f, 50), sheet);
+            anim = WizardAnimator.Attach(SpriteFactory.Child(visual, "Sprite", sheet["idle"].Frames[0], Color.white, new Vector2(0f, 0.1f), BodyScale, 0), sheet);   // order 0: depth-sorted with enemies and props
         else if (art != null)
-            SpriteFactory.Child(visual, "Sprite", art, Color.white, new Vector2(0f, 0.15f), 1f, 50);
+            SpriteFactory.Child(visual, "Sprite", art, Color.white, new Vector2(0f, 0.15f), 1f, 0);
         else
         {
             SpriteFactory.Child(visual, "Robe", SpriteFactory.Triangle, robe, new Vector2(0f, -0.1f), 0.8f, 50);
@@ -93,6 +93,12 @@ public class Player : MonoBehaviour
             SpriteFactory.Child(visual, "Staff", SpriteFactory.Square, new Color(0.6f, 0.4f, 0.2f), new Vector2(0.38f, 0f), 1f, 53).transform.localScale = new Vector3(0.07f, 0.8f, 1f);
             SpriteFactory.Child(visual, "Gem", SpriteFactory.Circle, new Color(0.5f, 0.95f, 1f), new Vector2(0.38f, 0.42f), 0.16f, 54);
         }
+        var wizardSprite = visual.Find("Sprite");
+        if (wizardSprite != null) SpriteShadow.Add(wizardSprite.GetComponent<SpriteRenderer>(), true);
+        // The wizard's sprite takes light, and he carries a soft lantern so he's never lost in the dark.
+        foreach (var sr in visual.GetComponentsInChildren<SpriteRenderer>())
+            if (sr.name != "Aura" && sr.name != "Shadow") Lighting.MakeLit(sr);
+        Lighting.Point(visual, new Color(1f, 0.85f, 0.65f), Tune.F("lighting.wizardRadius", 6f), Tune.F("lighting.wizardIntensity", 0f));
         hitbox = SpriteFactory.Child(visual, "Hitbox", ArtStyle.Round, new Color(1f, 1f, 1f, 0f), Vector2.zero, HitRadius * 2f, 55);
         renderers = GetComponentsInChildren<SpriteRenderer>();
         baseAlpha = new float[renderers.Length];
@@ -117,7 +123,7 @@ public class Player : MonoBehaviour
             Vector2 pos = Position + input * MoveSpeed * MoveMultiplier * Tuning.Pace * dt;
             transform.position = gm.Arena.PushOut(pos, BodyRadius);
             if (Mathf.Abs(input.x) > 0.1f) visual.localScale = new Vector3(Mathf.Sign(input.x), 1f, 1f);
-            if (anim != null) anim.Facing = Mathf.Abs(input.x) > Mathf.Abs(input.y) ? "_side" : input.y > 0f ? "_up" : "";
+            if (anim != null) anim.Facing = WizardAnimator.FacingFor(input, anim.HasDiagonals, anim.Facing);
         }
 
         foreach (var spell in Spells) spell.Tick(dt);
@@ -163,6 +169,11 @@ public class Player : MonoBehaviour
 
     // A spell just fired: swing the staff.
     public void CastAnim() => anim?.Cast();
+
+    // Re-read the Wizard art setting and switch the live wizard's sheet.
+    const float BodyScale = 0.85f;   // how big the sheet body draws
+
+    public void ReloadWizardSheet() => anim?.SetSheet(SpriteSheet.Load(Settings.WizardSheet, BodyScale) ?? SpriteSheet.Load("player_sheet", BodyScale));
 
     public T GetSpell<T>() where T : Spell
     {
@@ -229,6 +240,7 @@ public class Player : MonoBehaviour
         wards++;
         wardTimer = Tune.F("runes.Ward.cooldown", 5f);
         Fx.Ring(Position, new Color(0.75f, 0.9f, 1f), 0.7f, 0.3f);
+        Sfx.Play("player.wardReady", Sound.WardReady, 0.5f, 0f);
     }
 
     // Any hit (bullet, contact or hazard) is about to land: a ward eats it, with the usual
@@ -239,7 +251,7 @@ public class Player : MonoBehaviour
         wards--;
         invulnTimer = InvulnTime;
         Fx.Burst(Position, new Color(0.75f, 0.9f, 1f), 1.5f);
-        Sfx.Play(Sound.Select, 0.5f, 0.2f);
+        Sfx.Play("player.wardBlock", Sound.WardBlock, 0.7f, 0.1f);
         return true;
     }
 
@@ -275,11 +287,14 @@ public class Player : MonoBehaviour
             return;
         }
 
+        float lowAt = MaxHealth * Tune.F("audio.lowHealthAt", 0.25f);
+        bool wasHealthy = Health >= lowAt;
         Health -= amount;
         Telemetry.Hurt(amount, source, kind, Health);
+        if (wasHealthy && IsAlive && Health < lowAt) Sfx.Play("player.lowHealth", Sound.LowHealth, 0.8f, 0f);
         invulnTimer = InvulnTime;
         GameManager.Instance.Shake(0.2f);
-        Sfx.Play(Sound.PlayerHurt, 0.8f);
+        Sfx.Play("player.hurt", Sound.PlayerHurt, 0.8f);
         Haptics.Tap(Haptics.Impact.Heavy);
         anim?.Hit();
 
@@ -287,6 +302,7 @@ public class Player : MonoBehaviour
 
         if (!IsAlive)
         {
+            Sfx.Play("player.die", Sound.PlayerDie, 1f, 0f);
             if (anim != null)
             {
                 // Keep the sprite up for the death animation; hide the aura, hitbox and the rest.

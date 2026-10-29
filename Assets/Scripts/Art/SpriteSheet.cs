@@ -18,23 +18,74 @@ public class SpriteSheet
     public Clip this[string name] => clips.TryGetValue(name, out var c) ? c : null;
 
     [Serializable] class Rect { public int x, y, w, h; }
-    [Serializable] class Frame { public Rect frame; public int duration; }
+    [Serializable] class Frame { public Rect frame; public int duration; public int foot; }
+
+    // Pixels from the bottom of each frame to its lowest opaque pixel (tools/sprite-pipeline/add_feet.py),
+    // in world units, so cast shadows start under the feet.
+    static readonly Dictionary<Sprite, float> feet = new Dictionary<Sprite, float>();
+    public static float FootOffset(Sprite s) => s != null && feet.TryGetValue(s, out var f) ? f : 0f;
     [Serializable] class Tag { public string name; public int from, to; }
     [Serializable] class Meta { public Tag[] frameTags; }
     [Serializable] class Data { public Frame[] frames; public Meta meta; }
 
+    // Swaps every frame for a copy at the tuned pixel density (one shared atlas), keeping each frame's foot offset.
+    void Resample(float scale)
+    {
+        var all = new List<Sprite>();
+        foreach (var c in clips.Values) foreach (var f in c.Frames) if (!all.Contains(f)) all.Add(f);
+        var fitted = PixelDensity.Fit(all, scale);
+        var map = new Dictionary<Sprite, Sprite>();
+        for (int i = 0; i < all.Count; i++)
+        {
+            map[all[i]] = fitted[i];
+            if (fitted[i] != all[i] && feet.TryGetValue(all[i], out var foot)) feet[fitted[i]] = foot;
+        }
+        foreach (var c in clips.Values)
+            for (int i = 0; i < c.Frames.Length; i++) c.Frames[i] = map[c.Frames[i]];
+    }
+
     static readonly Dictionary<string, SpriteSheet> cache = new Dictionary<string, SpriteSheet>();
+    // Sheets asked for since the last BeginMark; Sweep forgets the rest (see ArtStyle.BeginZoneArt).
+    static readonly HashSet<string> marked = new HashSet<string>();
+    static readonly List<string> stale = new List<string>();
+
+    public static void BeginMark() => marked.Clear();
+
+    // Drops every cached sheet not loaded since BeginMark, so Resources.UnloadUnusedAssets can free
+    // its texture once nothing in the scene still draws it. Returns how many were dropped.
+    public static int Sweep()
+    {
+        stale.Clear();
+        foreach (var path in cache.Keys) if (!marked.Contains(path)) stale.Add(path);
+        foreach (var path in stale)
+        {
+            var sheet = cache[path];
+            if (sheet != null)
+                foreach (var clip in sheet.clips.Values)
+                    foreach (var f in clip.Frames) feet.Remove(f);
+            cache.Remove(path);
+        }
+        return stale.Count;
+    }
 
     // The current style's sheet with this name, or null (Classic, or no such sheet).
-    public static SpriteSheet Load(string name)
+    // scale: how big the body draws (its sprite's transform scale), so PixelDensity can resample the frames
+    // to the tuned on-screen pixel size.
+    public static SpriteSheet Load(string name, float scale = 1f)
     {
         if (ArtStyle.Current == ArtStyleId.Classic) return null;
         string style = ArtStyle.Current.ToString();
         string path = $"Art/{style}/{name}";
+        if (PixelDensity.On) path += $"@{Mathf.RoundToInt(scale * 1000f)}x{PixelDensity.Key}";
+        marked.Add(path);
         if (cache.TryGetValue(path, out var sheet)) return sheet;
 
-        var tex = Resources.Load<Texture2D>(path);
-        var json = Resources.Load<TextAsset>(path);
+        string file = $"Art/{style}/{name}";
+        var tex = Resources.Load<Texture2D>(file);
+        var json = Resources.Load<TextAsset>(file);
+        // <name>_n: a matching normal map (3D-rendered sheets), for the 2D lights.
+        var normals = Resources.Load<Texture2D>(file + "_n");
+        var secondary = normals != null ? new[] { new SecondarySpriteTexture { name = "_NormalMap", texture = normals } } : null;
         if (tex != null && json != null)
         {
             tex.filterMode = ArtStyle.Current == ArtStyleId.Vector ? FilterMode.Bilinear : FilterMode.Point;
@@ -50,12 +101,16 @@ public class SpriteSheet
                     var f = data.frames[tag.from + i];
                     // Aseprite counts y from the top, Unity from the bottom.
                     var rect = new UnityEngine.Rect(f.frame.x, tex.height - f.frame.y - f.frame.h, f.frame.w, f.frame.h);
-                    clip.Frames[i] = Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), ppu);
+                    clip.Frames[i] = secondary == null
+                        ? Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), ppu)
+                        : Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), ppu, 0, SpriteMeshType.FullRect, Vector4.zero, false, secondary);
                     clip.Durations[i] = f.duration / 1000f;
+                    if (f.foot > 0) feet[clip.Frames[i]] = f.foot / ppu;
                     clip.Length += clip.Durations[i];
                 }
                 sheet.clips[tag.name] = clip;
             }
+            if (PixelDensity.On) sheet.Resample(scale);
         }
         cache[path] = sheet;
         return sheet;
