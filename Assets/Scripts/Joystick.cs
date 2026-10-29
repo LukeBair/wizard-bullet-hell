@@ -1,13 +1,14 @@
 using UnityEngine;
 
 // Floating joystick: touch anywhere, drag to steer, lift to stop. WASD / arrow keys also work.
-// Desktop builds steer with WASD only and aim with the mouse (MouseAim).
+// Desktop builds steer with WASD only; holding the mouse aims (MouseAim).
 public class Joystick : MonoBehaviour
 {
     public static Vector2 Direction { get; private set; }
 
-    // Desktop builds aim with the mouse: aimed spells head for the cursor instead of the nearest foe.
-    public static bool MouseAim => !Application.isMobilePlatform && !Application.isEditor && !GameManager.Autoplay;
+    // Desktop builds: aimed spells auto-aim at the nearest foe, and head for the cursor while the mouse is held.
+    public static bool Desktop => !Application.isMobilePlatform && !Application.isEditor && !GameManager.Autoplay;
+    public static bool MouseAim => Desktop && !Blocked && Input.GetMouseButton(0);
 
     // The mouse cursor, in the world.
     public static Vector2 Cursor
@@ -47,7 +48,7 @@ public class Joystick : MonoBehaviour
             down = t.phase == TouchPhase.Began;
             held = t.phase != TouchPhase.Ended && t.phase != TouchPhase.Canceled;
         }
-        else if (MouseAim)
+        else if (Desktop)
         {
             screen = Input.mousePosition;   // the mouse aims; it doesn't steer
             down = held = false;

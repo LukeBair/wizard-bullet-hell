@@ -157,7 +157,7 @@ tuning = {
         "Goblin Hexer": enemy(70, 1.8, 0.42, 8, 5, **caster(2.2, 3, 14, 4.5, 10, 6)),
         "Rogue Apprentice": enemy(85, 1.6, 0.42, 8, 7, **caster(3, 12, 20, 3.4, 10, 5)),
         "Spore Lobber": enemy(80, 1.3, 0.45, 8, 6, EarlyGame=False, **caster(2.8, 3, 20, 4.5, 18, 7)),
-        "Pixie Trickster": enemy(55, 2.6, 0.3, 6, 6, EarlyGame=False, **caster(1.8, 3, 20, 4, 10, 5)),
+        "Pixie Trickster": enemy(41, 2.6, 0.3, 6, 6, EarlyGame=False, **caster(1.8, 3, 20, 4, 10, 5)),
         "Root Burrower": enemy(110, 3.6, 0.5, 15, 7, EarlyGame=False, Bullets=10, BulletSpeed=3.5, BulletDamage=20),
         "Mother Slime": enemy(90, 1.2, 0.65, 12, 4),
         "Elder Treant": enemy(2400, 1.1, 1.3, 25, 60, FireInterval=2.6, Bullets=18, BulletSpeed=3.2, BulletDamage=10),

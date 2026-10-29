@@ -1125,7 +1125,7 @@
       "MaxAlive": 4
     },
     "Pixie Trickster": {
-      "Health": 55,
+      "Health": 41,
       "Speed": 2.6,
       "Radius": 0.3,
       "ContactDamage": 6,
