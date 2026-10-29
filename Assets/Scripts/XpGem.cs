@@ -87,7 +87,7 @@ public class XpGem : MonoBehaviour
         {
             player.AddXp(value);
             Sfx.Play("pickups.xpGem", Sound.Gem, 0.3f, 0.15f);
-            Particles.Pickup(pos, color);
+            if (!SpellVfx.Pickup(pos)) Particles.Pickup(pos, color);
             Destroy(gameObject);
             return;
         }

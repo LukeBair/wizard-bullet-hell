@@ -99,6 +99,8 @@ public class Enemy : MonoBehaviour
     SpriteRenderer[] icons; float iconY;   // painted condition icons over the head (SpellVfx.ConditionIcons), null without the art
     float markSize; int markOrder; bool charmPainted;   // the painted charm sigil is made the first time it's needed
     float charmAge;   // seconds charmed, for the hearts' fade in
+    static readonly string[] StatusNames = { "burning", "chilled", "wet", "infested" };
+    readonly PaintedLoop[] statusArt = new PaintedLoop[4]; int statusTried;   // painted status loops, each made the first time it shows
     PaintedLoop vineArt; bool vinesPainted;   // painted vines round a rooted foe, made the first time it's rooted
     Vector2 tunnelMark;   // a burrower's last painted dirt stamp
     readonly List<Transform> books = new List<Transform>();
@@ -298,6 +300,7 @@ public class Enemy : MonoBehaviour
         {
             if (charmPainted) charmAura.enabled = false;   // the painted art isn't in `renderers`
             if (vineArt != null) vines.enabled = false;
+            foreach (var a in statusArt) if (a != null) a.Sr.enabled = false;
         }
         if (icons != null && hidden) foreach (var ic in icons) ic.enabled = false;
     }
@@ -891,7 +894,7 @@ public class Enemy : MonoBehaviour
                 {
                     Ring(Position, Def.Bullets, Def.BulletSpeed, Random.value * 360f);
                     GameManager.Instance.Shake(0.4f);
-                    Particles.Slam(Position, Def.Color, Radius);
+                    if (!SpellVfx.Slam(Position, Radius)) Particles.Slam(Position, Def.Color, Radius);
                     state = 0; stateTimer = Def.FireInterval * Tuning.CastRate;
                 }
                 return Vector2.zero;
@@ -1165,6 +1168,7 @@ public class Enemy : MonoBehaviour
         eraseOnReturn = erase;
         onReturn = returned;
         knockback = Vector2.zero;
+        SpellVfx.Death(Position, Radius, Def.Tier == EnemyTier.Boss);
         Particles.Death(Position, Def.Look, Radius, Def.Tier);
         Fx.Ring(Position, new Color(0.55f, 0.25f, 0.75f), Radius * 2f, 0.3f);
         SetHidden(true);
@@ -1415,6 +1419,7 @@ public class Enemy : MonoBehaviour
         DropExtras();
 
         Fx.Burst(Position, Def.Color, Radius * 2.5f, false);   // Particles.Death throws the debris
+        SpellVfx.Death(Position, Radius, Def.Tier == EnemyTier.Boss);
         Particles.Death(Position, Def.Look, Radius, Def.Tier);
         if (!IsBoss) Sfx.Play("enemies.die", Sfx.DeathFor(Def.Name), Position, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();

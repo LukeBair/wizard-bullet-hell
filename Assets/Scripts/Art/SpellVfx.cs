@@ -326,15 +326,68 @@ public static class SpellVfx
     static readonly List<PaintedLoop> bursts = new List<PaintedLoop>();
 
     // A painted burst played once on the ground, `across` world units wide, fading over its last quarter.
-    static bool Burst(string name, Vector2 at, float across)
+    static bool Burst(string name, Vector2 at, float across) =>
+        Play(bursts, Tune.I("vfx.burstMax", 10), name, at, across, Tune.F("vfx.comboTime", 0.35f), -45) != null;
+
+    // Plays `name` once over `time` seconds, if fewer than `max` of `live` are still playing (null: no cap).
+    static PaintedLoop Play(List<PaintedLoop> live, int max, string name, Vector2 at, float across, float time, int order)
     {
-        bursts.RemoveAll(b => b == null);
-        if (bursts.Count >= Tune.I("vfx.burstMax", 10)) return false;
+        if (live != null)
+        {
+            live.RemoveAll(b => b == null);
+            if (live.Count >= max) return null;
+        }
         var f = Sized(name, across, out float s);
+        if (f == null) return null;
+        var p = PaintedLoop.Attach(null, at, f, null, s, f.Length / time, order, time);
+        live?.Add(p);
+        return p;
+    }
+
+    // Deaths and gem pickups keep their own caps, so a whole wave dying at once can't crowd out the combo art.
+    static readonly List<PaintedLoop> deaths = new List<PaintedLoop>(), glints = new List<PaintedLoop>();
+
+    // A violet smoke puff where a foe of `radius` died; twice as long for a boss.
+    public static bool Death(Vector2 at, float radius, bool boss) =>
+        Play(deaths, Tune.I("vfx.deathMax", 12), "vfx_death", at, radius * 2f * Tune.F("vfx.deathSize", 2f), Tune.F("vfx.deathTime", 0.45f) * (boss ? 2f : 1f), -44) != null;
+
+    // A star glint where the wizard swallowed an XP gem.
+    public static bool Pickup(Vector2 at) =>
+        Play(glints, Tune.I("vfx.pickupMax", 6), "vfx_pickup", at, Tune.F("vfx.pickupSize", 0.6f), Tune.F("vfx.pickupTime", 0.3f), 50) != null;
+
+    // A boss's ground slam: rock and dust bursting out `radius` around it.
+    public static bool Slam(Vector2 at, float radius) =>
+        Play(null, 0, "vfx_slam", at, radius * 2f * Tune.F("vfx.slamSize", 1f), Tune.F("vfx.slamTime", 0.5f), -44) != null;
+
+    // Level up: a gold ring spreading round the wizard's feet, on unscaled time behind the level-up cards.
+    public static bool LevelUp(Transform wizard)
+    {
+        var f = Sized("vfx_levelup", Tune.F("vfx.levelUpSize", 3f), out float s);
         if (f == null) return false;
-        float time = Tune.F("vfx.comboTime", 0.35f);
-        bursts.Add(PaintedLoop.Attach(null, at, f, null, s, f.Length / time, -45, time));
+        float time = Tune.F("vfx.levelUpTime", 1.2f);
+        PaintedLoop.Attach(wizard, new Vector2(0f, -0.3f), f, null, s, f.Length / time, -46, time).Unscaled();
         return true;
+    }
+
+    // A spell evolving: an arcane spiral winding in and flaring, on unscaled time behind the cards.
+    public static bool Evolve(Vector2 at)
+    {
+        var f = Sized("vfx_evolve", Tune.F("vfx.evolveSize", 2.5f), out float s);
+        if (f == null) return false;
+        float time = Tune.F("vfx.evolveTime", 1.2f);
+        PaintedLoop.Attach(null, at, f, null, s, f.Length / time, 59, time).Unscaled();
+        return true;
+    }
+
+    // A status shown on a foe of body size `size` for as long as it lasts (its owner shows and hides it):
+    // "burning" flames, "chilled" frost mist, "wet" drips or "infested" beetles.
+    public static PaintedLoop StatusLoop(string status, Transform foe, float size, int order)
+    {
+        var f = Sized("vfx_" + status, FoeSize(size, Tune.F($"vfx.{status}Size", status == "chilled" ? 1.3f : status == "infested" ? 1.1f : 1f)), out float s);
+        if (f == null) return null;
+        float alpha = status == "chilled" ? Tune.F("vfx.chilledAlpha", 0.6f) : 1f;   // the mist would hide the foe
+        var at = status == "burning" ? new Vector2(0f, size * 0.2f) : Vector2.zero;
+        return PaintedLoop.Attach(foe, at, null, f, s, Tune.F("vfx.statusFps", 12f), order, 0f, alpha).Skip(Random.value * 2f);
     }
 
     // An element combo going off on a foe (Interactions.Trigger).

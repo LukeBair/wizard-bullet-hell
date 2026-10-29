@@ -319,7 +319,7 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.SetInt(WinsKey, PlayerPrefs.GetInt(WinsKey, 0) + 1);
         if (Director.Elapsed > PlayerPrefs.GetFloat(BestKey, 0f)) PlayerPrefs.SetFloat(BestKey, Director.Elapsed);
         PlayerPrefs.Save();
-        if (Player != null) Particles.LevelUp(Player.Position);
+        if (Player != null && !SpellVfx.LevelUp(Player.transform)) Particles.LevelUp(Player.Position);
         Sfx.Play("events.victory", Sound.Victory, 0.9f, 0f);
         StartCoroutine(Tune.FetchFromMac());
     }
@@ -375,7 +375,7 @@ public class GameManager : MonoBehaviour
             {
                 Toast("Fully built: rested");
                 Sfx.Play("events.fullyBuilt", Sound.LevelUp, 0.5f, 0f);
-                if (Player != null) Particles.LevelUp(Player.Position);
+                if (Player != null && !SpellVfx.LevelUp(Player.transform)) Particles.LevelUp(Player.Position);
             }
         }
         if (State == GameState.Playing && pendingLevelUps > 0)
@@ -384,7 +384,7 @@ public class GameManager : MonoBehaviour
             Time.timeScale = 0f;
             Joystick.Blocked = true;
             Sfx.Play("events.levelUp", Sound.LevelUp, 0.8f, 0f);
-            if (Player != null) Particles.LevelUp(Player.Position);
+            if (Player != null && !SpellVfx.LevelUp(Player.transform)) Particles.LevelUp(Player.Position);
             Haptics.Notification(Haptics.Notify.Success);
         }
 
