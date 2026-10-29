@@ -38,9 +38,13 @@ public class PaintedLoop : MonoBehaviour
     // Starts `seconds` into the effect, so copies side by side don't move in step.
     public PaintedLoop Skip(float seconds) { t = seconds; return this; }
 
+    // Plays on unscaled time, for effects behind the paused level-up cards.
+    public PaintedLoop Unscaled() { unscaled = true; return this; }
+    bool unscaled;
+
     void Update()
     {
-        t += Time.deltaTime;
+        t += unscaled ? Time.unscaledDeltaTime : Time.deltaTime;
         int n = intro?.Length ?? 0;
         float introTime = n / fps;
         if (t < introTime) Sr.sprite = intro[(int)(t * fps)];
@@ -328,7 +332,7 @@ public static class SpellVfx
         if (bursts.Count >= Tune.I("vfx.burstMax", 10)) return false;
         var f = Sized(name, across, out float s);
         if (f == null) return false;
-        float time = Tune.F("vfx.comboTime", 0.6f);
+        float time = Tune.F("vfx.comboTime", 0.35f);
         bursts.Add(PaintedLoop.Attach(null, at, f, null, s, f.Length / time, -45, time));
         return true;
     }

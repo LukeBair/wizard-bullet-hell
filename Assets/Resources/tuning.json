@@ -38,7 +38,7 @@
     "firebugsSize": 2.25,
     "hexSwarmSize": 1.8,
     "antsSize": 0.7,
-    "comboTime": 0.6,
+    "comboTime": 0.35,
     "burstMax": 10,
     "wardSize": 1.1,
     "wardFps": 12,
