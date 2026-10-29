@@ -399,7 +399,7 @@ public class Cyclone : Spell
 
         float lasts = T("passDuration", 2f);
         float reaction = Damage * (Tier == 3 ? T("passDamage_t3", 4f) : T("passDamage", 2f));
-        int bolts = 0, passed = 0;
+        int marks = 0, passed = 0;
         foreach (var e in foes)
         {
             if (!e.IsAlive) continue;
@@ -421,7 +421,8 @@ public class Cyclone : Spell
                 Interactions.Trigger(Interaction.DeepFreeze, e.Position);
                 e.ConsumeWet();
             }
-            if (bolts++ < 6) SpellVfx.Spark(eye, e.Position, Color.Lerp(Color, Color.white, 0.3f));
+            // a ring on the foe that caught something (a bolt here read as lightning chaining off a wind spell)
+            if (marks++ < 6) Fx.Ring(e.Position, Color.Lerp(Color, Color.white, 0.3f), 0.5f, 0.25f);
             using (Telemetry.By(Id.ToString())) e.TakeDamage(reaction * caught, default, Color.Lerp(Color, Color.white, 0.4f));
         }
         return passed;
