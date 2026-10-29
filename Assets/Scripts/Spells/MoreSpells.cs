@@ -215,7 +215,7 @@ public class StoneSpikes : Spell
         if (target == null) return;
         Sfx.Play("spells.StoneSpikes.cast", Sound.Burrow, 0.5f, 0.2f);
         Vector2 from = Owner.Position;
-        Vector2 dir = (target.Position - from).normalized;
+        Vector2 dir = Joystick.Aim(from, target.Position);
         int spikes = SpikesPerLine;
         for (int i = 0; i < Count; i++)
         {
@@ -296,7 +296,7 @@ public class SpectralBlades : Spell
         var target = Enemy.Nearest(Owner.Position, Range);
         if (target == null) return;
         Sfx.Play("spells.SpectralBlades.cast", Sound.Teleport, 0.35f, 0.3f);
-        Vector2 dir = (target.Position - Owner.Position).normalized;
+        Vector2 dir = Joystick.Aim(Owner.Position, target.Position);
         int trips = Tier >= 2 ? 2 : 1;
         for (int i = 0; i < Count; i++)
         {

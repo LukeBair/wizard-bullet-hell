@@ -27,7 +27,7 @@ public class ArcaneMissile : Spell
             var target = Enemy.Nearest(from, Range, used) ?? Enemy.Nearest(from, Range);
             if (target == null) return;
             used.Add(target);
-            Vector2 dir = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 14f) * (target.Position - from);
+            Vector2 dir = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 14f) * Joystick.Aim(from, target.Position);
             Fire(from, dir, true);
         }
     }
@@ -90,7 +90,7 @@ public class Fireball : Spell
         Sfx.Play("spells.Fireball.cast", Sound.FireballCast, 0.5f);
         for (int i = 0; i < Count; i++)
         {
-            Vector2 dir = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 18f) * (target.Position - from);
+            Vector2 dir = Quaternion.Euler(0, 0, (i - (Count - 1) * 0.5f) * 18f) * Joystick.Aim(from, target.Position);
             Launch(from, dir, Tier == 3, 2.5f, false);
         }
     }

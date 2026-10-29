@@ -83,15 +83,15 @@ public class RuneSystem : UpgradeSystem
         var unlearned = UnlearnedSpells();
         bool anyRoom = Player.Spells.Exists(s => SocketsOf(s).Count < Sockets);
         tome = null;
-        int slots = SlotsUsed();
-        if (slots < MaxSpells && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
+        int tier3s = Tier3Count();
+        if (Player.Spells.Count < SpellLimit(tier3s) && unlearned.Count > 0 && (Player.Level % Mathf.Max(1, Tune.I("runes.tomeEveryLevels", 2)) == 0 || !anyRoom))
             tome = WeightedTome(unlearned);
 
-        // Evolving also waits for boss kills: tier2Bosses for tier II, tier3Bosses for tier III. Tier III also
-        // needs room for its extra slots.
+        // Evolving also waits for boss kills: tier2Bosses for tier II, tier3Bosses for tier III. Tier III is
+        // only offered while the spells you carry fit the lower limit it brings.
         int bosses = GameManager.Instance.Director.BossesDefeated;
         var ready = Player.Spells.FindAll(s => s.CanEvolve && s.Tier < Spell.MaxTier && Grimoire.HasEvolution(s.Id, s.Tier + 1) && SocketsOf(s).Count >= Sockets
-            && (s.Tier + 1 < 3 ? bosses >= Tune.I("runes.tier2Bosses", 0) : bosses >= Tune.I("runes.tier3Bosses", 1) && slots + Tier3Slots - 1 <= MaxSpells));
+            && (s.Tier + 1 < 3 ? bosses >= Tune.I("runes.tier2Bosses", 0) : bosses >= Tune.I("runes.tier3Bosses", 1) && Player.Spells.Count <= SpellLimit(tier3s + 1)));
         evolves.Clear();
         evolves.AddRange(ready);
         Telemetry.Offer(runeOffer, tome, evolves);

@@ -103,9 +103,9 @@ tuning = {
         "_about": "Run logs sent to the tuner (Runs page; files in tools/tuner/telemetry). enabled = record runs at all. enemyEvents = one line per enemy spawn and kill (the summary always has per-enemy totals). snapshotEvery = seconds of play between tick lines (health, level, enemies alive). flushEvery = real seconds between uploads during a run.",
     },
     "runes": {
-        "startSockets": 2, "socketsPerBoss": 1, "evolveAt": 4, "maxSpells": 6, "tier3Slots": 2, "tier2Bosses": 0, "tier3Bosses": 1, "tomeEveryLevels": 2, "resonanceCount": 3,
+        "startSockets": 2, "socketsPerBoss": 1, "evolveAt": 4, "maxSpells": 5, "tier3Free": 1, "tier2Bosses": 0, "tier3Bosses": 1, "tomeEveryLevels": 2, "resonanceCount": 3,
         "evolveRetain": 0.75,
-        "_tier3Slots": "Spell slots: maxSpells in all; a tier III spell fills tier3Slots of them (6 slots: 5 spells with one tier III, 4 with two). Tier III is only offered when there is room.",
+        "_tier3Free": "Most spells you can carry: maxSpells, less one for each tier III spell past tier3Free (5 spells with one tier III, 4 with two, 3 with three). Tier III is only offered when your spells fit.",
         "_tier3Bosses": "Boss kills needed before any spell can evolve to tier II (tier2Bosses) or tier III (tier3Bosses).",
         "_startSockets": "Rune sockets per spell at the start of a run; each boss kill adds socketsPerBoss. A full spell with at least evolveAt runes can evolve.",
         "_evolveRetain": "Share of a spell's rune power kept when it evolves (0-1). Fractions of Split/Pierce/Echo become a chance per cast.",

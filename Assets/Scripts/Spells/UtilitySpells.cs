@@ -357,10 +357,13 @@ public class Cyclone : Spell
     protected override void Cast()
     {
         var target = Enemy.Nearest(Owner.Position, Range);
-        Vector2 dir = target != null ? (target.Position - Owner.Position).normalized : Random.insideUnitCircle.normalized;
-        // Land just past the nearest foe so a chasing pack gets grabbed by its front, not its middle.
+        Vector2 dir = target != null || Joystick.MouseAim ? Joystick.Aim(Owner.Position, target != null ? target.Position : Owner.Position) : Random.insideUnitCircle.normalized;
+        // Land just past the nearest foe so a chasing pack gets grabbed by its front, not its middle
+        // (with the mouse: at the cursor, within the same limits).
         float dist = T("distance", 4.5f);
-        if (target != null)
+        if (Joystick.MouseAim)
+            dist = Mathf.Clamp(Vector2.Distance(Owner.Position, Joystick.Cursor), T("minDistance", 2f), dist);
+        else if (target != null)
             dist = Mathf.Clamp(Vector2.Distance(Owner.Position, target.Position) + T("frontOffset", 1f), T("minDistance", 2f), dist);
         Sfx.Play("spells.Cyclone.cast", Sound.Burrow, 0.4f, 0.3f);
         float tick = Tier == 3 ? T("tickEvery_t3", 0.125f) : T("tickEvery", 0.25f);

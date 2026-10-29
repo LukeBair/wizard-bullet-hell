@@ -1,9 +1,30 @@
 using UnityEngine;
 
-// Floating joystick: touch anywhere, drag to steer, lift to stop. WASD / arrow keys also work in the editor.
+// Floating joystick: touch anywhere, drag to steer, lift to stop. WASD / arrow keys also work.
+// Desktop builds steer with WASD only and aim with the mouse (MouseAim).
 public class Joystick : MonoBehaviour
 {
     public static Vector2 Direction { get; private set; }
+
+    // Desktop builds aim with the mouse: aimed spells head for the cursor instead of the nearest foe.
+    public static bool MouseAim => !Application.isMobilePlatform && !Application.isEditor && !GameManager.Autoplay;
+
+    // The mouse cursor, in the world.
+    public static Vector2 Cursor
+    {
+        get
+        {
+            var cam = Camera.main;
+            return cam != null ? (Vector2)cam.ScreenToWorldPoint(Input.mousePosition) : Vector2.zero;
+        }
+    }
+
+    // Which way an aimed spell cast from `from` goes: at the cursor with the mouse, otherwise at `target`.
+    public static Vector2 Aim(Vector2 from, Vector2 target)
+    {
+        Vector2 d = (MouseAim ? Cursor : target) - from;
+        return d.sqrMagnitude > 0.0001f ? d.normalized : Vector2.up;
+    }
 
     const float RadiusPx = 90f;   // at 720p reference width
 
@@ -25,6 +46,11 @@ public class Joystick : MonoBehaviour
             screen = t.position;
             down = t.phase == TouchPhase.Began;
             held = t.phase != TouchPhase.Ended && t.phase != TouchPhase.Canceled;
+        }
+        else if (MouseAim)
+        {
+            screen = Input.mousePosition;   // the mouse aims; it doesn't steer
+            down = held = false;
         }
         else
         {
