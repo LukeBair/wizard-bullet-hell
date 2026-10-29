@@ -29,6 +29,19 @@
     "vineTrapSize": 1.6,
     "veilSize": 2.2,
     "cycloneSize": 1,
+    "burrowTrailSize": 1.4,
+    "burrowTrailTime": 1.2,
+    "burrowPopSize": 0.55,
+    "steamSize": 3.6,
+    "conductiveSize": 1.8,
+    "deepFreezeSize": 1.8,
+    "firebugsSize": 4.5,
+    "hexSwarmSize": 3.6,
+    "antsSize": 1.4,
+    "comboTime": 0.6,
+    "burstMax": 10,
+    "wardSize": 2.2,
+    "wardFps": 12,
     "enthrallSize": 1.2,
     "mirrorSize": 2.5,
     "heartsSize": 1.2,
@@ -37,7 +50,7 @@
     "veilAlpha": 0.55,
     "veilTime": 0.6,
     "natureHitScale": 1,
-    "_about": "Painted spell effects: multiplies each element's hit burst size (pixel density is kept). spikeHeight: painted stone spike height in spike radii. waterBeamWidth: painted Tidal Lance jet height in beam widths; waterBeamGrow: seconds for it to grow to full length; waterBeamFps: how fast the jet flows. bladeSize: painted spectral blade frame size in blade radii. flameSize: painted Comet Trail flame frame size in patch radii. sunSize: painted Sunspots frame size in pool radii. banishSize: multiplies the painted Banish vortex. rejuvSize/veilSize: painted Rejuvenate burst and Veil size in world units. overgrowthSize, cycloneSize: painted vines and whirlwind size in their radii; overgrowthTime: how long the big vine burst lasts; vineTrapSize: the vines round each trapped foe, in foe sizes. enthrallSize: charm sigil in foe sizes; heartsSize: charmed hearts column width in foe sizes, heartsFps its speed. mirrorSize: painted mirror crystal in shard thicknesses (crystals tile along the shard). veilFps/veilAlpha: Veil speed and opacity; veilTime: longest the Veil shows (seconds)."
+    "_about": "Painted spell effects: multiplies each element's hit burst size (pixel density is kept). spikeHeight: painted stone spike height in spike radii. waterBeamWidth: painted Tidal Lance jet height in beam widths; waterBeamGrow: seconds for it to grow to full length; waterBeamFps: how fast the jet flows. bladeSize: painted spectral blade frame size in blade radii. flameSize: painted Comet Trail flame frame size in patch radii. sunSize: painted Sunspots frame size in pool radii. banishSize: multiplies the painted Banish vortex. rejuvSize/veilSize: painted Rejuvenate burst and Veil size in world units. overgrowthSize, cycloneSize: painted vines and whirlwind size in their radii; overgrowthTime: how long the big vine burst lasts; vineTrapSize: the vines round each trapped foe, in foe sizes. enthrallSize: charm sigil in foe sizes; heartsSize: charmed hearts column width in foe sizes, heartsFps its speed. mirrorSize: painted mirror crystal in shard thicknesses (crystals tile along the shard). veilFps/veilAlpha: Veil speed and opacity; veilTime: longest the Veil shows (seconds). burrowTrailSize: Root Burrower tunnel dirt stamp length (world units), burrowTrailTime how long each lasts; burrowPopSize: its erupting dirt burst in warning-circle widths. steamSize, conductiveSize, deepFreezeSize, firebugsSize, hexSwarmSize: painted combo bursts (world units); antsSize: painted bug burst in burst widths; comboTime: how long a painted combo or bug burst plays; burstMax: most painted bursts at once (more use particles); wardSize, wardFps: painted Ward ring (world units) and its speed."
   },
   "_about": "Every tunable in Wizard Bullet Hell. Keys starting with _ are notes. Spell values for evolved tiers use _t2 / _t3 suffixes.",
   "global": {

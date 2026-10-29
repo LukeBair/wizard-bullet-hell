@@ -26,7 +26,7 @@ public static class Interactions
     {
         Count++;
         if (seen.Add(i)) GameManager.Instance.Toast($"Combo: {Name(i)}!");
-        Particles.Combo(i, at);
+        if (!SpellVfx.Combo(i, at)) Particles.Combo(i, at);
         Sfx.Play("combos.combo", Sound.Combo, 0.5f, 0.08f);
         EffectCounter.Count(Name(i), at, Tint(i));
     }

@@ -117,6 +117,8 @@ public class Player : MonoBehaviour
         // Status visuals, kept out of `renderers` so phasing and blinking leave them alone.
         sunGlow = SpriteFactory.Child(transform, "Sunlit", SpriteFactory.Glow, new Color(1f, 0.9f, 0.5f, 0f), Vector2.zero, 2.4f, 47);
         wardRing = SpriteFactory.Child(transform, "Ward", SpriteFactory.Ring, new Color(0.75f, 0.9f, 1f, 0f), Vector2.zero, 1.3f, 60);
+        var wardArt = SpellVfx.WardRing(transform);
+        if (wardArt != null) { Destroy(wardRing.gameObject); wardRing = wardArt.Sr; }
     }
 
     void Update()

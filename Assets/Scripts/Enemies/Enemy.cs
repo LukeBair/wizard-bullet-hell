@@ -97,9 +97,10 @@ public class Enemy : MonoBehaviour
     SpriteRenderer[] renderers;
     SpriteRenderer curseMark, vines, charmAura, bugs;
     SpriteRenderer[] icons; float iconY;   // painted condition icons over the head (SpellVfx.ConditionIcons), null without the art
-    float markSize; int markOrder; bool charmPainted;
+    float markSize; int markOrder; bool charmPainted;   // the painted charm sigil is made the first time it's needed
     float charmAge;   // seconds charmed, for the hearts' fade in
-    PaintedLoop vineArt; bool vinesPainted;   // painted vines round a rooted foe, made the first time it's rooted   // the painted charm sigil is made the first time it's needed
+    PaintedLoop vineArt; bool vinesPainted;   // painted vines round a rooted foe, made the first time it's rooted
+    Vector2 tunnelMark;   // a burrower's last painted dirt stamp
     readonly List<Transform> books = new List<Transform>();
     EnemyAnimator anim;   // set when the body plays a sprite sheet
     Color bodyColor, shownColor;
@@ -587,15 +588,21 @@ public class Enemy : MonoBehaviour
                             state = 1; stateTimer = IsCharmed ? 1.2f : 2.2f;
                             SetHidden(true);
                             Fx.Burst(Position, Def.Color, 1.5f);
+                            tunnelMark = Position;
                             Sfx.Play("enemies.burrow", Sound.Burrow, 0.5f);
                         }
                         return dir * speed * 0.4f;
                     case 1:
-                        if (Random.value < 0.3f) Fx.Burst(Position, Def.Color * 0.9f, 0.8f);   // dirt churning above it
+                        // dirt churning above it: painted stamps laid along the tunnel, or puffs
+                        Vector2 dug = Position - tunnelMark;
+                        if (dug.magnitude >= Tune.F("vfx.burrowTrailSize", 1.4f) * 0.5f && SpellVfx.BurrowTrail((Position + tunnelMark) * 0.5f, dug))
+                            tunnelMark = Position;
+                        else if (!SpellVfx.On && Random.value < 0.3f) Fx.Burst(Position, Def.Color * 0.9f, 0.8f);
                         if (dist < 0.8f || stateTimer <= 0f)
                         {
                             state = 2; stateTimer = 0.8f;
                             Hazard.Spawn(Position, 1.5f, 0.8f, Def.ContactDamage * Weak, Def.Accent, null, IsCharmed);
+                            SpellVfx.BurrowPop(Position, 1.5f, 0.8f);
                         }
                         return dir * Def.Speed;
                     case 2:
@@ -1359,9 +1366,10 @@ public class Enemy : MonoBehaviour
         if (hex) Interactions.Trigger(Interaction.HexSwarm, Position);
         if (!fire && !hex) EffectCounter.Count("Bug Burst", Position, new Color(0.6f, 0.75f, 0.2f));
         var c = fire ? new Color(1f, 0.6f, 0.2f) : new Color(0.6f, 0.75f, 0.2f);
-        Fx.Burst(Position, c, radius * 2f);
         Fx.Ring(Position, c, radius, 0.3f);
-        Particles.Ants(Position, radius, fire);
+        // a combo plays its own painted swarm; a plain burst gets the painted ants
+        bool painted = fire || hex ? SpellVfx.On : SpellVfx.Ants(Position, radius);
+        if (!painted) { Fx.Burst(Position, c, radius * 2f); Particles.Ants(Position, radius, fire); }
         Sfx.Play("status.infestBurst", Sound.EnemyDie, 0.5f, 0.3f);
         foreach (var e in Spell.EnemiesWithin(Position, radius))
         {

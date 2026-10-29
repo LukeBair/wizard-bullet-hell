@@ -305,6 +305,69 @@ public static class SpellVfx
         return true;
     }
 
+    // Root Burrower: a stretch of churned-up dirt over its tunnel, laid along `dir`; it settles and fades.
+    public static bool BurrowTrail(Vector2 at, Vector2 dir)
+    {
+        var f = Sized("vfx_burrow_trail", Tune.F("vfx.burrowTrailSize", 1.4f), out float s);
+        if (f == null) return false;
+        var p = PaintedLoop.Attach(null, at, null, f, s, 14f, -48, Tune.F("vfx.burrowTrailTime", 1.2f));
+        p.Sr.flipX = false;                    // every stamp faces the same way, so they read as one ridge
+        if (dir.x < 0f) dir = -dir;            // and its dust side stays up
+        p.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+        return true;
+    }
+
+    // Combo and bug bursts that are still playing; past vfx.burstMax more fall back to particles, so a storm of
+    // Conductive hits can't bury the screen in art.
+    static readonly List<PaintedLoop> bursts = new List<PaintedLoop>();
+
+    // A painted burst played once on the ground, `across` world units wide, fading over its last quarter.
+    static bool Burst(string name, Vector2 at, float across)
+    {
+        bursts.RemoveAll(b => b == null);
+        if (bursts.Count >= Tune.I("vfx.burstMax", 10)) return false;
+        var f = Sized(name, across, out float s);
+        if (f == null) return false;
+        float time = Tune.F("vfx.comboTime", 0.6f);
+        bursts.Add(PaintedLoop.Attach(null, at, f, null, s, f.Length / time, -45, time));
+        return true;
+    }
+
+    // An element combo going off on a foe (Interactions.Trigger).
+    public static bool Combo(Interaction i, Vector2 at)
+    {
+        switch (i)
+        {
+            case Interaction.Steam: return Burst("vfx_steam", at, Tune.F("vfx.steamSize", 3.6f));
+            case Interaction.Conductive: return Burst("vfx_conductive", at, Tune.F("vfx.conductiveSize", 1.8f));
+            case Interaction.DeepFreeze: return Burst("vfx_deepfreeze", at, Tune.F("vfx.deepFreezeSize", 1.8f));
+            case Interaction.Firebugs: return Burst("vfx_firebugs", at, Tune.F("vfx.firebugsSize", 4.5f));
+            default: return Burst("vfx_hexswarm", at, Tune.F("vfx.hexSwarmSize", 3.6f));
+        }
+    }
+
+    // An infested foe's bugs pouring out over `radius`.
+    public static bool Ants(Vector2 at, float radius) => Burst("vfx_ants", at, radius * 2f * Tune.F("vfx.antsSize", 1.4f));
+
+    // Ward rune: the ring of light round the wizard while it has charges (its owner sets the colour).
+    public static PaintedLoop WardRing(Transform wizard)
+    {
+        var f = Sized("vfx_ward", Tune.F("vfx.wardSize", 2.2f), out float s);
+        if (f == null) return null;
+        return PaintedLoop.Attach(wizard, Vector2.zero, null, f, s, Tune.F("vfx.wardFps", 12f), 60, 0f, 0f);
+    }
+
+    // Root Burrower: the ground cracking open and bursting over a warning circle `radius` across; it bursts
+    // `burst` seconds in, as the burrower comes up.
+    public static bool BurrowPop(Vector2 at, float radius, float burst)
+    {
+        var f = Sized("vfx_burrow_pop", radius * 2f * Tune.F("vfx.burrowPopSize", 0.55f), out float s);
+        if (f == null) return false;
+        float fps = 10f / burst;   // frame 10 is where it breaks open
+        PaintedLoop.Attach(null, at, f, null, s, fps, -46, f.Length / fps + 0.3f);
+        return true;
+    }
+
     // Overgrowth: vines bursting up on the ground in a ring `radius` across, gone again quickly (the vines that
     // hold each trapped foe are its own, small, VineTrap).
     public static bool Vines(Vector2 at, float radius)

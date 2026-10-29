@@ -615,7 +615,7 @@ public class Wisps : Spell, IOrbiter
             // Devour: a weakened infested foe is eaten outright, so its bugs burst on the crowd.
             if (e.IsAlive && !e.IsBoss && e.Health <= e.MaxHealth * T("devourBelow", 0.35f))
             {
-                Particles.Ants(at, 0.8f, false);
+                if (!SpellVfx.Ants(at, 0.8f)) Particles.Ants(at, 0.8f, false);
                 Hit(e, e.Health + 1f, dir * 3f);
                 Credit(e);
             }
