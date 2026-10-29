@@ -8,10 +8,13 @@
   vfx_ants_<n>        14 frames of ants pouring out (a plain bug burst)
   vfx_ward_<n>        16-frame loop of the ward ring turning (the end is cross-faded into the start)
 Black is keyed out by brightness, with a gain per video (the swarms are dim specks), and a soft round mask at the
-edges. Frames stay hi-res; the game resamples them to its pixel size (PixelDensity.cs). Needs ffmpeg + Pillow."""
-import subprocess, sys, tempfile
+edges, then the frames are baked to the game's pixel style at their default size in world units (pixelstyle.py; the
+sizes match the vfx.* tuning defaults). Needs ffmpeg + Pillow."""
+import os, subprocess, sys, tempfile
 import numpy as np
 from PIL import Image
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pixelstyle import bake
 
 firebugs, steam, ward, deepfreeze, conductive, hexswarm, ants = sys.argv[1:8]
 OUT = (sys.argv[8] if len(sys.argv) > 8 else "Assets/Resources/Art/Dusk") + "/"
@@ -30,24 +33,29 @@ def key(a, gain):
     rgb = np.where(al[..., None] > 0.02, np.clip(a / np.maximum(al[..., None], 0.3), 0, 1), 0)
     return Image.fromarray((np.concatenate([rgb, al[..., None]], 2) * 255).astype(np.uint8), "RGBA").resize((PX, PX), Image.LANCZOS)
 
-def burst(mp4, name, start, end, n, gain):
-    for i in range(n):
-        key(grab(mp4, start + (end - start) * i / (n - 1)), gain).save(OUT + f"{name}_{i}.png")
+def save(name, frames, units, colours, steps=3, smooth=0):
+    for i, im in enumerate(bake(frames, units, colours, steps, smooth)):
+        im.save(OUT + f"{name}_{i}.png")
 
-burst(firebugs, "vfx_firebugs", 0.0, 3.0, 14, 0.6)
-burst(steam, "vfx_steam", 0.0, 3.0, 14, 0.85)
-burst(deepfreeze, "vfx_deepfreeze", 0.0, 2.4, 12, 0.7)
-burst(conductive, "vfx_conductive", 0.0, 2.0, 12, 0.6)
-burst(hexswarm, "vfx_hexswarm", 0.7, 4.0, 14, 0.15)
-burst(ants, "vfx_ants", 0.7, 4.7, 14, 0.08)
+def burst(mp4, name, start, end, n, gain, units, colours, smooth=0):
+    save(name, [key(grab(mp4, start + (end - start) * i / (n - 1)), gain) for i in range(n)], units, colours, smooth=smooth)
+
+burst(firebugs, "vfx_firebugs", 0.0, 3.0, 14, 0.6, 2.25, 10)
+burst(steam, "vfx_steam", 0.0, 3.0, 14, 0.85, 1.8, 8, smooth=3)
+burst(deepfreeze, "vfx_deepfreeze", 0.0, 2.4, 12, 0.7, 0.9, 8)
+burst(conductive, "vfx_conductive", 0.0, 2.0, 12, 0.6, 0.9, 8)
+burst(hexswarm, "vfx_hexswarm", 0.7, 4.0, 14, 0.15, 1.8, 8)
+burst(ants, "vfx_ants", 0.7, 4.7, 14, 0.08, 1.96, 6)   # a 1.4-radius burst at vfx.antsSize 0.7
 
 # the ward ring: 1.0s to 3.0s, looped
 N, FADE = 16, 5
 raw = [grab(ward, 1.0 + i * 2.0 / N) for i in range(N + FADE)]
+frames = []
 for i in range(N):
     f = raw[i]
     if i < FADE:                           # the loop's start blends in from where its end would carry on
         k = (i + 1) / (FADE + 1)
         f = f * k + raw[N + i] * (1 - k)
-    key(f, 0.6).save(OUT + f"vfx_ward_{i}.png")
+    frames.append(key(f, 0.6))
+save("vfx_ward", frames, 1.1, 6)
 print("ok")

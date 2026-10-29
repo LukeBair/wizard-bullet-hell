@@ -4,11 +4,14 @@
                         (the first two seconds settle in, so it's cut from after them; the end is cross-faded
                         into the start). Stamped along the tunnel, turned to the way the mole is going.
   vfx_burrow_pop_<n>    16 frames, seen from above, of a dirt mound cracking open and bursting (the mole erupting)
-Black is keyed out by brightness (the dirt is dark, so the gain is low). Frames stay hi-res; the game resamples
-them to its pixel size (PixelDensity.cs). Needs ffmpeg + Pillow."""
-import subprocess, sys, tempfile
+Black is keyed out by brightness (the dirt is dark, so the gain is low), then the frames are baked to the game's
+pixel style at their default size (pixelstyle.py: vfx.burrowTrailSize 1.4, the pop 1.5 * 2 * vfx.burrowPopSize 0.55).
+Needs ffmpeg + Pillow."""
+import os, subprocess, sys, tempfile
 import numpy as np
 from PIL import Image
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pixelstyle import bake
 
 trail, pop = sys.argv[1:3]
 OUT = (sys.argv[3] if len(sys.argv) > 3 else "Assets/Resources/Art/Dusk") + "/"
@@ -34,14 +37,18 @@ def key(a, gain, size, round_mask=True):
 N, FADE, START, END = 12, 4, 2.0, 4.0
 step = (END - START) / N
 raw = [grab(trail, START + i * step, (140, 180, 420, 380)) for i in range(N + FADE)]
+frames = []
 for i in range(N):
     f = raw[i]
     if i < FADE:                           # the loop's start blends in from where its end would carry on
         k = (i + 1) / (FADE + 1)
         f = f * k + raw[N + i] * (1 - k)
-    key(f, 0.3, (256, 184), round_mask=False).save(OUT + f"vfx_burrow_trail_{i}.png")
+    frames.append(key(f, 0.3, (256, 184), round_mask=False))
+for i, im in enumerate(bake(frames, 1.4, 6, 3, smooth=3)):   # three alpha steps keep the ends see-through
+    im.save(OUT + f"vfx_burrow_trail_{i}.png")
 
 # the pop: 2.0s (the mound) to 3.6s (burst wide open)
-for i in range(16):
-    key(grab(pop, 2.0 + i * 0.1, (0, 0, 560, 560)), 0.3, (256, 256)).save(OUT + f"vfx_burrow_pop_{i}.png")
+frames = [key(grab(pop, 2.0 + i * 0.1, (0, 0, 560, 560)), 0.3, (256, 256)) for i in range(16)]
+for i, im in enumerate(bake(frames, 1.65, 6, 2, smooth=3)):
+    im.save(OUT + f"vfx_burrow_pop_{i}.png")
 print("ok")
