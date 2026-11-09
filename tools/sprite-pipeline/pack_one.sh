@@ -10,4 +10,6 @@ for px in 64 128; do
   $PY "$here/make_enemy_sheet.py" "${f}_n" $E/out ${base}_n $px 0 "$ms"
   cp $E/out/$base.png $E/out/$base.json $E/out/${base}_n.png "$GAME/"; rm -f $E/out/${base}_n.json
   $PY "$here/add_feet.py" "$GAME/$base.json"
+  # the tracker page (trellis_tracker.py) plays enemies/out/enemy_<name>_sheet*.json
+  cp "$GAME/$base.png" $E/out/enemy_${n}_sheet_$px.png; cp "$GAME/$base.json" $E/out/enemy_${n}_sheet_$px.json
 done

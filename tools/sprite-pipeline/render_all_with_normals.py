@@ -14,7 +14,7 @@ env = dict(os.environ, SPRITE_NORMALS="1")
 
 # name -> (sizes in game, palette colours per size)
 SIMPLE = {"moss": [32, 64, 128], "bat": [32, 64, 128], "pixie": [32, 64, 128], "blob": [64, 128],
-          "wolf": [64, 128], "goblin": [64, 128], "mushroom": [64, 128], "mole": [64, 128], "treant": [64, 128]}
+          "wolf": [64, 128], "goblin": [64, 128], "mushroom": [64, 128], "puffcap_bomber": [64, 128], "mole": [64, 128], "treant": [64, 128]}
 # name -> (rig blend, mesh name, emit, style, rest_down, per-clip ms)
 BOSSES = {
     "headmaster": ("headmaster", "headmaster", 0.9, "glide", 62, "idle=160,walk=100,cast=75,death=100"),
