@@ -6,12 +6,13 @@ public enum SpellId
     ArcaneMissile, Fireball, FrostNova, ChainLightning, Wisps,
     Rejuvenate, Overgrowth, Veil, TidalLance, Cyclone, Enthrall,
     MirrorWard, StoneSpikes, SpectralBlades, Sunspots, CometTrail, Banish,
+    BlazingHalo, TeslaTotem,
 }
 
 public enum Element { Arcane, Fire, Frost, Storm, Nature, Water, Wind, Light, Shadow, Earth }
 
 // Modifiers socketed into spells. Split and Echo are rare; the rest are common.
-public enum Rune { Potency, Haste, Split, Pierce, Area, Echo, Ember, Frost, Curse, Infest, Bless, Overload, Siphon, Ward, Soak, Static, Wither, Midas }
+public enum Rune { Potency, Haste, Split, Pierce, Area, Echo, Ember, Frost, Curse, Infest, Bless, Overload, Siphon, Ward, Soak, Static, Wither, Midas, Keen, Magnet }
 
 // A spell the wizard casts automatically. Subclasses define the base numbers and what a cast does;
 // runes stack on top and are read through the computed properties below. Some spells can Evolve
@@ -138,6 +139,8 @@ public abstract class Spell
             case SpellId.Sunspots: s = new Sunspots(); break;
             case SpellId.CometTrail: s = new CometTrail(); break;
             case SpellId.Banish: s = new Banish(); break;
+            case SpellId.BlazingHalo: s = new BlazingHalo(); break;
+            case SpellId.TeslaTotem: s = new TeslaTotem(); break;
             default: s = new Enthrall(); break;
         }
         s.Id = id;
@@ -253,15 +256,17 @@ public abstract class Spell
             case Rune.Echo: return "Casts again a moment later";
             case Rune.Overload: return Overloadable ? OverloadEffect : "No effect: this spell never casts";
             case Rune.Ward: return WardEffect;
+            case Rune.Magnet: return MagnetEffect;
             default: return StatusRuneEffect(r);
         }
     }
 
     // Ember, Frost, Curse, Infest and Bless all ride on Hit(), so they only work on spells that hit foes.
     public static bool IsStatusRune(Rune r) => r == Rune.Ember || r == Rune.Frost || r == Rune.Curse || r == Rune.Infest || r == Rune.Bless || r == Rune.Siphon
-        || r == Rune.Soak || r == Rune.Static || r == Rune.Wither || r == Rune.Midas;
+        || r == Rune.Soak || r == Rune.Static || r == Rune.Wither || r == Rune.Midas || r == Rune.Keen;
 
     protected static string OverloadEffect => $"Every {Tune.I("runes.Overload.every", 4)}th cast is {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} stronger";
+    protected static string MagnetEffect => $"+{Pct(Tune.F("runes.Magnet.rangePerRune", 0.35f))} pickup range: gems fly to you from farther away";
     protected static string WardEffect => $"Casting grants a ward that blocks one hit (at most one every {Tune.F("runes.Ward.cooldown", 5f):0.#}s)";
     protected virtual bool HitsFoes => true;
     protected virtual bool Infests => true;   // false where Infest would be too strong (Oblivion)
@@ -279,6 +284,7 @@ public abstract class Spell
             case Rune.Soak: return $"Hits make foes Wet for {Tune.F("runes.Soak.durationBase", 2f) + Tune.F("runes.Soak.durationPerRune", 1f):0.#}s";
             case Rune.Static: return $"Hits spark to a nearby foe for {Pct(Tune.F("runes.Static.damagePerRune", 0.2f))} of the damage, as a Storm hit";
             case Rune.Wither: return $"Foes it hits deal {Pct(Tune.F("runes.Wither.weakenPerRune", 0.1f))} less damage and shoot {Pct(Tune.F("runes.Wither.slowPerRune", 0.08f))} slower for {Tune.F("runes.Wither.duration", 3f):0.#}s";
+            case Rune.Keen: return $"Hits crit {Pct(Tune.F("runes.Keen.chancePerRune", 0.1f))} of the time for {Tune.F("runes.Keen.multiplier", 2f):0.#}x damage";
             case Rune.Midas: return $"Foes it kills have a {Pct(Tune.F("runes.Midas.chancePerRune", 0.04f))} chance to drop gold";
             default: return $"Foes it hits have a {Pct(Tune.F("runes.Bless.chancePerRune", 0.15f))} chance to drop a big XP gem when they die";
         }
@@ -313,6 +319,8 @@ public abstract class Spell
             case Rune.Static: return new Color(1f, 1f, 0.45f);
             case Rune.Wither: return new Color(0.55f, 0.5f, 0.45f);
             case Rune.Midas: return new Color(1f, 0.8f, 0.2f);
+            case Rune.Keen: return new Color(1f, 0.25f, 0.45f);
+            case Rune.Magnet: return new Color(0.5f, 0.55f, 1f);
             default: return new Color(1f, 0.95f, 0.6f);
         }
     }
@@ -344,7 +352,17 @@ public abstract class Spell
             Grimoire.Feat(SpellId.TidalLance);
         }
 
-        if (runes) ApplyStatusRunes(e, false);
+        if (runes)
+        {
+            // Keen: a chance for the hit to crit (every hit of the spell rolls, so tick spells crit often).
+            float keen = RuneCount(Rune.Keen);
+            if (keen > 0f && Random.value < Mathf.Min(Tune.F("runes.Keen.maxChance", 0.6f), Tune.F("runes.Keen.chancePerRune", 0.1f) * keen))
+            {
+                damage *= Tune.F("runes.Keen.multiplier", 2f);
+                Fx.Burst(e.Position, Color.white, 0.7f, false);
+            }
+            ApplyStatusRunes(e, false);
+        }
 
         using (Telemetry.By(Id.ToString())) e.TakeDamage(damage, push, Color.Lerp(element == Element ? Color : ElementColor(element), Color.white, 0.4f));
         if (!runes) return;

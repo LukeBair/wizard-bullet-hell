@@ -636,6 +636,19 @@
       "duration": 3,
       "_about": "Foes hit deal weakenPerRune x runes less damage (bullets, contact, hazards) and fire slowPerRune x runes slower, for duration seconds."
     },
+    "Keen": {
+      "weight": 8,
+      "chancePerRune": 0.1,
+      "maxChance": 0.6,
+      "multiplier": 2,
+      "_about": "Every hit of the spell crits with chancePerRune x runes (up to maxChance) for multiplier x damage. Tick and multi-hit spells crit most often."
+    },
+    "Magnet": {
+      "weight": 8,
+      "rangePerRune": 0.35,
+      "maxRange": 2,
+      "_about": "Each Magnet rune in any spell widens your XP pickup radius by rangePerRune (of the base), capped at +maxRange."
+    },
     "Midas": {
       "weight": 6,
       "chancePerRune": 0.04,
@@ -958,6 +971,43 @@
       "burstRadius_t3": 0.8,
       "burstDamage_t3": 1.5,
       "_burstDamage_t3": "Phoenix Path: each patch bursts when it burns out for damage x this in burstRadius_t3."
+    },
+    "BlazingHalo": {
+      "damage": 4,
+      "cooldown": 0.6,
+      "count": 1,
+      "_damage": "Per pulse to every foe in the ring (pulses only while a foe is in reach). Tier II/III base damage is 5 / 5.5 in code.",
+      "radius": 1.5,
+      "radius_t2": 1.9,
+      "radius_t3": 2.1,
+      "knock": 1.5,
+      "knockPerPierce": 0.5,
+      "bandGrow": 0.35,
+      "bandShare": 0.5,
+      "_bandShare": "Split adds an outer band bandGrow wider; foes there take this share of the damage.",
+      "burnShare_t2": 0.4,
+      "burnTime": 2,
+      "coronaEvery_t3": 4,
+      "coronaRadius_t3": 1.6,
+      "coronaDamage_t3": 2.5,
+      "coronaKnock_t3": 2.5
+    },
+    "TeslaTotem": {
+      "damage": 7,
+      "cooldown": 6,
+      "count": 1,
+      "_damage": "Per zap. Tier II/III base damage is 8 / 9 in code.",
+      "range": 5,
+      "arcRange": 3,
+      "arcShare": 0.7,
+      "interval": 0.8,
+      "life": 8,
+      "lifeMult_t2": 1.5,
+      "maxActive": 2,
+      "_maxActive": "Totems standing at once, per Split. The oldest crumbles when a new one is planted.",
+      "thunderEvery_t3": 5,
+      "thunderRadius_t3": 1.4,
+      "thunderDamage_t3": 2.5
     },
     "Banish": {
       "damage": 6,

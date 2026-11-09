@@ -529,6 +529,7 @@ public class Banish : Spell
     public override string RuneEffect(Rune r)
     {
         if (r == Rune.Infest && Tier == 3) return "No effect on Oblivion";
+        if (r == Rune.Keen) return Tier < 3 ? "No effect until Oblivion (only its return hit deals damage)" : base.RuneEffect(r);
         if ((r == Rune.Static || r == Rune.Siphon) && Tier < 3) return "No effect until Oblivion (only its return hit deals damage)";
         if (IsStatusRune(r) && r != Rune.Midas && r != Rune.Static && r != Rune.Siphon) return base.RuneEffect(r).Replace("Hits", "Banished foes").Replace("Foes it hits", "Banished foes") + " (as they return)";
         switch (r)

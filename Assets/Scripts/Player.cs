@@ -13,6 +13,16 @@ public class Player : MonoBehaviour
     public float MaxHealth = 100f;
     public float MoveSpeed = 4.6f;
     public float PickupRadius = 2.2f;
+    // Magnet runes socketed in any spell widen it.
+    public float EffectivePickupRadius
+    {
+        get
+        {
+            float m = 0f;
+            foreach (var s in Spells) m += s.RuneCount(Rune.Magnet);
+            return m <= 0f ? PickupRadius : PickupRadius * (1f + Mathf.Min(Tune.F("runes.Magnet.maxRange", 2f), Tune.F("runes.Magnet.rangePerRune", 0.35f) * m));
+        }
+    }
 
     public float Health { get; private set; }
     public bool IsAlive => Health > 0f;
