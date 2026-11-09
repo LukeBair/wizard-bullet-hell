@@ -4,7 +4,7 @@ yaw turns the model first, for TRELLIS models that don't face -Y (the treant nee
 bones.json maps bone name -> [head, tail, parent, radius] in the model's space (1.0 tall, centred on the
 origin, Z-up, facing -Y), with the same bone names as rig_wizard.py so render_boss_clips.py can pose it.
 Without it, the wizard's table below is used."""
-import json, sys
+import json, math, sys
 import bpy
 import numpy as np
 from mathutils import Vector
@@ -12,6 +12,11 @@ from mathutils import Vector
 argv = sys.argv[sys.argv.index("--") + 1:]
 src, out = argv[:2]
 table = json.load(open(argv[2])) if len(argv) > 2 else None
+# optional "_rigid": [{"bone": "Hand.L", "boxes": [{"min": [x,y,z], "max": [x,y,z]}], "tubes": [[a, b, radius]], "grip_z": z, "offset": [x,y,z],
+# "down": 62}, ...] in the bones json: vertices inside any box/tube follow one bone rigidly (a held staff). With "grip_z" and a Hand.* bone the box's
+# geometry is also moved so the point at that height sits in the hand once the arm has dropped by "down" degrees
+# (the staff then stands upright in the lowered hand and follows the arm).
+rigid = table.pop("_rigid", []) if table else []
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
 mesh = [o for o in bpy.context.scene.objects if o.type == "MESH"][0]
@@ -73,6 +78,41 @@ mask = np.zeros_like(W, dtype=bool)
 np.put_along_axis(mask, keep, True, axis=1)
 W = np.where(mask, W, 0)
 W /= W.sum(axis=1, keepdims=True)
+
+for box in rigid:
+    inside = np.zeros(len(verts), dtype=bool)
+    for bx in box.get("boxes", []):
+        inside |= np.all((verts >= np.array(bx["min"])) & (verts <= np.array(bx["max"])), axis=1)
+    for a, b, r in box.get("tubes", []):     # [point a, point b, radius]: a thin straight shaft
+        a, b = np.array(a, float), np.array(b, float)
+        u = np.clip(((verts - a) @ (b - a)) / ((b - a) @ (b - a)), 0, 1)
+        inside |= np.linalg.norm(verts - (a + u[:, None] * (b - a)), axis=1) < r
+    # cut the faces that join the shaft to the body, or moving it drags long strips across the robe
+    import bmesh
+    bm = bmesh.new(); bm.from_mesh(mesh.data); bm.faces.ensure_lookup_table()
+    cut = [f for f in bm.faces if 0 < sum(inside[v.index] for v in f.verts) < len(f.verts)]
+    bmesh.ops.delete(bm, geom=cut, context="FACES_ONLY")
+    bm.to_mesh(mesh.data); bm.free()
+    print("[rig] cut", len(cut), "faces")
+    if "grip_z" in box:
+        side = box["bone"].split(".")[1]
+        S = np.array(B[f"UpperArm.{side}"][0], float)
+        hand = (np.array(B[box["bone"]][0], float) + np.array(B[box["bone"]][1], float)) / 2
+        sgn = 1 if side == "L" else -1
+        from mathutils import Matrix as M3
+        Rn = np.array(M3.Rotation(math.radians(sgn * box["down"]), 3, "Y"))
+        Rp = np.array(M3.Rotation(math.radians(-sgn * box["down"]), 3, "Y"))
+        hold = S + Rn @ (hand - S) + np.array(box.get("offset", [0, 0, 0]))
+        P = verts[inside]
+        near = P[np.abs(P[:, 2] - box["grip_z"]) < 0.02]
+        grip = np.array([np.median(near[:, 0]), np.median(near[:, 1]), box["grip_z"]])
+        P = (P - grip + hold - S) @ Rp.T + S
+        verts[inside] = P
+        mesh.data.vertices.foreach_set("co", verts.reshape(-1))
+        mesh.data.update()
+    W[inside] = 0
+    W[inside, names.index(box["bone"])] = 1.0
+    print("[rig] rigid", box["bone"], int(inside.sum()), "verts")
 
 groups = {n: mesh.vertex_groups.new(name=n) for n in names}
 for vi in range(len(verts)):

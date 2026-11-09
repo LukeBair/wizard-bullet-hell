@@ -134,6 +134,7 @@ public static class ArtStyle
     {
         { "Mother Slime", ("blob", 1.05f) },
         { "Bramble Brute", ("bramble_brute", 0.8f) },
+        { "Gloomcaller", ("gloomcaller", 0.55f) },
     };
 
     static (string name, float radius)? Entry3D(EnemyLook look, string enemy)
