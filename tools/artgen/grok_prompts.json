@@ -1,0 +1,16 @@
+{
+  "style": "A single game prop, centered, on a plain flat light-grey background, nothing else in frame. Three-quarter view from slightly above (about 25 degrees), full object visible with space around it. Hand-painted dark-fantasy style, muted desaturated palette, soft even lighting, no cast shadow, no ground plane, no text, no characters. Chunky readable silhouette, detailed surface texture, suitable for 3D reconstruction.",
+  "prompts": {
+    "caves_crystal_cluster": "A tall cluster of five to seven glowing cyan crystals growing from a small base of dark blue-grey rock. One large central crystal with smaller ones leaning outward. The facets are translucent and glow softly from inside.",
+    "caves_stalagmite": "A tall pointed stalagmite spire of layered dark blue-grey rock with faint strata. Two smaller spires at its base. Wet, slightly glossy surface and a few tiny violet crystal flecks.",
+    "caves_rockpile": "A low pile of three or four rounded dark blue-grey boulders. Thin glowing cyan and violet crystal veins run through the cracks.",
+    "caves_floor_crystal": "A small cluster of three short violet crystals on a flat stone chip. It should read from far away and glow.",
+    "caves_wall_chunk": "A wide, tall chunk of jagged cave wall rock. Dark blue-grey, with several crystal outcrops along the top edge.",
+    "hollow_swamp_tree": "A gnarled dead swamp tree with a twisted trunk, exposed roots flaring at the base, and a few bare crooked branches. Long strands of hanging moss drip from the branches. Dark grey-brown bark, murky green moss.",
+    "hollow_stump": "A rotted, hollow tree stump with a mossy top and roots splaying into the ground. A few small purple toadstools grow on its side.",
+    "hollow_bog_rock": "A low group of two or three dark boulders thickly covered in wet green moss, with a few vines.",
+    "hollow_wisp_plant": "A small swamp plant with curled stems and a faintly glowing green orb at the tip.",
+    "academy_candelabra": "A short brass candelabra with three lit candles, wax dripping down. Warm and glowing.",
+    "academy_wall_bookcase": "A wide, low row of two bookcases pushed together, packed with tomes. Dark wood and purple cloth spines."
+  }
+}

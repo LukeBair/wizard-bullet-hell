@@ -33,7 +33,7 @@ public class Arena : MonoBehaviour
             var p = new Vector2(Random.Range(-HalfSize, HalfSize), Random.Range(-HalfSize, HalfSize));
             SpriteFactory.Child(transform, "Speck", ArtStyle.Round, b.GroundSpeck, p, Random.Range(0.08f, 0.35f), -99);
         }
-        if (b.Style == ObstacleStyle.Pillar) BuildFloorTiles();
+        if (b.Style == ObstacleStyle.Pillar) BuildFloorTiles(painted);
         for (int i = 0; i < 90; i++)
         {
             var p = new Vector2(Random.Range(-HalfSize, HalfSize), Random.Range(-HalfSize, HalfSize));
@@ -42,6 +42,7 @@ public class Arena : MonoBehaviour
             {
                 case ObstacleStyle.Rock:
                     // Glowing crystal clusters.
+                    if (i % 3 == 1 && Deco("caves_floor_crystal", p, 0.9f, Biome.Flowers[Random.Range(0, Biome.Flowers.Length)], "Crystal")) break;
                     SpriteFactory.Child(transform, "CrystalGlow", SpriteFactory.Glow, new Color(c.r, c.g, c.b, 0.35f), p, 1.2f, -97);
                     if (i % 3 == 0) Lighting.Point(transform, c, 2.6f, 0.8f, p);
                     for (int k = 0; k < 3; k++)
@@ -53,12 +54,14 @@ public class Arena : MonoBehaviour
                     break;
                 case ObstacleStyle.Pillar:
                     if (i % 3 != 0) break;   // fewer candles than flowers
+                    if (Deco("academy_candelabra", p, 0.55f, new Color(1f, 0.75f, 0.4f), "Candle")) break;
                     SpriteFactory.Child(transform, "CandleGlow", SpriteFactory.Glow, new Color(1f, 0.8f, 0.4f, 0.3f), p, 1.4f, -95);
                     Lighting.Point(transform, new Color(1f, 0.75f, 0.4f), 3f, 0.85f, p);
                     SpriteFactory.Child(transform, "Candle", SpriteFactory.Square, new Color(0.95f, 0.9f, 0.8f), p, 0.12f, -94).transform.localScale = new Vector3(0.12f, 0.25f, 1f);
                     SpriteFactory.Child(transform, "Flame", SpriteFactory.Circle, c, p + new Vector2(0f, 0.17f), 0.1f, -93);
                     break;
                 default:
+                    if (UseForestProps && Biome.Name == "Witch's Hollow" && i % 5 == 0 && Deco("hollow_wisp_plant", p, 0.7f, new Color(0.6f, 1f, 0.5f), "Glowwisp")) break;
                     if (UseForestProps && i % 6 == 0)
                     {
                         // glowing mushroom logs instead of every sixth flower
@@ -110,10 +113,10 @@ public class Arena : MonoBehaviour
     }
 
     // Stone floor: a faint grid of tiles plus a long rug down the middle.
-    void BuildFloorTiles()
+    void BuildFloorTiles(bool painted)
     {
         var line = new Color(0f, 0f, 0f, 0.18f);
-        for (float t = -HalfSize; t <= HalfSize; t += 2f)
+        for (float t = -HalfSize; t <= HalfSize && !painted; t += 2f)   // the painted floor has its own flagstones
         {
             SpriteFactory.Child(transform, "TileH", SpriteFactory.Square, line, new Vector2(0f, t), 1f, -99).transform.localScale = new Vector3(HalfSize * 2f, 0.05f, 1f);
             SpriteFactory.Child(transform, "TileV", SpriteFactory.Square, line, new Vector2(t, 0f), 1f, -99).transform.localScale = new Vector3(0.05f, HalfSize * 2f, 1f);
@@ -132,7 +135,8 @@ public class Arena : MonoBehaviour
     bool BuildGround()
     {
         if (!Settings.Enemy3D || ArtStyle.Current != ArtStyleId.Dusk) return false;
-        string zone = Biome.Name == "Whispering Forest" ? "forest" : null;
+        string zone = Biome.Name == "Whispering Forest" ? "forest" : Biome.Name == "Arcane Academy" ? "academy"
+            : Biome.Name == "Crystal Caves" ? "caves" : Biome.Name == "Witch's Hollow" ? "hollow" : null;
         var baseTex = zone == null ? null : Resources.Load<Texture2D>($"Art/Dusk/ground_{zone}_base");
         if (baseTex == null) return false;
         float ppu = PixelDensity.On ? PixelDensity.TexelsPerUnit : Tune.F("ground.pixelsPerUnit", 20f);   // art.pxPerTexel sets the floor's pixel size too
@@ -162,14 +166,27 @@ public class Arena : MonoBehaviour
         return true;
     }
 
-    // Whispering Forest props from the 3D pipeline: big obstacles are trees, smaller ones boulders and
-    // shrine stones. The sprite's base sits on the collision circle; widths are in units of r.
-    static readonly (string name, int variants, float width, float minR)[] ForestProps =
-    {
-        ("tree_oak", 6, 2.4f, 1.0f),
-        ("boulders_a", 6, 2.3f, 0f), ("boulders_b", 6, 2.6f, 0f), ("boulders_c", 6, 2.3f, 0f),
-        ("shrine_a", 6, 1.4f, 0f), ("shrine_b", 6, 1.5f, 0f),
-    };
+    // Props per zone (3D pipeline: tools/sprite-pipeline/render_prop.py). Big obstacles (r >= bigR) are the tall
+    // props, smaller ones the low ones. The sprite's base sits on the collision circle; widths are in units of r.
+    // glow: self-lit and gives off a light.
+    struct Prop { public string name; public int variants; public float width, minR; public bool glow; }
+    class PropSet { public float bigR = 1.0f; public Prop[] props; }
+    static Prop P(string name, float width, float minR = 0f, bool glow = false) => new Prop { name = name, variants = 6, width = width, minR = minR, glow = glow };
+
+    static readonly PropSet ForestSet = new PropSet { props = new[] {
+        P("tree_oak", 2.4f, 1.0f), P("boulders_a", 2.3f), P("boulders_b", 2.6f), P("boulders_c", 2.3f), P("shrine_a", 1.4f), P("shrine_b", 1.5f) } };
+    static readonly PropSet AcademySet = new PropSet { bigR = 0.85f, props = new[] {
+        P("academy_pillar", 1.6f, 0.85f), P("academy_bookshelf", 2.4f), P("academy_desk", 2.4f), P("academy_globe", 1.7f),
+        P("academy_bookcase", 2.6f) } };
+    static readonly PropSet CavesSet = new PropSet { props = new[] {
+        P("caves_stalagmite", 1.9f, 1.0f), P("caves_wall_chunk", 1.8f, 1.0f), P("caves_crystal_cluster", 2.0f, 1.0f, true),
+        P("caves_rockpile", 2.4f) } };
+    static readonly PropSet HollowSet = new PropSet { props = new[] {
+        P("hollow_swamp_tree", 2.4f, 1.0f), P("hollow_stump", 1.8f), P("hollow_bog_rock", 2.4f),
+        P("boulders_a", 2.3f), P("shrine_a", 1.4f) } };
+
+    PropSet Props => Biome.Name == "Whispering Forest" ? ForestSet : Biome.Name == "Witch's Hollow" ? HollowSet
+        : Biome.Name == "Arcane Academy" ? AcademySet : Biome.Name == "Crystal Caves" ? CavesSet : null;
 
     // Each prop is rendered from six angles, in a sharp tier (128px Character art) and a chunky one (64px).
     // With the pixel size tuner on, the full-resolution "xhi" render (resampled by PixelDensity), when it exists.
@@ -180,11 +197,26 @@ public class Arena : MonoBehaviour
         return $"prop_{name}_{variant}_{(Settings.Enemy3DSharp ? "hi" : "lo")}";
     }
 
-    bool UseForestProps => Biome.Name == "Whispering Forest" && ArtStyle.Prop(PropFile("tree_oak", 0)) != null;
+    bool UseForestProps => Props != null && ArtStyle.Prop(PropFile(Props.props[0].name, 0)) != null;
+
+    // A small floor prop (candelabra, floor crystal, swamp plant); false if its art isn't there, so the
+    // caller draws the flat version. Names that match the self-lit list in Build stay out of the scene lighting.
+    bool Deco(string name, Vector2 p, float width, Color? light, string objName)
+    {
+        var s = ArtStyle.Prop(PropFile(name, Random.Range(0, 6)));
+        if (s == null) return false;
+        float sc = width / (s.rect.width / s.pixelsPerUnit);
+        var sr = SpriteFactory.Child(transform, objName, PixelDensity.Fit(s, sc), Color.white, p, sc, 0);
+        sr.spriteSortPoint = SpriteSortPoint.Pivot;
+        sr.flipX = Random.value < 0.5f;
+        if (light.HasValue) Lighting.Point(transform, light.Value, 2.6f, 0.8f, p + new Vector2(0f, 0.3f));
+        return true;
+    }
 
     bool AddProp(Vector2 p, float r, bool solid)
     {
-        var options = System.Array.FindAll(ForestProps, f => solid ? (r >= 1.0f) == (f.minR >= 1.0f) : f.minR >= 1.0f);
+        var set = Props;
+        var options = System.Array.FindAll(set.props, f => solid ? (r >= set.bigR) == (f.minR >= set.bigR) : f.minR >= set.bigR);
         var pick = options[Random.Range(0, options.Length)];
         var sprite = ArtStyle.Prop(PropFile(pick.name, Random.Range(0, pick.variants)));
         if (sprite == null) return false;
@@ -195,8 +227,13 @@ public class Arena : MonoBehaviour
         float scale = pick.width * r / (sprite.rect.width / sprite.pixelsPerUnit);
         var baked = SpriteShadow.On ? ArtStyle.PropShadow(sprite.texture.name) : null;
         var shown = PixelDensity.Fit(sprite, scale);
-        var sr = SpriteFactory.Child(transform, "Prop", shown, Color.white, basePos, scale, 0);   // depth-sorted at its base
+        var sr = SpriteFactory.Child(transform, pick.glow ? "Crystal" : "Prop", shown, Color.white, basePos, scale, 0);   // depth-sorted at its base
         sr.spriteSortPoint = SpriteSortPoint.Pivot;
+        if (pick.glow)
+        {
+            var c = Biome.Flowers[Random.Range(0, Biome.Flowers.Length)];
+            Lighting.Point(transform, c, 3.2f, 0.9f, basePos + new Vector2(0f, r));
+        }
         // The shadow baked from the 3D model touches every root and stone; it only matches the unflipped
         // render (and the default sun), so props that have one aren't mirrored.
         if (baked != null)
