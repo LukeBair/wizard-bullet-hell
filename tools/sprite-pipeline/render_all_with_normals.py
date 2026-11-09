@@ -22,6 +22,7 @@ BOSSES = {
     "golem": ("golem", "golem", 1.0, "brute", 65, "idle=170,walk=120,cast=80,death=110"),
     "apprentice": ("apprentice", "apprentice", 1.0, "stride", 62, "idle=150,walk=95,cast=70,death=95"),
     "gloomcaller": ("gloomcaller", "gloomcaller", 1.0, "stride", 62, "idle=150,walk=95,cast=70,death=95"),
+    "quill_sniper": ("quill_sniper", "quill_sniper", 1.0, "stride", 62, "idle=150,walk=95,cast=70,death=95"),   # staff joined by rig_humanoid.py _attach
     "bramble_brute": ("bramble_brute", "bramble_brute", 1.0, "brute", 65, "idle=170,walk=120,cast=80,death=110"),
 }
 COLORS = {32: 16, 64: 32, 128: 48}

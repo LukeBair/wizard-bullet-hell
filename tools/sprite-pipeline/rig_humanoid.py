@@ -17,6 +17,10 @@ table = json.load(open(argv[2])) if len(argv) > 2 else None
 # geometry is also moved so the point at that height sits in the hand once the arm has dropped by "down" degrees
 # (the staff then stands upright in the lowered hand and follows the arm).
 rigid = table.pop("_rigid", []) if table else []
+# optional "_attach": {"glb": path, "length": L, "yaw": deg} joins a second model (a staff or rifle made separately) into
+# the mesh, scaled to length L (model units), standing upright with its middle at the origin; a _rigid entry with
+# "attach": true then holds it in the hand (grip_z is in that centred frame)
+attach = table.pop("_attach", None) if table else None
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
 mesh = [o for o in bpy.context.scene.objects if o.type == "MESH"][0]
@@ -27,6 +31,28 @@ if len(argv) > 4:
     from mathutils import Matrix
     mesh.matrix_world = Matrix.Rotation(math.radians(float(argv[4])), 4, "Z") @ mesh.matrix_world
 bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+n_main = len(mesh.data.vertices)
+if attach:
+    before = set(bpy.context.scene.objects)
+    bpy.ops.import_scene.gltf(filepath=attach["glb"])
+    extra = [o for o in bpy.context.scene.objects if o not in before and o.type == "MESH"]
+    for o in extra:
+        o.select_set(False)
+    pts = np.array([(o.matrix_world @ v.co)[:] for o in extra for v in o.data.vertices])
+    k = attach["length"] / (pts[:, 2].max() - pts[:, 2].min())
+    c = np.array([(pts[:, 0].max() + pts[:, 0].min()) / 2, (pts[:, 1].max() + pts[:, 1].min()) / 2, (pts[:, 2].max() + pts[:, 2].min()) / 2])
+    from mathutils import Matrix as _M
+    for o in extra:
+        mw = o.matrix_world.copy()
+        o.parent = None
+        o.matrix_world = _M.Rotation(math.radians(attach.get("yaw", 0)), 4, "Z") @ _M.Scale(k, 4) @ _M.Translation(-Vector(c)) @ mw
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in extra:
+        o.select_set(True)
+    mesh.select_set(True)
+    bpy.context.view_layer.objects.active = mesh
+    bpy.ops.object.join()
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
 # name: (head, tail, parent, radius)
 B = {
@@ -81,6 +107,8 @@ W /= W.sum(axis=1, keepdims=True)
 
 for box in rigid:
     inside = np.zeros(len(verts), dtype=bool)
+    if box.get("attach"):
+        inside[n_main:] = True
     for bx in box.get("boxes", []):
         inside |= np.all((verts >= np.array(bx["min"])) & (verts <= np.array(bx["max"])), axis=1)
     for a, b, r in box.get("tubes", []):     # [point a, point b, radius]: a thin straight shaft

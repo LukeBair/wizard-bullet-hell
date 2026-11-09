@@ -135,6 +135,7 @@ public static class ArtStyle
         { "Mother Slime", ("blob", 1.05f) },
         { "Bramble Brute", ("bramble_brute", 0.8f) },
         { "Gloomcaller", ("gloomcaller", 0.55f) },
+        { "Quill Sniper", ("quill_sniper", 0.6f) },
         { "Puffcap Bomber", ("puffcap_bomber", 0.82f) },
     };
 
