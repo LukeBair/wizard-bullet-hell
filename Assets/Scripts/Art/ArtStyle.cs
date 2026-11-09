@@ -133,6 +133,7 @@ public static class ArtStyle
     static readonly Dictionary<string, (string name, float radius)> sheet3DByName = new Dictionary<string, (string, float)>
     {
         { "Mother Slime", ("blob", 1.05f) },
+        { "Bramble Brute", ("bramble_brute", 0.8f) },
     };
 
     static (string name, float radius)? Entry3D(EnemyLook look, string enemy)

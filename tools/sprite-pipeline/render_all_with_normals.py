@@ -21,6 +21,7 @@ BOSSES = {
     "witch": ("witch", "witch", 1.3, "glide", 38, "idle=160,walk=110,cast=75,death=100"),
     "golem": ("golem", "golem", 1.0, "brute", 65, "idle=170,walk=120,cast=80,death=110"),
     "apprentice": ("apprentice", "apprentice", 1.0, "stride", 62, "idle=150,walk=95,cast=70,death=95"),
+    "bramble_brute": ("bramble_brute", "bramble_brute", 1.0, "brute", 65, "idle=170,walk=120,cast=80,death=110"),
 }
 COLORS = {32: 16, 64: 32, 128: 48}
 only = set(sys.argv[1:])
