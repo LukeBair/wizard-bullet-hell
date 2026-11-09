@@ -136,6 +136,7 @@ public static class ArtStyle
         { "Bramble Brute", ("bramble_brute", 0.8f) },
         { "Gloomcaller", ("gloomcaller", 0.55f) },
         { "Quill Sniper", ("quill_sniper", 0.6f) },
+        { "Stalactite Dropper", ("stalactite_dropper", 0.8f) },
         { "Puffcap Bomber", ("puffcap_bomber", 0.82f) },
     };
 
