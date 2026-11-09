@@ -166,8 +166,7 @@ public class Arena : MonoBehaviour
         return true;
     }
 
-    // Props per zone (3D pipeline: tools/sprite-pipeline/render_prop.py; the Crystal Caves set is a stand-in from
-    // Grok images). Big obstacles (r >= bigR) are the tall
+    // Props per zone (3D pipeline: tools/sprite-pipeline/render_prop.py). Big obstacles (r >= bigR) are the tall
     // props, smaller ones the low ones. The sprite's base sits on the collision circle; widths are in units of r.
     // glow: self-lit and gives off a light.
     struct Prop { public string name; public int variants; public float width, minR; public bool glow; }
