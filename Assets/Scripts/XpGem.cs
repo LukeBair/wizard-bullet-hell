@@ -64,7 +64,7 @@ public class XpGem : MonoBehaviour
             if (player == null || !player.IsAlive) return;
 
             Vector2 at = player.Position;
-            float pickup = player.PickupRadius;
+            float pickup = player.EffectivePickupRadius;
             scratch.Clear();
             foreach (var g in All) if (g.magnet || (at - g.pos).sqrMagnitude < pickup * pickup) scratch.Add(g);
             foreach (var g in scratch)

@@ -20,8 +20,11 @@ public static class Interactions
         EffectCounter.Reset();
     }
 
+    public static int Count;   // reactions triggered so far; Catalyst compares it before and after a hit
+
     public static void Trigger(Interaction i, Vector2 at)
     {
+        Count++;
         if (seen.Add(i)) GameManager.Instance.Toast($"Combo: {Name(i)}!");
         Particles.Combo(i, at);
         Sfx.Play("combos.combo", Sound.Combo, 0.5f, 0.08f);

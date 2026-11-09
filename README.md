@@ -21,9 +21,9 @@ Everything is built from code at Play time (`GameBootstrap.cs`), so the scene st
 
 Each level-up you take a rune stone (Split and Echo are rare) and tap the spell to socket it into; each spell previews what that rune would do to it. Every spell has 4 sockets, and three matching runes in one spell Resonate for a free extra copy. Spell tomes appear every other level (up to 5 spells). XP needed per level grows, with an extra x1.25 every 5 levels.
 
-**Runes:** Potency (more effective, varies by spell), Haste, Split, Pierce, Area, Echo, Ember (burn), Frost (chill), Curse (marked foes take +50% from their next hit, stacking to 6x), Infest (foes that die within 1s burst into bugs that hurt neighbours), Bless (kills may drop a big XP gem).
+**Runes:** Potency (more effective, varies by spell), Haste, Split, Pierce, Area, Echo, Ember (burn), Frost (chill), Curse (marked foes take +50% from their next hit, stacking to 6x), Infest (foes that die within 1s burst into bugs that hurt neighbours), Bless (kills may drop a big XP gem), Catalyst (reactions it sets off deal extra damage), Magnet (wider XP pickup range, from any spell it sits in).
 
-**Spells:** Arcane Missile, Fireball, Frost Nova, Chain Lightning, Forest Wisps, Rejuvenate (periodic heal), Overgrowth (vines trap foes; trapped foes can't hurt you by touch), Ethereal Veil (ignore the next hit and phase out), Tidal Lance (water beam that soaks foes), Cyclone (whirlwind that drags foes in), Enthrall (the toughest non-boss foe fights for you).
+**Spells:** Arcane Missile, Fireball, Frost Nova, Chain Lightning, Forest Wisps, Rejuvenate (periodic heal), Overgrowth (vines trap foes; trapped foes can't hurt you by touch), Ethereal Veil (ignore the next hit and phase out), Tidal Lance (water beam that soaks foes), Cyclone (whirlwind that drags foes in), Enthrall (the toughest non-boss foe fights for you), Starfall (stars crash down on random foes after a short warning), Tesla Totem (plants a turret that zaps nearby foes for a few seconds).
 
 **Evolution:** when one of the first five spells has all 4 sockets full, an Evolve card can appear. Evolving clears that spell's runes for a stronger form, up to tier III (e.g. Lightning: single bolt with splash -> chains -> heavy strike on the toughest foe, then chains).
 

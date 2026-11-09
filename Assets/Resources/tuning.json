@@ -677,6 +677,17 @@
       "duration": 3,
       "_about": "Foes hit deal weakenPerRune x runes less damage (bullets, contact, hazards) and fire slowPerRune x runes slower, for duration seconds."
     },
+    "Catalyst": {
+      "weight": 8,
+      "bonusPerRune": 0.5,
+      "_about": "A reaction (Steam, Conductive, Deep Freeze, Firebugs, Hex Swarm) set off by one of this spell's hits deals bonusPerRune x runes of that hit's damage as extra damage."
+    },
+    "Magnet": {
+      "weight": 8,
+      "rangePerRune": 0.35,
+      "maxRange": 2,
+      "_about": "Each Magnet rune in any spell widens your XP pickup radius by rangePerRune (of the base), capped at +maxRange."
+    },
     "Midas": {
       "weight": 6,
       "chancePerRune": 0.04,
@@ -1017,6 +1028,42 @@
       "burstRadius_t3": 0.8,
       "burstDamage_t3": 1.5,
       "_burstDamage_t3": "Phoenix Path: each patch bursts when it burns out for damage x this in burstRadius_t3."
+    },
+    "Starfall": {
+      "damage": 12,
+      "cooldown": 3,
+      "count": 1,
+      "_damage": "Per star to every foe in its blast. Tier II/III base damage is 14 / 16 in code.",
+      "stars": 3,
+      "stars_t2": 5,
+      "stars_t3": 5,
+      "starsPerSplit": 2,
+      "radius": 1,
+      "delay": 0.7,
+      "stagger": 0.12,
+      "knock": 1.5,
+      "areaPerRune": 0.15,
+      "burnShare_t2": 0.3,
+      "burnTime": 2,
+      "bigRadius_t3": 2.5,
+      "bigDamage_t3": 3
+    },
+    "TeslaTotem": {
+      "damage": 7,
+      "cooldown": 6,
+      "count": 1,
+      "_damage": "Per zap. Tier II/III base damage is 8 / 9 in code.",
+      "range": 5,
+      "arcRange": 3,
+      "arcShare": 0.7,
+      "interval": 0.8,
+      "life": 8,
+      "lifeMult_t2": 1.5,
+      "maxActive": 2,
+      "_maxActive": "Totems standing at once, per Split. The oldest crumbles when a new one is planted.",
+      "thunderEvery_t3": 5,
+      "thunderRadius_t3": 1.4,
+      "thunderDamage_t3": 2.5
     },
     "Banish": {
       "damage": 6,
