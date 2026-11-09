@@ -10,6 +10,12 @@ public enum EnemyBehavior
     Trickster,  // teleports away when your spells get close, fires weaving shots
     Burrower,   // tunnels underground (can't be hit), then erupts under you
     Splitter,   // slow blob that bursts into smaller slimes when killed
+    Armored,    // heavy plated brute: takes a fraction of damage until its guard drops for a moment
+    Bomber,     // rushes you, lights a fuse, then bursts in a telegraphed blast
+    Mender,     // keeps back and pulses healing onto the foes around it
+    Sniper,     // long locked telegraph lane, then one fast hard-hitting bolt
+    Summoner,   // keeps back and calls in packs of bats
+    Dropper,    // brings the ceiling down: a telegraphed row of falling stalactites across your path
     BossTreant, BossWitch,
     BossHeadmaster,  // orbiting spellbook turrets, detention grids of AoE, gapped bullet rings
     BossGolem,       // long telegraphed charges that leave crystal shards, ground slams, spike lines
@@ -40,7 +46,16 @@ public class EnemyDef
     public float BulletDamage = 10f;
     public float PreferredRange = 6f;
     public bool EarlyGame = true;   // false = only appears after the first swarm
+    public string Home = "";        // biome this medium belongs to ("" = anywhere); the Director only picks it there (and in the final zone)
     public int MaxAlive;            // mediums: the Director won't pick it while this many are alive (0 = no cap)
+
+    // New-archetype settings (reused across the behaviours above)
+    public float Armor = 1f;         // Armored: share of damage taken while guarding
+    public float ExposedTime = 1.5f; // Armored: seconds the guard is down (FireInterval = seconds guarding)
+    public float BlastRadius = 2f;   // Bomber: burst radius
+    public float Fuse = 0.8f;        // Bomber: fuse time; Sniper: telegraph time
+    public float HealRadius = 5f;    // Mender: reach of the pulse
+    public float HealPercent = 0.2f; // Mender: share of max health restored per pulse
 
     // Elder Treant: chaff per summon; below SummonBelow of its health it also summons a brood
     public int SummonCount = 5;
@@ -108,6 +123,30 @@ public class EnemyRoster
             new EnemyDef { Name = "Mother Slime", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Splitter, Look = EnemyLook.Blob,
                 Health = 90, Speed = 1.2f, Radius = 0.65f, ContactDamage = 12, Xp = 4,
                 Color = new Color(0.3f, 0.75f, 0.4f), Accent = new Color(0.15f, 0.45f, 0.2f) },
+            new EnemyDef { Name = "Bramble Brute", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Armored, Look = EnemyLook.Beast, Home = "Whispering Forest",
+                Health = 160, Speed = 1.5f, Radius = 0.6f, ContactDamage = 16, Xp = 8, EarlyGame = false, MaxAlive = 3,
+                Color = new Color(0.3f, 0.4f, 0.2f), Accent = new Color(0.75f, 0.85f, 0.3f),
+                Armor = 0.25f, ExposedTime = 1.6f, FireInterval = 3.5f },
+            new EnemyDef { Name = "Puffcap Bomber", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Bomber, Look = EnemyLook.Mushroom, Home = "Whispering Forest",
+                Health = 35, Speed = 3.2f, Radius = 0.38f, ContactDamage = 6, Xp = 5, EarlyGame = false,
+                Color = new Color(0.95f, 0.6f, 0.3f), Accent = new Color(1f, 0.35f, 0.15f),
+                BulletDamage = 22, BlastRadius = 2.1f, Fuse = 0.8f, PreferredRange = 2.2f },
+            new EnemyDef { Name = "Tome Mender", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Mender, Look = EnemyLook.Wizard, Home = "Arcane Academy",
+                Health = 60, Speed = 1.7f, Radius = 0.4f, ContactDamage = 6, Xp = 7, EarlyGame = false, MaxAlive = 2,
+                Color = new Color(0.4f, 0.85f, 0.6f), Accent = new Color(0.6f, 1f, 0.7f),
+                FireInterval = 4f, PreferredRange = 7f, HealRadius = 5f, HealPercent = 0.2f },
+            new EnemyDef { Name = "Quill Sniper", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Sniper, Look = EnemyLook.Wizard, Home = "Arcane Academy",
+                Health = 55, Speed = 1.5f, Radius = 0.4f, ContactDamage = 6, Xp = 7, EarlyGame = false, MaxAlive = 2,
+                Color = new Color(0.25f, 0.3f, 0.5f), Accent = new Color(1f, 0.9f, 0.3f),
+                FireInterval = 3.5f, BulletSpeed = 13f, BulletDamage = 26, PreferredRange = 9f, Fuse = 1.4f },
+            new EnemyDef { Name = "Gloomcaller", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Summoner, Look = EnemyLook.Goblin, Home = "Crystal Caves",
+                Health = 75, Speed = 1.5f, Radius = 0.42f, ContactDamage = 8, Xp = 8, EarlyGame = false, MaxAlive = 2,
+                Color = new Color(0.35f, 0.3f, 0.55f), Accent = new Color(0.7f, 0.45f, 1f),
+                FireInterval = 6f, Bullets = 3, PreferredRange = 8f },
+            new EnemyDef { Name = "Stalactite Dropper", Tier = EnemyTier.Medium, Behavior = EnemyBehavior.Dropper, Look = EnemyLook.Golem, Home = "Crystal Caves",
+                Health = 90, Speed = 1.3f, Radius = 0.5f, ContactDamage = 10, Xp = 7, EarlyGame = false, MaxAlive = 2,
+                Color = new Color(0.5f, 0.5f, 0.6f), Accent = new Color(0.55f, 0.85f, 1f),
+                FireInterval = 3.2f, Bullets = 4, Spread = 2.4f, BulletDamage = 20, PreferredRange = 7f },
         },
         Bosses = new[]
         {

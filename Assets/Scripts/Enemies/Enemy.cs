@@ -606,6 +606,86 @@ public class Enemy : MonoBehaviour
                 }
             }
 
+            case EnemyBehavior.Armored:
+                // 0 = guarding (takes Def.Armor of damage), 1 = guard down (full damage)
+                stateTimer -= dt;
+                if (stateTimer <= 0f)
+                {
+                    state = 1 - state;
+                    stateTimer = state == 1 ? Def.ExposedTime : Def.FireInterval;
+                    flash = 1f;
+                    Fx.Ring(Position, state == 1 ? Def.Accent : Def.Color, Radius * 1.5f);
+                }
+                return dir * speed * (state == 1 ? 0.6f : 1f);
+
+            case EnemyBehavior.Bomber:
+                // 0 = rush, 1 = fuse lit (warning circle fills, then it bursts and the bomber dies)
+                if (state == 0)
+                {
+                    if (dist < Def.PreferredRange && !IsRooted)
+                    {
+                        state = 1; stateTimer = Def.Fuse;
+                        Hazard.Spawn(Position, Def.BlastRadius, Def.Fuse, Def.BulletDamage * Weak, Def.Accent, null, IsCharmed);
+                    }
+                    return dir * speed;
+                }
+                stateTimer -= dt;
+                flash = Mathf.Max(flash, 0.5f + 0.5f * Mathf.Sin(Time.time * 30f));
+                if (stateTimer <= 0f) { Fx.Burst(Position, Def.Accent, Def.BlastRadius); TakeDamage(Health + 1f); }
+                return dir * speed * 0.25f;
+
+            case EnemyBehavior.Mender:
+                TickFire(dt, dist, () =>
+                {
+                    if (IsCharmed) return;
+                    Fx.Ring(Position, Def.Accent, Def.HealRadius, 0.5f);
+                    foreach (var e in All)
+                        if (e != this && e.IsAlive && !e.IsBoss && !e.Hidden && (e.Position - Position).sqrMagnitude < Def.HealRadius * Def.HealRadius)
+                            e.Heal(e.MaxHealth * Def.HealPercent);
+                });
+                return KeepRange(dir, dist, speed);
+
+            case EnemyBehavior.Sniper:
+                // 0 = reload and keep range, 1 = locked lane warning, then one fast bolt
+                stateTimer -= dt;
+                if (state == 0)
+                {
+                    if (stateTimer <= 0f && dist < Def.PreferredRange + 4f && !IsCharmed && !IsRooted)
+                    {
+                        state = 1; stateTimer = Def.Fuse; lockedDir = dir;
+                        Fx.Telegraph(Position, lockedDir, 15f, 0.25f, new Color(Def.Accent.r, Def.Accent.g, Def.Accent.b, 0.5f), Def.Fuse);
+                    }
+                    return KeepRange(dir, dist, speed);
+                }
+                flash = Mathf.Max(flash, 0.3f + 0.3f * Mathf.Sin(Time.time * 25f));
+                if (stateTimer <= 0f)
+                {
+                    state = 0; stateTimer = Def.FireInterval * Tuning.CastRate;
+                    anim?.PlayCast();
+                    Shoot(Position, Mathf.Atan2(lockedDir.y, lockedDir.x) * Mathf.Rad2Deg, Def.BulletSpeed);
+                }
+                return Vector2.zero;
+
+            case EnemyBehavior.Summoner:
+                TickFire(dt, dist, () =>
+                {
+                    if (IsCharmed || All.Count > 150) return;
+                    var roster = GameManager.Instance.Arena.Biome.Roster;
+                    Summon(roster.Chaff[Mathf.Min(1, roster.Chaff.Length - 1)], Def.Bullets);
+                });
+                return KeepRange(dir, dist, speed);
+
+            case EnemyBehavior.Dropper:
+                // A row of falling stalactites across your path, with gaps to slip between.
+                TickFire(dt, dist, () =>
+                {
+                    Vector2 lead = IsCharmed ? Vector2.zero : Joystick.Direction * GameManager.Instance.Player.MoveSpeed * Tuning.Pace * 0.7f;
+                    Vector2 c = targetPos + lead, perp = new Vector2(-dir.y, dir.x);
+                    for (int i = 0; i < Def.Bullets; i++)
+                        Hazard.Spawn(c + perp * (i - (Def.Bullets - 1) * 0.5f) * Def.Spread, 0.8f, 1.1f, Def.BulletDamage * Weak, Def.Accent, null, IsCharmed);
+                });
+                return KeepRange(dir, dist, speed);
+
             case EnemyBehavior.BossTreant: return BossTreant(dir, speed, dt);
             case EnemyBehavior.BossWitch: return BossWitch(dir, dist, speed, dt);
             case EnemyBehavior.BossHeadmaster: return BossHeadmaster(dir, dist, speed, dt);
@@ -987,9 +1067,17 @@ public class Enemy : MonoBehaviour
         if (r.enabled != on) r.enabled = on;
     }
 
+    public void Heal(float amount)
+    {
+        if (!IsAlive || amount <= 0f) return;
+        Health = Mathf.Min(MaxHealth, Health + amount);
+        Fx.Burst(Position, new Color(0.6f, 1f, 0.7f), Radius * 1.5f);
+    }
+
     public void TakeDamage(float amount, Vector2 push = default, Color? numberColor = null)
     {
         if (!IsAlive || Hidden) return;
+        if (Def.Behavior == EnemyBehavior.Armored && state == 0) amount *= Def.Armor;
         if (IsRooted) amount *= 1f + rootVuln;
         if (amount > 0f) Credit(amount, Telemetry.DamageBy ?? "Other");
         Health -= amount;

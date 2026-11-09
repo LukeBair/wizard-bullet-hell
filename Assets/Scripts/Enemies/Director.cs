@@ -211,15 +211,19 @@ public class Director : MonoBehaviour
 
     static bool IsCaster(EnemyDef d) =>
         d.Behavior == EnemyBehavior.Caster || d.Behavior == EnemyBehavior.Blinker ||
-        d.Behavior == EnemyBehavior.Lobber || d.Behavior == EnemyBehavior.Trickster;
+        d.Behavior == EnemyBehavior.Lobber || d.Behavior == EnemyBehavior.Trickster ||
+        d.Behavior == EnemyBehavior.Sniper || d.Behavior == EnemyBehavior.Dropper;
 
     // Casters are rare (a quarter as likely) until the first boss is down; a zone row can set its own
     // casterWeight.
+    // Biome-bound mediums (EnemyDef.Home) only come in their home zone, and in the final one.
+    bool AtHome(EnemyDef d) => d.Home.Length == 0 || zone.Final || d.Home == zone.Name;
+
     EnemyDef PickMedium()
     {
         pool.Clear();
-        foreach (var d in roster.Medium) if ((d.EarlyGame || Threat > 0) && !AtCap(d)) pool.Add(d);
-        if (pool.Count == 0) foreach (var d in roster.Medium) if (d.EarlyGame || Threat > 0) pool.Add(d);
+        foreach (var d in roster.Medium) if ((d.EarlyGame || Threat > 0) && AtHome(d) && !AtCap(d)) pool.Add(d);
+        if (pool.Count == 0) foreach (var d in roster.Medium) if ((d.EarlyGame || Threat > 0) && AtHome(d)) pool.Add(d);
         float total = 0f;
         foreach (var d in pool) total += Weight(d);
         float roll = Random.value * total;

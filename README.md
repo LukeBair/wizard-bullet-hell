@@ -42,6 +42,12 @@ Each level-up you take a rune stone (Split and Echo are rare) and tap the spell 
 | Medium | Spore Lobber* | Lobs spore bombs: a warning circle fills, then it bursts |
 | Medium | Pixie Trickster* | Teleports aside when your spells get close; fires weaving shots |
 | Medium | Root Burrower* | Tunnels underground (can't be hit), then erupts under you with a bullet ring |
+| Medium | Bramble Brute* (Forest) | Armored: takes 25% damage while guarding; the guard drops for 1.6s every few seconds |
+| Medium | Puffcap Bomber* (Forest) | Rushes you, lights a fuse, then bursts in a telegraphed blast |
+| Medium | Tome Mender* (Academy) | Keeps back and pulses healing (20%) onto nearby foes; kill it first |
+| Medium | Quill Sniper* (Academy) | Long locked warning lane, then one fast hard-hitting bolt |
+| Medium | Gloomcaller* (Caves) | Keeps back and calls in packs of bats |
+| Medium | Stalactite Dropper* (Caves) | Drops a telegraphed row of stalactites across your path, with gaps |
 | Boss | Elder Treant | Leaf rings, summons slimes, aimed volleys |
 | Boss | The Hedge Witch | Spiral barrages, aimed fans and homing orbs, blinks |
 | Boss | Headmaster Vexley | Orbiting spellbooks fire volleys, 3x3 "detention" grids with one safe cell, slow rings with a gap |
