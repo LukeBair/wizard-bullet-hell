@@ -304,7 +304,7 @@ public class RuneSystem : UpgradeSystem
             case Rune.Static: return "Hits spark to a nearby foe as a Storm hit (Conductive on Wet foes).";
             case Rune.Wither: return "Foes it hits deal less damage and shoot slower for a few seconds.";
             case Rune.Midas: return "Foes it kills may drop gold for the Grimoire.";
-            case Rune.Keen: return $"Hits crit {Tune.F("runes.Keen.chancePerRune", 0.1f) * 100f:0}% of the time for {Tune.F("runes.Keen.multiplier", 2f):0.#}x damage.";
+            case Rune.Catalyst: return $"Reactions (Steam, Conductive, Deep Freeze, Firebugs, Hex Swarm) it sets off deal +{Tune.F("runes.Catalyst.bonusPerRune", 0.5f) * 100f:0}% of the hit as extra damage.";
             case Rune.Magnet: return $"+{Tune.F("runes.Magnet.rangePerRune", 0.35f) * 100f:0}% pickup range, whatever spell it sits in.";
             default: return "Foes it hits may drop a big XP gem when they die.";
         }

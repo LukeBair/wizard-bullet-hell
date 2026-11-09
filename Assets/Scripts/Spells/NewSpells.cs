@@ -1,84 +1,97 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Blazing Halo: a persistent aura. Every pulse burns and shoves everything within reach, so you
-// fight by staying in the thick of it. Gated by its tome like any other spell (Grimoire.HasTome).
-// II (Searing Halo): wider, and pulses set foes burning. III (Sunfire Corona): every few pulses a
-// huge corona erupts for heavy damage and a hard shove.
-public class BlazingHalo : Spell
+// Starfall: calls stars down on random foes in range. Each lands after a short telegraphed delay,
+// so it rewards foes that stay put and tags groups all over the screen rather than the nearest one.
+// II (Meteor Shower): more stars, and impacts leave foes burning. III (Cataclysm): the first star of
+// each cast is a giant meteor. Self-contained and gated by its tome.
+public class Starfall : Spell
 {
-    public override string Name => "Blazing Halo";
-    public override Element Element => Element.Fire;
-    public override string Blurb => "A ring of fire follows you, burning and shoving every foe that gets close.";
+    public override string Name => "Starfall";
+    public override Element Element => Element.Arcane;
+    public override string Blurb => "Stars crash down on random foes in range after a short warning.";
     public override bool CanEvolve => true;
-    protected override float BaseDamage => Tier == 3 ? 5.5f : Tier == 2 ? 5f : 4f;   // per pulse
-    protected override float BaseCooldown => 0.6f;
-    protected override bool CastAnimates => false;   // it never stops pulsing; don't flail the wizard each time
+    protected override float BaseDamage => Tier == 3 ? 16f : Tier == 2 ? 14f : 12f;   // per star
+    protected override float BaseCooldown => 3f;
+    protected override float AreaPerRune => 0.15f;
 
-    int pulses;
-    SpriteRenderer glow;
+    class Star { public Vector2 pos; public float timer, damage, radius; public bool big; }
+    readonly List<Star> stars = new List<Star>();
 
-    float Radius => TT("radius", Tier == 1 ? 1.5f : Tier == 2 ? 1.9f : 2.1f) * Area;
-    float BandGrow => T("bandGrow", 0.35f);
-    int Bands => Count;
-    float Outer => Radius * (1f + BandGrow * (Bands - 1));
-    float Knock => T("knock", 1.5f) * (1f + T("knockPerPierce", 0.5f) * PierceCount);
+    int Stars => Mathf.RoundToInt(TT("stars", Tier == 1 ? 3 : Tier == 2 ? 5 : 5)) + (Count - 1) * Mathf.RoundToInt(T("starsPerSplit", 2)) + PierceCount;
+    float Radius => T("radius", 1f) * Area;
 
-    public override string TierName(int tier) => tier == 2 ? "Searing Halo" : tier == 3 ? "Sunfire Corona" : Name;
+    public override string TierName(int tier) => tier == 2 ? "Meteor Shower" : tier == 3 ? "Cataclysm" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? $"A wider ring, and every pulse sets foes burning."
-                  : $"Wider again, and every {T("coronaEvery_t3", 4)}th pulse erupts into a corona for {T("coronaDamage_t3", 2.5f):0.#}x damage and a hard shove.";
+        tier == 2 ? "More stars per cast, and every impact sets foes burning."
+                  : $"The first star of each cast is a giant meteor with {T("bigRadius_t3", 2.5f):0.#}x the reach and {T("bigDamage_t3", 3f):0.#}x damage.";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
-            case Rune.Split: return $"+1 outer band ({Pct(BandGrow)} wider) that burns for {Pct(T("bandShare", 0.5f))} damage";
-            case Rune.Pierce: return $"+{Pct(T("knockPerPierce", 0.5f))} knockback";
-            case Rune.Haste: return $"Pulses {Pct(HastePerRune)} faster";
-            case Rune.Area: return $"+{Pct(AreaStep)} ring size";
-            case Rune.Echo: return "Pulses again a moment later";
-            case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th pulse is {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} stronger";
+            case Rune.Split: return $"+{T("starsPerSplit", 2):0} stars per cast";
+            case Rune.Pierce: return "+1 star per cast";
+            case Rune.Haste: return $"Casts {Pct(HastePerRune)} faster";
+            case Rune.Area: return $"+{Pct(AreaStep)} impact size";
+            case Rune.Echo: return "Another volley a moment later";
+            case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th volley hits {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} harder";
             default: return base.RuneEffect(r);
         }
     }
 
-    protected override bool Ready() => EnemiesWithin(Owner.Position, Outer).Count > 0;
-
     protected override void Cast()
     {
-        Vector2 c = Owner.Position;
-        pulses++;
-        bool corona = Tier == 3 && pulses % Mathf.Max(1, Mathf.RoundToInt(T("coronaEvery_t3", 4))) == 0;
-        float dmg = Damage;
-        float scale = corona ? T("coronaRadius_t3", 1.6f) : 1f;
-        float inner = Radius * scale, outer = Outer * scale;
-        float push = Knock * (corona ? T("coronaKnock_t3", 2.5f) : 1f);
-        Fx.Ring(c, corona ? Color.Lerp(Color, Color.white, 0.5f) : Color, outer, corona ? 0.45f : 0.3f);
-        Sfx.Play("spells.BlazingHalo.cast", Sound.Comet, corona ? 0.4f : 0.15f, 0.2f);
-
-        foreach (var e in EnemiesWithin(c, outer))
+        var foes = EnemiesWithin(Owner.Position, Range);
+        if (foes.Count == 0) return;
+        float dmg = Damage;   // fixed at the call, so an Overloaded volley stays strong
+        int n = Stars;
+        for (int i = 0; i < n; i++)
         {
-            Vector2 away = e.Position - c;
-            float d = away.magnitude;
-            int band = d <= inner ? 0 : Mathf.Min(Bands - 1, Mathf.CeilToInt((d - inner) / (inner * BandGrow)));
-            float share = band == 0 ? 1f : T("bandShare", 0.5f);
-            if (corona) share *= T("coronaDamage_t3", 2.5f);
-            if (Tier >= 2) e.ApplyBurn(dmg * share * T("burnShare_t2", 0.4f), T("burnTime", 2f));
-            Hit(e, dmg * share, away.normalized * push);
+            var e = foes[Random.Range(0, foes.Count)];
+            bool big = Tier == 3 && i == 0;
+            var s = new Star
+            {
+                pos = e.Position + Random.insideUnitCircle * 0.3f,
+                timer = T("delay", 0.7f) + i * T("stagger", 0.12f),
+                damage = dmg * (big ? T("bigDamage_t3", 3f) : 1f),
+                radius = Radius * (big ? T("bigRadius_t3", 2.5f) : 1f),
+                big = big,
+            };
+            stars.Add(s);
         }
+        Sfx.Play("spells.Starfall.call", Sound.Missile, 0.3f, 0.15f);
     }
 
     protected override void OnTick(float dt)
     {
         if (Owner == null) return;
-        if (glow == null)
+        for (int i = stars.Count - 1; i >= 0; i--)
         {
-            glow = SpriteFactory.Child(Owner.transform, "HaloGlow", SpriteFactory.Glow, Color.white, Vector2.zero, 1f, -47);
+            var s = stars[i];
+            s.timer -= dt;
+            if (s.timer > 0f)
+            {
+                // Warning ring, pulsed a few times while it falls.
+                if (Mathf.FloorToInt((s.timer + dt) * 8f) != Mathf.FloorToInt(s.timer * 8f))
+                    Fx.Ring(s.pos, new Color(Color.r, Color.g, Color.b, 0.6f), s.radius, 0.12f);
+                continue;
+            }
+            stars.RemoveAt(i);
+            Land(s);
         }
-        float flicker = 0.85f + 0.15f * Mathf.Sin(Time.time * 7f);
-        glow.color = new Color(Color.r, Color.g, Color.b, 0.22f * flicker);
-        glow.transform.localScale = Vector3.one * Radius * 2.4f;
+    }
+
+    void Land(Star s)
+    {
+        Fx.Burst(s.pos, Color, s.radius * 2.4f);
+        Fx.Ring(s.pos, Color.Lerp(Color, Color.white, 0.5f), s.radius, 0.3f);
+        Sfx.Play("spells.Starfall.land", Sound.Comet, s.big ? 0.6f : 0.35f, 0.2f);
+        foreach (var e in EnemiesWithin(s.pos, s.radius))
+        {
+            if (Tier >= 2) e.ApplyBurn(s.damage * T("burnShare_t2", 0.3f), T("burnTime", 2f));
+            Hit(e, s.damage, (e.Position - s.pos).normalized * T("knock", 1.5f));
+        }
     }
 }
 
