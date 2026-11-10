@@ -69,6 +69,8 @@ public class SpriteShadow : MonoBehaviour
     Vector3 lastPos, lastScale;
     Quaternion lastRot;
     Vector2 lastLean;
+    Vector3 lastWorldScale;   // the shadow lives in its parent's space, so a parent flip (the wizard turning) or rotation changes the mesh too
+    Quaternion lastWorldRot;
     Texture2D lastTex;
 
     void LateUpdate()
@@ -80,6 +82,7 @@ public class SpriteShadow : MonoBehaviour
         var t = src.transform;
         Vector2 lean = SunLean * t.lossyScale.y;
         if (src.sprite == lastSprite && src.flipX == lastFlip && lean == lastLean
+            && transform.lossyScale == lastWorldScale && transform.rotation == lastWorldRot
             && t.localPosition == lastPos && t.localScale == lastScale && t.localRotation == lastRot) return;
         Apply();
     }
@@ -94,6 +97,8 @@ public class SpriteShadow : MonoBehaviour
         lastSprite = sprite;
         lastFlip = src.flipX;
         lastLean = lean;
+        lastWorldScale = transform.lossyScale;
+        lastWorldRot = transform.rotation;
         lastPos = src.transform.localPosition;
         lastScale = src.transform.localScale;
         lastRot = src.transform.localRotation;
