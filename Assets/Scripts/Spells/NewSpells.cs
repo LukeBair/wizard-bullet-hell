@@ -24,7 +24,7 @@ public class Starfall : Spell
     public override string TierName(int tier) => tier == 2 ? "Meteor Shower" : tier == 3 ? "Cataclysm" : Name;
     public override string TierDescription(int tier) =>
         tier == 2 ? "More stars per cast, and every impact sets foes burning."
-                  : $"The first star of each cast is a giant meteor with {T("bigRadius_t3", 2.5f):0.#}x the reach and {T("bigDamage_t3", 3f):0.#}x damage.";
+                  : $"Cataclysm: the first star of each cast is a giant meteor that also stuns, with {T("bigRadius_t3", 2.5f):0.#}x the reach and {T("bigDamage_t3", 3f):0.#}x damage.";
 
     public override string RuneEffect(Rune r)
     {
@@ -87,8 +87,11 @@ public class Starfall : Spell
         Fx.Burst(s.pos, Color, s.radius * 2.4f);
         Fx.Ring(s.pos, Color.Lerp(Color, Color.white, 0.5f), s.radius, 0.3f);
         Sfx.Play("spells.Starfall.land", Sound.Comet, s.big ? 0.6f : 0.35f, 0.2f);
-        foreach (var e in EnemiesWithin(s.pos, s.radius))
+        var caught = EnemiesWithin(s.pos, s.radius);
+        Grimoire.FeatMax(SpellId.Starfall, caught.Count);
+        foreach (var e in caught)
         {
+            if (s.big) e.Daze(T("bigDaze_t3", 1.2f));
             if (Tier >= 2) e.ApplyBurn(s.damage * T("burnShare_t2", 0.3f), T("burnTime", 2f));
             Hit(e, s.damage, (e.Position - s.pos).normalized * T("knock", 1.5f));
         }
@@ -99,6 +102,9 @@ public class Starfall : Spell
 // crumbles; a few can stand at once. A summoned turret: you kite, it shoots. Self-contained and
 // gated by its tome. II (Tesla Coil): lasts longer and each zap arcs to one more foe. III (Storm
 // Spire): every few zaps the totem calls down a thunderclap.
+// Tags a planted totem so GameManager.ClearField removes it on zone change and run start.
+public class TotemMarker : MonoBehaviour { }
+
 public class TeslaTotem : Spell
 {
     public override string Name => "Tesla Totem";
@@ -120,14 +126,14 @@ public class TeslaTotem : Spell
 
     float Reach => T("range", 5f) * Area;
     float Life => T("life", 8f) * (Tier >= 2 ? T("lifeMult_t2", 1.5f) : 1f);
-    float Interval => T("interval", 0.8f) * HasteFactor;
-    int Targets => 1 + PierceCount + (Tier >= 2 ? 1 : 0);
+    float Interval => T("interval", 0.8f) * (Tier >= 2 ? T("intervalMult_t2", 0.7f) : 1f) * HasteFactor;
+    int Targets => 1 + PierceCount + (Tier >= 2 ? Mathf.RoundToInt(T("extraTargets_t2", 2)) : 0);
     int MaxActive => Mathf.Max(1, Mathf.RoundToInt(T("maxActive", 2))) * Count;
 
     public override string TierName(int tier) => tier == 2 ? "Tesla Coil" : tier == 3 ? "Storm Spire" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? $"Totems last {Pct(T("lifeMult_t2", 1.5f) - 1f)} longer and every zap arcs to one more foe."
-                  : $"Every {T("thunderEvery_t3", 5)}th zap becomes a thunderclap for {T("thunderDamage_t3", 2.5f):0.#}x damage in an area.";
+        tier == 2 ? $"Bigger, glowing totems zap {Pct(1f / T("intervalMult_t2", 0.7f) - 1f)} faster, hit {T("extraTargets_t2", 2):0} more foes with each zap, and last {Pct(T("lifeMult_t2", 1.5f) - 1f)} longer."
+                  : $"Every {T("thunderEvery_t3", 3)}th zap is a thunderclap for {T("thunderDamage_t3", 3f):0.#}x damage in a wide area, and a totem detonates for {T("detonateDamage_t3", 5f):0.#}x damage when it crumbles.";
 
     public override string RuneEffect(Rune r)
     {
@@ -161,9 +167,11 @@ public class TeslaTotem : Spell
         while (totems.Count >= MaxActive) Remove(0);
         var t = new Totem { pos = pos, life = Life, fire = 0.3f, damage = dmg };
         t.go = new GameObject("TeslaTotem");
+        t.go.AddComponent<TotemMarker>();
         t.go.transform.position = pos;
-        t.glow = SpriteFactory.Child(t.go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.5f), Vector2.zero, 1.4f, -46);
-        t.body = SpriteFactory.Child(t.go.transform, "Body", SpriteFactory.Diamond, Color, Vector2.zero, 0.5f, -45);
+        float big = Tier == 1 ? 1f : Tier == 2 ? 1.5f : 2f;
+        t.glow = SpriteFactory.Child(t.go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.5f), Vector2.zero, 1.4f * big, -46);
+        t.body = SpriteFactory.Child(t.go.transform, "Body", SpriteFactory.Diamond, Tier >= 2 ? Color.Lerp(Color, Color.white, 0.4f) : Color, Vector2.zero, 0.5f * big, -45);
         totems.Add(t);
         Fx.Ring(pos, Color, 0.8f, 0.25f);
     }
@@ -181,13 +189,36 @@ public class TeslaTotem : Spell
         {
             var t = totems[i];
             t.life -= dt;
-            if (t.life <= 0f || t.go == null) { if (t.go != null) Fx.Burst(t.pos, Color, 0.8f, false); Remove(i); continue; }
+            if (t.life <= 0f || t.go == null)
+            {
+                if (t.go != null) Expire(t);
+                Remove(i);
+                continue;
+            }
             float fade = Mathf.Clamp01(t.life / 1f);   // dims over its last second
             t.body.color = new Color(Color.r, Color.g, Color.b, fade);
             t.glow.color = new Color(Color.r, Color.g, Color.b, 0.35f * fade * (0.8f + 0.2f * Mathf.Sin(Time.time * 10f + i)));
             t.fire -= dt;
             if (t.fire <= 0f) Zap(t);
         }
+    }
+
+    // A crumbling totem; at tier III it detonates.
+    void Expire(Totem t)
+    {
+        if (Tier < 3) { Fx.Burst(t.pos, Color, 0.8f, false); return; }
+        float r = T("detonateRadius_t3", 2.2f) * Area;
+        Fx.Burst(t.pos, Color, r * 2f);
+        Fx.Ring(t.pos, Color.Lerp(Color, Color.white, 0.5f), r, 0.4f);
+        Sfx.Play("spells.TeslaTotem.thunder", Sound.Lightning, 0.5f, 0.1f);
+        foreach (var x in EnemiesWithin(t.pos, r)) KillCheck(x, () => Hit(x, t.damage * T("detonateDamage_t3", 5f), (x.Position - t.pos).normalized * 3f));
+    }
+
+    // Runs a hit and counts a kill toward the signature feat.
+    void KillCheck(Enemy e, System.Action hit)
+    {
+        hit();
+        if (!e.IsAlive) Grimoire.Feat(SpellId.TeslaTotem);
     }
 
     void Zap(Totem t)
@@ -200,23 +231,24 @@ public class TeslaTotem : Spell
         t.fire = Interval;
         t.zaps++;
         Sfx.Play("spells.TeslaTotem.zap", Sound.Spark, 0.3f, 0.2f);
+        if (Tier >= 2) Fx.Ring(t.pos, Color, 0.9f, 0.2f);   // tier II+: every zap pulses visibly
 
-        bool thunder = Tier == 3 && t.zaps % Mathf.Max(1, Mathf.RoundToInt(T("thunderEvery_t3", 5))) == 0;
+        bool thunder = Tier == 3 && t.zaps % Mathf.Max(1, Mathf.RoundToInt(T("thunderEvery_t3", 3))) == 0;
         for (int i = 0; i < Targets; i++)
         {
             var e = i == 0 ? first : Enemy.Nearest(from, T("arcRange", 3f) * Area, used);
             if (e == null) break;
             used.Add(e);
             SpellVfx.Spark(from, e.Position, Color);
-            float share = i == 0 ? 1f : T("arcShare", 0.7f);
+            float share = i == 0 ? 1f : T(Tier >= 2 ? "arcShare_t2" : "arcShare", Tier >= 2 ? 0.85f : 0.7f);
             if (thunder && i == 0)
             {
-                float r = T("thunderRadius_t3", 1.4f) * Area;
+                float r = T("thunderRadius_t3", 1.8f) * Area;
                 Fx.Burst(e.Position, Color, r * 2f);
                 Sfx.Play("spells.TeslaTotem.thunder", Sound.Lightning, 0.45f, 0.1f);
-                foreach (var x in EnemiesWithin(e.Position, r)) Hit(x, t.damage * T("thunderDamage_t3", 2.5f));
+                foreach (var x in EnemiesWithin(e.Position, r)) { var xx = x; KillCheck(xx, () => Hit(xx, t.damage * T("thunderDamage_t3", 3f))); }
             }
-            else Hit(e, t.damage * share);
+            else KillCheck(e, () => Hit(e, t.damage * share));
             from = e.Position;
         }
     }

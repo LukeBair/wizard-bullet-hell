@@ -440,6 +440,16 @@
     "_about": "Gold and the Grimoire. Gold per run = kills + bosses + minutes survived (+ goldWin on a win), kept even if you die. Arcane Missile, Fireball and Frost Nova tomes are free; the rest cost tomeCost. Evolution II needs its feat (beat featBossesT2 bosses with the spell in your build), III needs its signature feat (see feats).",
     "feats": {
       "_about": "Tier III signature feats: done within one run while the spell is at tier II+. kind: count (adds up), max (best single moment), win (adds up, completes only on a win). {goal} in text shows the goal. Spells without an entry keep the old feat (win a run with the spell at tier II+).",
+      "Starfall": {
+        "goal": 6,
+        "kind": "max",
+        "text": "Catch {goal} foes in a single Starfall star"
+      },
+      "TeslaTotem": {
+        "goal": 150,
+        "kind": "count",
+        "text": "Kill {goal} foes with Tesla Totem zaps in one run"
+      },
       "ArcaneMissile": {
         "goal": 1500,
         "kind": "count",
@@ -987,7 +997,8 @@
       "burnShare_t2": 0.3,
       "burnTime": 2,
       "bigRadius_t3": 2.5,
-      "bigDamage_t3": 3
+      "bigDamage_t3": 3,
+      "bigDaze_t3": 1.2
     },
     "TeslaTotem": {
       "damage": 7,
@@ -1002,9 +1013,14 @@
       "lifeMult_t2": 1.5,
       "maxActive": 2,
       "_maxActive": "Totems standing at once, per Split. The oldest crumbles when a new one is planted.",
-      "thunderEvery_t3": 5,
-      "thunderRadius_t3": 1.4,
-      "thunderDamage_t3": 2.5
+      "intervalMult_t2": 0.7,
+      "extraTargets_t2": 2,
+      "arcShare_t2": 0.85,
+      "thunderEvery_t3": 3,
+      "thunderRadius_t3": 1.8,
+      "thunderDamage_t3": 3,
+      "detonateRadius_t3": 2.2,
+      "detonateDamage_t3": 5
     },
     "Banish": {
       "damage": 6,

@@ -968,7 +968,7 @@ public class Enemy : MonoBehaviour
                 charmAura.color = new Color(1f, 1f, 1f, Mathf.Min(1f, charmAge / 0.3f, charmTimer / 0.4f));   // hearts fade in and out
             }
             Show(bugs, IsInfested);
-            Particles.Status(Position, Radius, IsBurning, IsChilled, IsWet, IsInfested, IsRooted, dt);
+            Particles.Status(Position, Radius, IsBurning, IsChilled, IsWet, IsInfested, IsRooted, dt, witherTimer > 0f);
             if (IsInfested) bugs.transform.Rotate(0f, 0f, 500f * dt);
         }
 
@@ -976,6 +976,7 @@ public class Enemy : MonoBehaviour
         if (IsWet) c = Color.Lerp(c, new Color(0.25f, 0.45f, 0.9f), 0.35f);
         if (IsChilled || frostbite > 0.05f) c = Color.Lerp(c, new Color(0.55f, 0.85f, 1f), Mathf.Max(IsChilled ? 0.55f : 0f, Mathf.Clamp01(frostbite)));
         if (IsBurning) c = Color.Lerp(c, new Color(1f, 0.5f, 0.15f), 0.35f + 0.25f * Mathf.Sin(Time.time * 20f));
+        if (witherTimer > 0f) c = Color.Lerp(c, new Color(0.45f, 0.4f, 0.35f), 0.4f);   // Wither: greyed out and drooping
         if (IsCharmed) c = Color.Lerp(c, new Color(1f, 0.5f, 0.8f), 0.4f);
         c = Color.Lerp(c, ArtStyle.HitFlash, Mathf.Clamp01(flash));
         if (c != shownColor) body.color = shownColor = c;
