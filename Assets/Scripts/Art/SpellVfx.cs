@@ -70,6 +70,32 @@ public static class SpellVfx
         return bolts[name] = found.ToArray();
     }
 
+    // Frames of a painted effect at a world size, resampled to the game's pixel density. Null without the art.
+    public static Sprite[] Sized(string name, float size, out float scale)
+    {
+        scale = 1f;
+        if (!On) return null;
+        var src = Frames(name, 24);
+        if (src.Length == 0) return null;
+        scale = size / (src[0].rect.width / src[0].pixelsPerUnit);
+        return PixelDensity.Fit(src, scale, false);
+    }
+
+    // Painted condition icons (curse, burning, chilled, wet, infested), hidden until a foe has the condition.
+    public static SpriteRenderer[] ConditionIcons(Transform foe, Vector2 at, int order)
+    {
+        string[] names = { "icon_curse", "icon_burning", "icon_chilled", "icon_wet", "icon_infested" };
+        var icons = new SpriteRenderer[names.Length];
+        for (int i = 0; i < names.Length; i++)
+        {
+            var f = Sized(names[i], Tune.F("vfx.iconSize", 0.45f), out float s);
+            if (f == null) return null;
+            icons[i] = SpriteFactory.Child(foe, names[i], f[0], Color.white, at, s, order);
+            icons[i].enabled = false;
+        }
+        return icons;
+    }
+
     public static bool On => Settings.Enemy3D && ArtStyle.Current == ArtStyleId.Dusk;
 
     // Skins a player projectile for its element: an animated painted bolt, head first.

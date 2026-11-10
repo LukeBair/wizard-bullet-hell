@@ -96,6 +96,7 @@ public class Enemy : MonoBehaviour
     SpriteRenderer body;
     SpriteRenderer[] renderers;
     SpriteRenderer curseMark, vines, charmAura, bugs;
+    SpriteRenderer[] icons; float iconY;   // painted condition icons over the head (SpellVfx.ConditionIcons), null without the art
     float markSize; int markOrder; bool charmPainted;
     float charmAge;   // seconds charmed, for the hearts' fade in
     PaintedLoop vineArt; bool vinesPainted;   // painted vines round a rooted foe, made the first time it's rooted   // the painted charm sigil is made the first time it's needed
@@ -253,6 +254,9 @@ public class Enemy : MonoBehaviour
         vines = SpriteFactory.Child(transform, "Vines", SpriteFactory.Ring, new Color(0.25f, 0.7f, 0.2f, 0.9f), Vector2.zero, s * 1.3f, o + 4);
         charmAura = SpriteFactory.Child(transform, "Charm", SpriteFactory.Glow, new Color(1f, 0.4f, 0.75f, 0.7f), Vector2.zero, s * 2f, o - 3);
         markSize = s; markOrder = o - 3;
+        iconY = 0.75f * s + Tune.F("vfx.iconLift", 0.15f);
+        icons = SpellVfx.ConditionIcons(transform, new Vector2(0f, iconY), o + 5);
+        if (icons != null) curseMark.color = Color.clear;   // the icon takes its place
         bugs = SpriteFactory.Child(transform, "Bugs", SpriteFactory.Ring, new Color(0.55f, 0.7f, 0.15f, 0.9f), Vector2.zero, s * 0.9f, o + 4);
 
         if (d.Look == EnemyLook.Headmaster)
@@ -294,6 +298,7 @@ public class Enemy : MonoBehaviour
             if (charmPainted) charmAura.enabled = false;   // the painted art isn't in `renderers`
             if (vineArt != null) vines.enabled = false;
         }
+        if (icons != null && hidden) foreach (var ic in icons) ic.enabled = false;
     }
 
     void Wing(float s, int side, int order)
@@ -1040,6 +1045,7 @@ public class Enemy : MonoBehaviour
         {
             Show(curseMark, curseBonus > 0f);
             if (curseBonus > 0f) curseMark.transform.localScale = Vector3.one * (0.25f + 0.05f * curseBonus * 2f);
+            if (icons != null) ShowIcons();
             Show(vines, IsRooted);
             if (IsRooted && vineArt != null) vines.color = new Color(1f, 1f, 1f, Mathf.Min(1f, rootTimer / 0.3f));   // withers away at the end
             Show(charmAura, IsCharmed);
@@ -1064,6 +1070,22 @@ public class Enemy : MonoBehaviour
     }
 
     // Renderer toggles and tints only cross into the engine when they actually change.
+    // Lays the icons of the conditions the foe has in a row over its head, centred.
+    void ShowIcons()
+    {
+        int n = 0;
+        for (int i = 0; i < icons.Length; i++) if (HasCondition(i)) n++;
+        float gap = Tune.F("vfx.iconGap", 0.45f), x = -(n - 1) * gap * 0.5f;
+        for (int i = 0; i < icons.Length; i++)
+        {
+            bool on = HasCondition(i);
+            icons[i].enabled = on;
+            if (on) { icons[i].transform.localPosition = new Vector2(x, iconY); x += gap; }
+        }
+    }
+
+    bool HasCondition(int i) => i == 0 ? curseBonus > 0f : i == 1 ? IsBurning : i == 2 ? IsChilled : i == 3 ? IsWet : IsInfested;
+
     static void Show(SpriteRenderer r, bool on)
     {
         if (r.enabled != on) r.enabled = on;
