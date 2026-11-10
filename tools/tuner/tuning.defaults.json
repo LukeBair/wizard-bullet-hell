@@ -988,6 +988,7 @@
       "stars": 3,
       "stars_t2": 5,
       "stars_t3": 5,
+      "maxStars": 8,
       "starsPerSplit": 2,
       "radius": 1,
       "delay": 0.7,

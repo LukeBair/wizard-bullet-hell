@@ -46,19 +46,25 @@ public class Starfall : Spell
         if (foes.Count == 0) return;
         float dmg = Damage;   // fixed at the call, so an Overloaded volley stays strong
         int n = Stars;
+        n = Mathf.Min(n, Mathf.RoundToInt(T("maxStars", 8)));
+        // Spread the stars over different foes first (shuffled), only doubling up once every foe has one.
+        var order = new List<Enemy>(foes);
+        for (int i = order.Count - 1; i > 0; i--) { int j = Random.Range(0, i + 1); (order[i], order[j]) = (order[j], order[i]); }
         for (int i = 0; i < n; i++)
         {
-            var e = foes[Random.Range(0, foes.Count)];
+            var e = order[i % order.Count];
             bool big = Tier == 3 && i == 0;
+            Vector2 offset = i < order.Count ? Random.insideUnitCircle * 0.3f : Random.insideUnitCircle.normalized * Radius * 1.2f;
             var s = new Star
             {
-                pos = e.Position + Random.insideUnitCircle * 0.3f,
+                pos = e.Position + offset,
                 timer = T("delay", 0.7f) + i * T("stagger", 0.12f),
                 damage = dmg * (big ? T("bigDamage_t3", 3f) : 1f),
                 radius = Radius * (big ? T("bigRadius_t3", 2.5f) : 1f),
                 big = big,
             };
             stars.Add(s);
+            Fx.Marker(s.pos, new Color(Color.r, Color.g, Color.b, 0.7f), s.radius, s.timer);   // one warning ring per star
         }
         Sfx.Play("spells.Starfall.call", Sound.Missile, 0.3f, 0.15f);
     }
@@ -70,13 +76,7 @@ public class Starfall : Spell
         {
             var s = stars[i];
             s.timer -= dt;
-            if (s.timer > 0f)
-            {
-                // Warning ring, pulsed a few times while it falls.
-                if (Mathf.FloorToInt((s.timer + dt) * 8f) != Mathf.FloorToInt(s.timer * 8f))
-                    Fx.Ring(s.pos, new Color(Color.r, Color.g, Color.b, 0.6f), s.radius, 0.12f);
-                continue;
-            }
+            if (s.timer > 0f) continue;
             stars.RemoveAt(i);
             Land(s);
         }
@@ -85,7 +85,7 @@ public class Starfall : Spell
     void Land(Star s)
     {
         Fx.Burst(s.pos, Color, s.radius * 2.4f);
-        Fx.Ring(s.pos, Color.Lerp(Color, Color.white, 0.5f), s.radius, 0.3f);
+        Fx.Ring(s.pos, Color.Lerp(Color, Color.white, 0.5f), s.radius, 0.3f, s.big);   // spark ring only for the big meteor
         Sfx.Play("spells.Starfall.land", Sound.Comet, s.big ? 0.6f : 0.35f, 0.2f);
         var caught = EnemiesWithin(s.pos, s.radius);
         Grimoire.FeatMax(SpellId.Starfall, caught.Count);

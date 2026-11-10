@@ -18,11 +18,15 @@ public class Fx : MonoBehaviour
         if (particles) Particles.Burst(pos, c, size);
     }
 
-    public static void Ring(Vector2 pos, Color c, float radius, float duration = 0.35f)
+    public static void Ring(Vector2 pos, Color c, float radius, float duration = 0.35f, bool particles = true)
     {
         Make(pos, SpriteFactory.Ring, c, radius * 0.5f, radius * 2f, duration);
-        Particles.Ring(pos, c, radius);
+        if (particles) Particles.Ring(pos, c, radius);
     }
+
+    // A ring that stays put and fades over `duration`: a ground warning. No particles.
+    public static void Marker(Vector2 pos, Color c, float radius, float duration)
+        => Make(pos, SpriteFactory.Ring, c, radius * 2f, radius * 2f, duration);
 
     // Warning lane for a charge: a blinking strip from `from` along `dir`.
     public static void Telegraph(Vector2 from, Vector2 dir, float length, float width, Color c, float duration)
