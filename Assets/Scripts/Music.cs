@@ -51,7 +51,7 @@ public class Music : MonoBehaviour
         var (wanted, loop) = WantedTrack();
         if (wanted != playing) Switch(wanted, loop);
 
-        float target = Tune.F("audio.volume", 1f) * Tune.F("audio.music.volume", 0.6f) * Settings.Volume;
+        float target = Tune.F("audio.volume", 1f) * Tune.F("audio.music.volume", 0.6f) * Settings.Volume * Sfx.MusicDuck;
         float step = Time.unscaledDeltaTime / Mathf.Max(0.01f, Tune.F("audio.music.fade", 1.5f));
         float crush = Mathf.Clamp01(Tune.F("audio.music.crush", 0f));
         float mix = Mathf.Clamp01(Tune.F("audio.music.crushMix", 1f));

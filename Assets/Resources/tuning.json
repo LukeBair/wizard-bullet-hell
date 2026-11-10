@@ -53,6 +53,16 @@
   },
   "audio": {
     "volume": 1,
+    "bus": { "sfx": 1, "ui": 1, "_about": "Bus volumes under audio.volume and the Settings volume. Music has its own audio.music.volume." },
+    "voices": 24,
+    "headroom": 0.8,
+    "spatial": true,
+    "pan": 0.5,
+    "duck": { "sfx": 0.55, "music": 0.45, "time": 0.35, "_about": "When a high-priority sound plays (hurt, level up, boss), quiet sounds drop to duck.sfx for duck.time seconds and long ones also drop the music to duck.music." },
+    "kill": { "window": 0.6, "burstAt": 7, "floor": 0.5, "_about": "Kill chains: deaths within window seconds build a rate; at burstAt a deep thump plays and each death gets quieter (never below floor)." },
+    "gemChain": { "step": 0.035, "steps": 12, "_about": "Gem pickups rise in pitch by step per pickup while they keep coming (up to steps)." },
+    "buildBudgetMs": 3,
+    "sound": { "_about": "Per sound overrides, e.g. sound.EnemyHit.gap (seconds between plays), .max (voices at once), .priority (0 low, 1 normal, 2 high), .volume. Sounds are the names in the Sound enum. Drop files named after them in Resources/Sfx to replace the synth." },
     "music": {
       "volume": 0.6,
       "fade": 1.5,
@@ -100,7 +110,9 @@
         "die": 1,
         "hazard": 1,
         "hit": 1,
+        "lunge": 1,
         "shoot": 1,
+        "split": 1,
         "teleport": 1
       },
       "events": {
@@ -114,11 +126,13 @@
         "zoneChange": 1
       },
       "pickups": {
+        "magnet": 1,
         "midasGold": 1,
         "xpGem": 1
       },
       "player": {
         "die": 1,
+        "heal": 1,
         "hurt": 1,
         "lowHealth": 1,
         "wardBlock": 1,

@@ -224,7 +224,7 @@ public class Player : MonoBehaviour
     {
         Telemetry.Healed(Mathf.Min(amount, MaxHealth - Health), source);
         Health = Mathf.Min(MaxHealth, Health + amount);
-        if (fx && amount > 0f) Particles.Heal(Position, amount);
+        if (fx && amount > 0f) { Particles.Heal(Position, amount); Sfx.Play("player.heal", Sound.Heal, 0.35f, 0.05f); }
     }
 
     public void Sunlight(float power, float duration)
