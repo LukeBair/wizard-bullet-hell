@@ -501,6 +501,7 @@ public class Enemy : MonoBehaviour
                         if (dist < 5f && stateTimer <= 0f && !IsRooted)
                         {
                             state = 1; stateTimer = 0.7f; lockedDir = dir;
+                            Sfx.Play("enemies.lunge", Sound.Lunge, Position, 0.4f, 0.1f);
                             // Warning lane showing exactly where the charge will go.
                             Fx.Telegraph(Position, lockedDir, Def.Speed * 5f * 0.35f * Tuning.Pace + Radius, Radius * 1.6f, new Color(1f, 0.25f, 0.2f, 0.45f), 0.7f);
                         }
@@ -998,7 +999,7 @@ public class Enemy : MonoBehaviour
             flash = 1f;
             DamageText.Spawn(Position + Vector2.up * Radius, amount, numberColor ?? Color.white);
             Particles.Hit(Position, numberColor ?? Color.white, push);
-            Sfx.Play("enemies.hit", Sound.EnemyHit, 0.25f, 0.15f);
+            Sfx.Play("enemies.hit", IsBoss ? Sound.BossHit : Sound.EnemyHit, Position, IsBoss ? 0.3f : 0.25f, 0.15f);
         }
         if (!IsBoss && !IsRooted) knockback += push;
         if (Health <= 0f) Die();
@@ -1296,7 +1297,7 @@ public class Enemy : MonoBehaviour
 
         Fx.Burst(Position, Def.Color, Radius * 2.5f, false);   // Particles.Death throws the debris
         Particles.Death(Position, Def.Look, Radius, Def.Tier);
-        if (!IsBoss) Sfx.Play("enemies.die", Sound.EnemyDie, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
+        if (!IsBoss) Sfx.Play("enemies.die", Sfx.DeathFor(Def.Name), Position, Def.Tier == EnemyTier.Medium ? 0.6f : 0.35f, 0.2f);
         if (IsInfested) InfestBurst();
         if (IsRooted) rootDeathBloom?.Invoke(Position);
         if (IsRooted && VineTrapped) Grimoire.Feat(SpellId.Overgrowth);
@@ -1304,6 +1305,7 @@ public class Enemy : MonoBehaviour
         Died?.Invoke(this);
         if (Def.Behavior == EnemyBehavior.Splitter)
         {
+            Sfx.Play("enemies.split", Sound.Split, Position, 0.5f, 0.1f);
             var small = gm.Arena.Biome.Roster.Chaff[0];
             for (int i = 0; i < 3; i++)
             {

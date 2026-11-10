@@ -36,6 +36,7 @@ public class XpGem : MonoBehaviour
     public static void MagnetAll()
     {
         foreach (var g in All) g.magnet = true;
+        Sfx.Play("pickups.magnet", Sound.Magnet, 0.5f, 0f);
     }
 
     // Zone change: every gem still on the ground goes straight to the wizard.
