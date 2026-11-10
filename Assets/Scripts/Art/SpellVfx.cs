@@ -70,17 +70,6 @@ public static class SpellVfx
         return bolts[name] = found.ToArray();
     }
 
-    // Frames of a painted effect at a world size, resampled to the game's pixel density. Null without the art.
-    public static Sprite[] Sized(string name, float size, out float scale)
-    {
-        scale = 1f;
-        if (!On) return null;
-        var src = Frames(name, 24);
-        if (src.Length == 0) return null;
-        scale = size / (src[0].rect.width / src[0].pixelsPerUnit);
-        return PixelDensity.Fit(src, scale, false);
-    }
-
     // Painted condition icons (curse, burning, chilled, wet, infested), hidden until a foe has the condition.
     public static SpriteRenderer[] ConditionIcons(Transform foe, Vector2 at, int order)
     {
