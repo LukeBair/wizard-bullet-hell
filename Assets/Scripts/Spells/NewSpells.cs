@@ -98,18 +98,19 @@ public class Starfall : Spell
     }
 }
 
-// Tesla Totem: plants a stationary totem that zaps the nearest foes for a few seconds, then
-// crumbles; a few can stand at once. A summoned turret: you kite, it shoots. Self-contained and
-// gated by its tome. II (Tesla Coil): lasts longer and each zap arcs to one more foe. III (Storm
-// Spire): every few zaps the totem calls down a thunderclap.
-// Tags a planted totem so GameManager.ClearField removes it on zone change and run start.
-public class TotemMarker : MonoBehaviour { }
+// Tesla Totem: plants a ring of stationary totems around you that zap the nearest foes for a few
+// seconds, then crumble. A summoned turret: you kite, they shoot. Self-contained and gated by its tome.
+// II (Tesla Coil): a chain of lightning links you and the totems together, shocking foes it crosses.
+// III (Storm Spire): each totem also pulses circular shocks around itself; zaps still chain with Pierce.
+// Split plants more totems in the ring, Echo plants another ring, Area widens ring and reach, Potency
+// also lengthens how long they stand.
+public class TotemMarker : MonoBehaviour { }   // lets GameManager.ClearField remove planted totems
 
 public class TeslaTotem : Spell
 {
     public override string Name => "Tesla Totem";
     public override Element Element => Element.Storm;
-    public override string Blurb => "Plants a totem that zaps nearby foes for a few seconds.";
+    public override string Blurb => "Plants a ring of totems around you that zap nearby foes for a few seconds.";
     public override bool CanEvolve => true;
     protected override float BaseDamage => Tier == 3 ? 9f : Tier == 2 ? 8f : 7f;   // per zap
     protected override float BaseCooldown => 6f;
@@ -117,47 +118,52 @@ public class TeslaTotem : Spell
     class Totem
     {
         public Vector2 pos;
-        public float life, fire, damage;
-        public int zaps;
+        public float life, fire, shock, damage;
         public GameObject go;
         public SpriteRenderer body, glow;
     }
     readonly List<Totem> totems = new List<Totem>();
+    float linkTimer;
+    float ringAngle = -1f;
 
     float Reach => T("range", 5f) * Area;
-    float Life => T("life", 8f) * (Tier >= 2 ? T("lifeMult_t2", 1.5f) : 1f);
-    float Interval => T("interval", 0.8f) * (Tier >= 2 ? T("intervalMult_t2", 0.7f) : 1f) * HasteFactor;
-    int Targets => 1 + PierceCount + (Tier >= 2 ? Mathf.RoundToInt(T("extraTargets_t2", 2)) : 0);
+    float Life => T("life", 8f) * (1f + T("lifePerPotency", 0.1f) * RuneCount(Rune.Potency));
+    float Interval => T("interval", 0.8f) * HasteFactor;
+    int Targets => 1 + PierceCount;   // Pierce: each zap chains to more foes
     int MaxActive => Mathf.Max(1, Mathf.RoundToInt(T("maxActive", 2))) * Count;
 
     public override string TierName(int tier) => tier == 2 ? "Tesla Coil" : tier == 3 ? "Storm Spire" : Name;
     public override string TierDescription(int tier) =>
-        tier == 2 ? $"Bigger, glowing totems zap {Pct(1f / T("intervalMult_t2", 0.7f) - 1f)} faster, hit {T("extraTargets_t2", 2):0} more foes with each zap, and last {Pct(T("lifeMult_t2", 1.5f) - 1f)} longer."
-                  : $"Every {T("thunderEvery_t3", 3)}th zap is a thunderclap for {T("thunderDamage_t3", 3f):0.#}x damage in a wide area, and a totem detonates for {T("detonateDamage_t3", 5f):0.#}x damage when it crumbles.";
+        tier == 2 ? $"A chain of lightning links you and your totems, shocking every foe it crosses for {Pct(T("linkShare", 0.6f))} damage."
+                  : $"Coil, and each totem pulses a circular shock every {T("shockEvery_t3", 1.6f):0.#}s around itself for {Pct(T("shockDamage_t3", 1f))} damage. Zaps still chain with Pierce.";
 
     public override string RuneEffect(Rune r)
     {
         switch (r)
         {
-            case Rune.Split: return "+1 totem planted per cast";
-            case Rune.Pierce: return "Each zap arcs to +1 more foe";
+            case Rune.Potency: return $"+{Pct(PotencyStep)} damage and +{Pct(T("lifePerPotency", 0.1f))} totem duration";
+            case Rune.Split: return "+1 totem in the ring";
+            case Rune.Pierce: return "Each zap chains to +1 more foe";
             case Rune.Haste: return $"Casts and zaps {Pct(HastePerRune)} faster";
-            case Rune.Area: return $"+{Pct(AreaStep)} zap range (and thunderclap size)";
-            case Rune.Echo: return "Plants a second totem a moment later";
-            case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th totem zaps {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} harder";
+            case Rune.Area: return $"+{Pct(AreaStep)} ring size, zap range and shock size";
+            case Rune.Echo: return "Plants a second ring a moment later";
+            case Rune.Overload: return $"Every {Tune.I("runes.Overload.every", 4)}th ring of totems hits {Pct(Tune.F("runes.Overload.bonusPerRune", 1.5f))} harder";
             default: return base.RuneEffect(r);
         }
     }
 
     protected override void Cast()
     {
-        float dmg = Damage;   // fixed at planting, so an Overloaded totem stays strong
+        float dmg = Damage;   // fixed at planting, so an Overloaded ring stays strong
         int n = Count;
+        // Evenly spaced on a circle round the wizard; each ring (cast or echo) starts at a fresh angle
+        // so a second ring fills the gaps of the first.
+        ringAngle = ringAngle < 0f ? Random.value * Mathf.PI * 2f : ringAngle + Mathf.PI / n + 0.4f;
+        float radius = T("ringRadius", 2.2f) * Area;
         for (int i = 0; i < n; i++)
         {
-            float a = (i + Random.value * 0.4f) / n * Mathf.PI * 2f;
-            Vector2 pos = Owner.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (n > 1 ? 0.9f : 0.6f);
-            Plant(pos, dmg);
+            float a = ringAngle + i * Mathf.PI * 2f / n;
+            Plant(Owner.Position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * radius, dmg);
         }
         Sfx.Play("spells.TeslaTotem.plant", Sound.Spark, 0.4f, 0.15f);
     }
@@ -165,7 +171,7 @@ public class TeslaTotem : Spell
     void Plant(Vector2 pos, float dmg)
     {
         while (totems.Count >= MaxActive) Remove(0);
-        var t = new Totem { pos = pos, life = Life, fire = 0.3f, damage = dmg };
+        var t = new Totem { pos = pos, life = Life, fire = 0.3f, shock = T("shockEvery_t3", 1.6f) * 0.5f, damage = dmg };
         t.go = new GameObject("TeslaTotem");
         t.go.AddComponent<TotemMarker>();
         t.go.transform.position = pos;
@@ -191,7 +197,7 @@ public class TeslaTotem : Spell
             t.life -= dt;
             if (t.life <= 0f || t.go == null)
             {
-                if (t.go != null) Expire(t);
+                if (t.go != null) Fx.Burst(t.pos, Color, 0.8f, false);
                 Remove(i);
                 continue;
             }
@@ -200,18 +206,73 @@ public class TeslaTotem : Spell
             t.glow.color = new Color(Color.r, Color.g, Color.b, 0.35f * fade * (0.8f + 0.2f * Mathf.Sin(Time.time * 10f + i)));
             t.fire -= dt;
             if (t.fire <= 0f) Zap(t);
+            if (Tier == 3)
+            {
+                t.shock -= dt;
+                if (t.shock <= 0f) Shock(t);
+            }
+        }
+
+        if (Tier >= 2 && totems.Count > 0)
+        {
+            linkTimer -= dt;
+            if (linkTimer <= 0f) { linkTimer = T("linkTick", 0.4f) * HasteFactor; Link(); }
         }
     }
 
-    // A crumbling totem; at tier III it detonates.
-    void Expire(Totem t)
+    // Tier II+: you -> nearest totem -> its nearest unlinked neighbour -> ..., within link range.
+    // Every foe touching a link takes a hit (once per pulse, however many links it crosses).
+    void Link()
     {
-        if (Tier < 3) { Fx.Burst(t.pos, Color, 0.8f, false); return; }
-        float r = T("detonateRadius_t3", 2.2f) * Area;
-        Fx.Burst(t.pos, Color, r * 2f);
-        Fx.Ring(t.pos, Color.Lerp(Color, Color.white, 0.5f), r, 0.4f);
-        Sfx.Play("spells.TeslaTotem.thunder", Sound.Lightning, 0.5f, 0.1f);
-        foreach (var x in EnemiesWithin(t.pos, r)) KillCheck(x, () => Hit(x, t.damage * T("detonateDamage_t3", 5f), (x.Position - t.pos).normalized * 3f));
+        var left = new List<Totem>(totems);
+        var hit = new HashSet<Enemy>();
+        float range = T("linkRange", 6f) * Area, width = T("linkWidth", 0.35f);
+        Vector2 cur = Owner.Position;
+        while (left.Count > 0)
+        {
+            Totem next = null;
+            float best = range * range;
+            foreach (var t in left)
+            {
+                float d = (t.pos - cur).sqrMagnitude;
+                if (d < best) { best = d; next = t; }
+            }
+            if (next == null) break;
+            left.Remove(next);
+            Fx.Bolt(cur, next.pos, Color);
+            Vector2 mid = (cur + next.pos) * 0.5f;
+            foreach (var e in EnemiesWithin(mid, Mathf.Sqrt(best) * 0.5f + width + 0.5f))
+            {
+                if (hit.Contains(e) || DistToSegment(e.Position, cur, next.pos) > width + e.Radius) continue;
+                hit.Add(e);
+                var foe = e;
+                KillCheck(foe, () => Hit(foe, next.damage * T("linkShare", 0.6f)));
+            }
+            cur = next.pos;
+        }
+    }
+
+    static float DistToSegment(Vector2 p, Vector2 a, Vector2 b)
+    {
+        Vector2 ab = b - a;
+        float t = ab.sqrMagnitude < 0.0001f ? 0f : Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+        return (p - (a + ab * t)).magnitude;
+    }
+
+    // Tier III: a circle of lightning around the totem.
+    void Shock(Totem t)
+    {
+        t.shock = T("shockEvery_t3", 1.6f) * HasteFactor;
+        float r = T("shockRadius_t3", 2f) * Area;
+        var foes = EnemiesWithin(t.pos, r);
+        Fx.Ring(t.pos, Color.Lerp(Color, Color.white, 0.4f), r, 0.35f);
+        if (foes.Count == 0) return;
+        Sfx.Play("spells.TeslaTotem.thunder", Sound.Lightning, 0.35f, 0.1f);
+        foreach (var e in foes)
+        {
+            var foe = e;
+            KillCheck(foe, () => Hit(foe, t.damage * T("shockDamage_t3", 1f), (foe.Position - t.pos).normalized * 1.5f));
+        }
     }
 
     // Runs a hit and counts a kill toward the signature feat.
@@ -223,32 +284,23 @@ public class TeslaTotem : Spell
 
     void Zap(Totem t)
     {
-        var used = new List<Enemy>();
-        float reach = Reach;
-        Vector2 from = t.pos;
-        var first = Enemy.Nearest(t.pos, reach);
+        var first = Enemy.Nearest(t.pos, Reach);
         if (first == null) { t.fire = 0.2f; return; }   // nothing in range: keep checking
         t.fire = Interval;
-        t.zaps++;
         Sfx.Play("spells.TeslaTotem.zap", Sound.Spark, 0.3f, 0.2f);
-        if (Tier >= 2) Fx.Ring(t.pos, Color, 0.9f, 0.2f);   // tier II+: every zap pulses visibly
+        if (Tier >= 2) Fx.Ring(t.pos, Color, 0.9f, 0.2f);   // II+: every zap pulses visibly
 
-        bool thunder = Tier == 3 && t.zaps % Mathf.Max(1, Mathf.RoundToInt(T("thunderEvery_t3", 3))) == 0;
+        var used = new List<Enemy>();
+        Vector2 from = t.pos;
         for (int i = 0; i < Targets; i++)
         {
             var e = i == 0 ? first : Enemy.Nearest(from, T("arcRange", 3f) * Area, used);
             if (e == null) break;
             used.Add(e);
             SpellVfx.Spark(from, e.Position, Color);
-            float share = i == 0 ? 1f : T(Tier >= 2 ? "arcShare_t2" : "arcShare", Tier >= 2 ? 0.85f : 0.7f);
-            if (thunder && i == 0)
-            {
-                float r = T("thunderRadius_t3", 1.8f) * Area;
-                Fx.Burst(e.Position, Color, r * 2f);
-                Sfx.Play("spells.TeslaTotem.thunder", Sound.Lightning, 0.45f, 0.1f);
-                foreach (var x in EnemiesWithin(e.Position, r)) { var xx = x; KillCheck(xx, () => Hit(xx, t.damage * T("thunderDamage_t3", 3f))); }
-            }
-            else KillCheck(e, () => Hit(e, t.damage * share));
+            float share = i == 0 ? 1f : T("arcShare", 0.7f);
+            var foe = e;
+            KillCheck(foe, () => Hit(foe, t.damage * share));
             from = e.Position;
         }
     }
