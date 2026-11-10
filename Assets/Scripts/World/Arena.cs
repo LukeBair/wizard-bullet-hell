@@ -70,7 +70,7 @@ public class Arena : MonoBehaviour
                         {
                             float ms = 1.1f / (shroom.rect.width / shroom.pixelsPerUnit);
                             var shroomShadow = SpriteShadow.On ? ArtStyle.PropShadow(shroom.texture.name) : null;
-                            SpriteFactory.Child(transform, "Mushrooms", PixelDensity.Fit(shroom, ms), Color.white, p, ms, 0).spriteSortPoint = SpriteSortPoint.Pivot;
+                            Standing("Mushrooms", PixelDensity.Fit(shroom, ms), p, ms);
                             if (shroomShadow != null)
                                 SpriteFactory.Child(transform, "CastShadow", PixelDensity.Fit(shroomShadow, ms, false), new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), p, ms, -44);
                             Lighting.Point(transform, new Color(0.45f, 0.75f, 1f), 2.4f, 0.7f, p + new Vector2(0f, 0.4f));
@@ -199,6 +199,23 @@ public class Arena : MonoBehaviour
 
     bool UseForestProps => Props != null && ArtStyle.Prop(PropFile(Props.props[0].name, 0)) != null;
 
+    // Depth sorting: the wizard and enemies are sorted by the centre of their (large, foot-padded) sprite
+    // frames, about two units above their feet, while a prop sorted by its own base would only cover or
+    // uncover them once they were that far past it, so units looked half buried in front of a prop and the
+    // prop seemed to float. The sprite sits in a sorting group whose origin is lifted by that amount
+    // (sort.propLift), so a unit is in front of a prop exactly when its feet are below the prop's base.
+    SpriteRenderer Standing(string name, Sprite sprite, Vector2 basePos, float scale)
+    {
+        float lift = Tune.F("sort.propLift", 2f);
+        var root = new GameObject(name + "Root");
+        root.transform.SetParent(transform, false);
+        root.transform.localPosition = basePos + Vector2.up * lift;
+        root.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 0;
+        var sr = SpriteFactory.Child(root.transform, name, sprite, Color.white, Vector2.down * lift, scale, 0);
+        sr.spriteSortPoint = SpriteSortPoint.Pivot;
+        return sr;
+    }
+
     // A small floor prop (candelabra, floor crystal, swamp plant); false if its art isn't there, so the
     // caller draws the flat version. Names that match the self-lit list in Build stay out of the scene lighting.
     bool Deco(string name, Vector2 p, float width, Color? light, string objName)
@@ -206,9 +223,12 @@ public class Arena : MonoBehaviour
         var s = ArtStyle.Prop(PropFile(name, Random.Range(0, 6)));
         if (s == null) return false;
         float sc = width / (s.rect.width / s.pixelsPerUnit);
-        var sr = SpriteFactory.Child(transform, objName, PixelDensity.Fit(s, sc), Color.white, p, sc, 0);
-        sr.spriteSortPoint = SpriteSortPoint.Pivot;
+        var sr = Standing(objName, PixelDensity.Fit(s, sc), p, sc);
         sr.flipX = Random.value < 0.5f;
+        var baked = SpriteShadow.On ? ArtStyle.PropShadow(s.texture.name) : null;
+        if (baked != null)
+            SpriteFactory.Child(transform, "CastShadow", PixelDensity.Fit(baked, sc, false), new Color(0f, 0f, 0f, Tune.F("lighting.shadowAlpha", 0.55f)), p, sc, -44);
+        if (baked != null) sr.flipX = false;   // the baked shadow only matches the unflipped render
         if (light.HasValue) Lighting.Point(transform, light.Value, 2.6f, 0.8f, p + new Vector2(0f, 0.3f));
         return true;
     }
@@ -227,8 +247,7 @@ public class Arena : MonoBehaviour
         float scale = pick.width * r / (sprite.rect.width / sprite.pixelsPerUnit);
         var baked = SpriteShadow.On ? ArtStyle.PropShadow(sprite.texture.name) : null;
         var shown = PixelDensity.Fit(sprite, scale);
-        var sr = SpriteFactory.Child(transform, pick.glow ? "Crystal" : "Prop", shown, Color.white, basePos, scale, 0);   // depth-sorted at its base
-        sr.spriteSortPoint = SpriteSortPoint.Pivot;
+        var sr = Standing(pick.glow ? "Crystal" : "Prop", shown, basePos, scale);
         if (pick.glow)
         {
             var c = Biome.Flowers[Random.Range(0, Biome.Flowers.Length)];
