@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum GameState { Title, Grimoire, Settings, Credits, TomePick, Playing, LevelUp, Paused, GameOver, Victory }
+public enum GameState { Title, Grimoire, Settings, Credits, TomePick, Playing, LevelUp, Paused, GameOver, Victory, Loading }
 
 // Owns the run: title screen, camera, starting tome, level-up flow, zone changes, game over, victory
 // and the HUD.
@@ -71,7 +71,7 @@ public class GameManager : MonoBehaviour
         foreach (var b in GetComponents<MonoBehaviour>()) b.useGUILayout = false;
         if (FindAnyObjectByType<AudioListener>() == null) cam.gameObject.AddComponent<AudioListener>();
         BuildWorld();
-        State = GameState.Title;
+        StartCoroutine(BootRoutine());
         StartCoroutine(Tune.FetchFromMac());
     }
 
@@ -176,12 +176,64 @@ public class GameManager : MonoBehaviour
         foreach (var o in FindObjectsByType<T>()) Destroy(o.gameObject);
     }
 
+    // Loading screen state: art is loaded a step per frame behind a progress bar instead of in one
+    // long frame (the first Play tap and every zone change used to freeze on the 3D sheet resampling).
+    float loadProgress;
+    string loadLabel = "";
+    List<Biome> bootZones;   // the first run's zones, chosen at launch so their art can load behind the launch screen
+
+    IEnumerator RunSteps(List<System.Action> steps, float from, float to, string label)
+    {
+        for (int i = 0; i < steps.Count; i++)
+        {
+            loadProgress = Mathf.Lerp(from, to, i / (float)steps.Count);
+            loadLabel = label;
+            yield return null;   // let this progress draw before the step blocks the frame
+            steps[i]();
+        }
+        loadProgress = to;
+    }
+
+    // First launch: pick the first run's zones and load their enemy art up front.
+    IEnumerator BootRoutine()
+    {
+        State = GameState.Loading;
+        Time.timeScale = 0f;
+        loadProgress = 0f;
+        loadLabel = "Waking the wizard";
+        yield return null;
+        bootZones = Biome.RunZones();
+        ArtStyle.BeginZoneArt();
+        yield return RunSteps(ArtStyle.ZoneArtSteps(bootZones[0].Roster), 0.1f, 0.95f, "Summoning foes");
+        loadProgress = 1f;
+        yield return null;
+        Time.timeScale = 1f;
+        State = GameState.Title;
+    }
+
     public void StartRun()
     {
-        zones = Biome.RunZones();
+        if (State == GameState.Loading) return;
+        StartCoroutine(StartRunRoutine());
+    }
+
+    IEnumerator StartRunRoutine()
+    {
+        State = GameState.Loading;
+        Time.timeScale = 0f;
+        Joystick.Blocked = true;
+        loadProgress = 0f;
+        loadLabel = "Preparing the run";
+        yield return null;
+        zones = bootZones ?? Biome.RunZones();
+        bootZones = null;
         zoneIndex = 0;
         shiftAt = -1f;
         ArtStyle.BeginZoneArt();
+        yield return RunSteps(ArtStyle.ZoneArtSteps(zones[0].Roster), 0.05f, 0.8f, "Summoning foes");
+        loadProgress = 0.85f;
+        loadLabel = "Building the world";
+        yield return null;
         BuildWorld(zones[0]);
         Score = 0;
         runGold = 0f;
@@ -194,6 +246,7 @@ public class GameManager : MonoBehaviour
         Upgrades.Begin(Player);
         Grimoire.BeginRunFeats();
         Telemetry.BeginRun(this, zones);
+        loadProgress = 1f;
         State = GameState.TomePick;
         Time.timeScale = 0f;
         Joystick.Blocked = true;   // released once the starting tap lifts
@@ -220,10 +273,25 @@ public class GameManager : MonoBehaviour
     void ShiftZone()
     {
         shiftAt = -1f;
+        StartCoroutine(ShiftZoneRoutine());
+    }
+
+    // The screen is already faded out: load the next zone's art behind a loading screen, then swap arenas.
+    IEnumerator ShiftZoneRoutine()
+    {
         if (zoneIndex + 1 >= zones.Count) zones.Add(Biome.Random());   // runs with more bosses than zones
-        var next = zones[++zoneIndex];
+        var next = zones[zoneIndex + 1];
+        State = GameState.Loading;
+        Time.timeScale = 0f;
+        loadProgress = 0f;
+        loadLabel = next.Name;
+        yield return null;
         XpGem.CollectAll(Player);
         ArtStyle.BeginZoneArt();
+        yield return RunSteps(ArtStyle.ZoneArtSteps(next.Roster), 0.05f, 0.8f, next.Name);
+        loadProgress = 0.9f;
+        yield return null;
+        zoneIndex++;
         ClearField();
         Destroy(Arena.gameObject);
         Arena = Arena.Create(next);
@@ -236,6 +304,8 @@ public class GameManager : MonoBehaviour
         fadeInUntil = Time.time + FadeTime;
         Toast(next.Name);
         Sfx.Play("events.zoneChange", Sound.Warning, 0.5f, 0f);
+        Time.timeScale = 1f;
+        State = GameState.Playing;
     }
 
     void Win()
@@ -378,11 +448,21 @@ public class GameManager : MonoBehaviour
                     else { State = GameState.Playing; Time.timeScale = 1f; }
                 }
                 break;
+            case GameState.Loading: DrawLoading(); break;
             case GameState.Paused: DrawHud(); DrawPause(); break;
             case GameState.GameOver: DrawHud(); DrawGameOver(); break;
             case GameState.Victory: DrawHud(); DrawVictory(); break;
         }
         DrawToasts();
+    }
+
+    void DrawLoading()
+    {
+        float s = UiScale;
+        UI.Dim(1f);
+        var col = UI.Column(0.18f, 0.8f);
+        UI.Text(new Rect(col.x, col.y + 330f * s, col.width, 80f * s), loadLabel + new string('.', 1 + (int)(Time.unscaledTime * 3f) % 3), 44, TextAnchor.MiddleCenter, new Color(0.8f, 0.65f, 1f));
+        UI.Bar(new Rect(col.x + col.width * 0.1f, col.y + 430f * s, col.width * 0.8f, 28f * s), loadProgress, new Color(0.6f, 0.45f, 1f));
     }
 
     void DrawTitle()

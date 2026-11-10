@@ -219,6 +219,21 @@ public static class ArtStyle
         propsMarked.Clear();
     }
 
+    // One load per enemy sheet (and the Headmaster's tome), so a loading screen can run them a frame apart.
+    public static List<System.Action> ZoneArtSteps(EnemyRoster roster)
+    {
+        var steps = new List<System.Action>();
+        if (roster == null) return steps;
+        foreach (var group in new[] { roster.Chaff, roster.Medium, roster.Bosses })
+            if (group != null)
+                foreach (var d in group)
+                {
+                    var def = d;
+                    steps.Add(() => { EnemySheet(def.Look, def.Radius, def.Name); if (def.Look == EnemyLook.Headmaster) TomeSheet(0.5f); });
+                }
+        return steps;
+    }
+
     public static bool EndZoneArt(EnemyRoster roster)
     {
         if (roster != null)
