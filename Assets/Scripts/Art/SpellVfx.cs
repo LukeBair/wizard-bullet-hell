@@ -242,6 +242,31 @@ public static class SpellVfx
         return PixelDensity.Fit(src, scale, false);
     }
 
+    // ---- Tesla Totem and Starfall: painted tower loops, the circle shock and the falling star ----
+
+    // The tower idle loop for a tier (1-3); null without painted art.
+    public static Sprite[] TotemFrames(int tier, out float scale)
+        => Sized("vfx_totem" + Mathf.Clamp(tier, 1, 3), Tune.F("vfx.totemSize" + Mathf.Clamp(tier, 1, 3), tier == 1 ? 1.5f : tier == 2 ? 2.1f : 3f), out scale);
+
+    // Tier III's circle shock, `radius` world units out. The ring fills about 0.85 of its frame.
+    public static bool Shock(Vector2 pos, float radius) => Play("vfx_shock", pos, radius * 2f * Tune.F("vfx.shockSize", 1.2f), 0.45f, 0.5f);
+
+    // A star dropping onto `target` over `fall` seconds, head first from the upper right. Normal stars use the
+    // tier I or II art, the Cataclysm meteor (`big`) its own. False without painted art.
+    public static bool FallingStar(Vector2 target, int tier, bool big, float fall)
+    {
+        int art = big ? 3 : tier <= 1 ? 1 : 2;
+        float size = Tune.F("vfx.starSize" + art, art == 1 ? 1.8f : art == 2 ? 2.4f : 4.5f);
+        var f = Sized("vfx_star" + art, size, out float s);
+        if (f == null) return false;
+        Vector2 head = new Vector2(0.1f, 0.25f) * size;   // the head sits low and left of the frame's centre
+        Vector2 to = target + head;
+        var p = PaintedLoop.Attach(null, to + new Vector2(1f, 1f).normalized * Tune.F("vfx.starDrop", 5f), f, null, s, f.Length / Mathf.Max(0.1f, fall), 87);
+        p.Sr.flipX = false;
+        p.gameObject.AddComponent<FallTo>().Begin(to, fall);
+        return true;
+    }
+
     // ---- The utility spells: painted loops that sit on the ground, a foe or the wizard ----
 
     // `name`'s frames fitted so a frame is `size` world units across; null without painted art.
@@ -519,5 +544,27 @@ public static class SpellVfx
             float k = t / life;
             sr.color = new Color(1f, 1f, 1f, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - k) / fade)));   // fades out over the last `fade` of its life
         }
+    }
+}
+
+// Moves its object in a straight line over `time` seconds, then removes it (a falling star).
+public class FallTo : MonoBehaviour
+{
+    Vector2 from, to;
+    float time, t;
+
+    public void Begin(Vector2 to, float time)
+    {
+        from = transform.position;
+        this.to = to;
+        this.time = Mathf.Max(0.05f, time);
+    }
+
+    void Update()
+    {
+        t += Time.deltaTime;
+        float k = Mathf.Clamp01(t / time);
+        transform.position = Vector2.Lerp(from, to, k * k);   // speeds up as it falls
+        if (k >= 1f) Destroy(gameObject);
     }
 }

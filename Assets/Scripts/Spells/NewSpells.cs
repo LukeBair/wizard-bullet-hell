@@ -65,6 +65,7 @@ public class Starfall : Spell
             };
             stars.Add(s);
             Fx.Marker(s.pos, new Color(Color.r, Color.g, Color.b, 0.7f), s.radius, s.timer);   // one warning ring per star
+            SpellVfx.FallingStar(s.pos, Tier, big, s.timer);
         }
         Sfx.Play("spells.Starfall.call", Sound.Missile, 0.3f, 0.15f);
     }
@@ -121,6 +122,7 @@ public class TeslaTotem : Spell
         public float life, fire, shock, damage;
         public GameObject go;
         public SpriteRenderer body, glow;
+        public PaintedLoop art;   // the painted tower, when there is one
     }
     readonly List<Totem> totems = new List<Totem>();
     float linkTimer;
@@ -178,6 +180,12 @@ public class TeslaTotem : Spell
         float big = Tier == 1 ? 1f : Tier == 2 ? 1.5f : 2f;
         t.glow = SpriteFactory.Child(t.go.transform, "Glow", SpriteFactory.Glow, new Color(Color.r, Color.g, Color.b, 0.5f), Vector2.zero, 1.4f * big, -46);
         t.body = SpriteFactory.Child(t.go.transform, "Body", SpriteFactory.Diamond, Tier >= 2 ? Color.Lerp(Color, Color.white, 0.4f) : Color, Vector2.zero, 0.5f * big, -45);
+        var frames = SpellVfx.TotemFrames(Tier, out float scale);
+        if (frames != null)
+        {
+            t.body.enabled = false;   // the painted tower replaces the diamond
+            t.art = PaintedLoop.Attach(t.go.transform, new Vector2(0f, 0.12f * Tune.F("vfx.totemSize" + Tier, Tier == 1 ? 1.5f : Tier == 2 ? 2.1f : 3f)), null, frames, scale, Tune.F("vfx.totemFps", 10f), -45).Skip(Random.Range(0f, 2f));
+        }
         totems.Add(t);
         Fx.Ring(pos, Color, 0.8f, 0.25f);
     }
@@ -203,6 +211,7 @@ public class TeslaTotem : Spell
             }
             float fade = Mathf.Clamp01(t.life / 1f);   // dims over its last second
             t.body.color = new Color(Color.r, Color.g, Color.b, fade);
+            if (t.art != null) t.art.Sr.color = new Color(1f, 1f, 1f, fade);
             t.glow.color = new Color(Color.r, Color.g, Color.b, 0.35f * fade * (0.8f + 0.2f * Mathf.Sin(Time.time * 10f + i)));
             t.fire -= dt;
             if (t.fire <= 0f) Zap(t);
@@ -265,7 +274,7 @@ public class TeslaTotem : Spell
         t.shock = T("shockEvery_t3", 1.6f) * HasteFactor;
         float r = T("shockRadius_t3", 2f) * Area;
         var foes = EnemiesWithin(t.pos, r);
-        Fx.Ring(t.pos, Color.Lerp(Color, Color.white, 0.4f), r, 0.35f);
+        if (!SpellVfx.Shock(t.pos, r)) Fx.Ring(t.pos, Color.Lerp(Color, Color.white, 0.4f), r, 0.35f);
         if (foes.Count == 0) return;
         Sfx.Play("spells.TeslaTotem.thunder", Sound.Lightning, 0.35f, 0.1f);
         foreach (var e in foes)

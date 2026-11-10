@@ -1,5 +1,14 @@
 {
   "vfx": {
+    "totemSize1": 1.5,
+    "totemSize2": 2.1,
+    "totemSize3": 3,
+    "totemFps": 10,
+    "shockSize": 1.2,
+    "starSize1": 1.8,
+    "starSize2": 2.4,
+    "starSize3": 4.5,
+    "starDrop": 5,
     "lightningHitScale": 3,
     "fireballHitScale": 1,
     "frostHitScale": 1,
