@@ -5,7 +5,7 @@ stationary tower that zaps nearby foes. Same workflow as the other painted spell
 generate on pure black, key out by brightness, shrink to the game's pixel density. The spell is currently
 code-drawn (a diamond plus a glow, and `SpellVfx.Spark` for the beam), so these replace those.
 
-> **Design update:** tier II is now a lightning chain linking you and the totems; tier III adds circular shock pulses
+> **Design update (the look below is superseded by the Grok section: painterly, not pixel art):** tier II is now a lightning chain linking you and the totems; tier III adds circular shock pulses
 > around each totem (no thunderclap or detonation any more). Totems are planted in a ring around the player. Use the
 > "Grok Imagine" section at the end of this file for the current effects; sections 3 and 4 below are older still-image ideas.
 
@@ -195,45 +195,46 @@ last stretch of the delay.
 
 # Grok Imagine prompts (current design)
 
-Settings (same as the rune effects): grok.com/imagine, **Video, 480p, 6s, 1:1**. Start each from a fresh /imagine page.
-Every prompt ends with the shared tail below, so paste it after the body. Keep the camera locked so the cutter can
-key out black by brightness (see `blades_from_video.py`).
+These follow how the other spell art was made (see `SPELLS.md`): painterly, saturated video on pure black, in the
+element's own colour. The pixel look is applied afterwards by the cutter scripts, so do **not** ask for pixel art or a
+palette. Settings: grok.com/imagine, **Video, 480p, 6s, 1:1**, fresh /imagine page each time.
 
-**Shared tail:** `Camera locked and perfectly still, isolated on a pure black background, no ground, no text, no characters, chunky pixel art, limited palette of dark navy, deep green, sage green and pale cream, glowing effect, game VFX.`
+**Tail (paste after every prompt):** `Single glowing magic effect, centered, isolated on a pure black background, no character, no hands, no ground, no text, bright saturated core fading to soft glowing edges, dark fantasy game VFX, painterly, camera locked and perfectly still, square 1:1.`
 
-## Tesla tower
+Colours: storm = bright yellow-white with a pale electric-blue glow. Starfall = violet arcane (tier I), orange-red fire (tier II and III).
 
-**Tower I, idle.** `A small weathered stone totem standing upright, seen from a slightly raised top-down angle, mossy dark green stone with one carved spiral rune glowing pale cream and slowly pulsing, a tiny blue-white spark hovering above its tip, tiny sparks drifting up. The totem does not move.` + tail
+## Tesla tower (storm)
 
-**Tower II (Tesla Coil), idle.** `A taller stone totem with a pale cream metal ring around it and two curling antennae at the top, a bright rune pulsing, small cream sparks jumping back and forth between the antennae, soft cream light on the stone. The totem does not move.` + tail
+**Tower I, idle.** `A small weathered stone totem standing upright, seen from a slightly raised top-down angle, mossy dark stone with one carved spiral rune glowing yellow-white and slowly pulsing, a tiny electric spark floating above its tip, a few sparks drifting up. The totem does not move.` + tail
 
-**Tower III (Storm Spire), idle.** `A tall stone spire with three stacked glowing rune bands, four small stone shards slowly orbiting its tip with cream-white lightning crackling between them, a bright overcharged core on top, one coral red rune near the base. The spire does not move.` + tail
+**Tower II (Tesla Coil), idle.** `A taller stone totem with a pale metal ring around it and two curling antennae at the top, a bright yellow-white rune pulsing, small electric arcs jumping back and forth between the antennae, a soft electric-blue glow around it. The totem does not move.` + tail
 
-**Zap (a bolt from the tower to a foe).** `One jagged bolt of bright cream-white lightning with a pale teal-green glow shooting from the left side of the frame to the right, three small forks, a bright flash where it ends, then it fades with drifting sparks. Horizontal.` + tail
+**Tower III (Storm Spire), idle.** `A tall stone spire with three stacked glowing rune bands, four stone shards slowly orbiting its tip with yellow-white lightning crackling between them, a blinding overcharged core on top, crackling electric-blue glow around it. The spire does not move.` + tail
 
-**Lightning chain link (tier II and III).** `A continuous crackling rope of cream-white lightning stretched horizontally across the frame from one bright glowing node on the far left to another on the far right, the bolt constantly jittering and re-forming, small branching forks, teal-green glow, loops seamlessly, edges of the bolt touch both sides of the frame.` + tail
+**Zap bolt.** `One jagged bolt of bright yellow-white lightning with a pale electric-blue glow shooting horizontally from the left of the frame to the right, three small forks, a bright flash where it ends that fades into drifting sparks.` + tail
 
-**Circle shock (tier III).** `Seen from directly above: a ring of crackling cream-white electricity expanding outward from a bright flash at the centre, jagged lightning arcs running around the ring, teal-green glow, the ring fades as it grows, small sparks left behind. The ring stays fully inside the frame and is complete and symmetrical.` + tail
+**Lightning chain link (tier II and III).** `A continuous crackling rope of yellow-white lightning stretched horizontally across the frame from one bright glowing node on the far left to another on the far right, the bolt constantly jittering and re-forming, small branching forks, electric-blue glow, loops seamlessly, the bolt touches both sides of the frame.` + tail
 
-**Plant (optional).** `A ring of pale cream light rising from the ground as a small stone totem pushes up through it, dust motes, a burst of sparks as it locks into place.` + tail
+**Circle shock (tier III).** `Seen from directly above: a ring of crackling yellow-white electricity expanding outward from a bright flash at the centre, jagged lightning arcs running round the ring, electric-blue glow, the ring fades as it grows and leaves small sparks behind. The ring stays fully inside the frame, complete and symmetrical.` + tail
 
-## Meteor (Starfall)
+**Plant (optional).** `Seen from above: a ring of yellow-white light rising from the ground as a small stone totem pushes up through it, dust motes, a burst of sparks as it locks into place.` + tail
 
-**Falling star I.** `A small falling star seen from above, a bright pale-cream four-pointed core with a short tail of fading navy and teal sparks and a soft glow, falling diagonally from the top right toward the lower left and growing slightly larger as it comes. It leaves the frame at the lower left.` + tail
+## Starfall
 
-**Falling star II (burning).** `A falling star wrapped in flickering coral red and pale cream flame, bright cream core, a longer tail of embers and sparks, falling diagonally from the top right toward the lower left and growing as it falls.` + tail, adding `a touch of coral red` to the palette.
+**Falling star I (arcane).** `A small falling star seen from above, a bright white-violet four-pointed core with a short tail of fading violet sparks and a soft glow, falling diagonally from the top right toward the lower left and growing slightly as it comes.` + tail
 
-**Falling meteor III (Cataclysm).** `A huge falling meteor seen from above, rough dark navy rock with cracks glowing pale cream and coral red, wrapped in roaring cream-white and coral flame with a very long tail of embers and rock fragments, falling diagonally from the top right toward the lower left, getting much bigger as it falls, heavy and ominous.` + tail, adding `a touch of coral red`.
+**Falling star II (burning).** `A falling star wrapped in flickering orange-red flame with a bright white-yellow core, a longer tail of embers and sparks, falling diagonally from the top right toward the lower left and growing as it falls.` + tail
 
-**Warning ring.** `Seen from directly above: a thin glowing pale-cream circular target marker with four short tick marks pointing inward, a faint soft glow inside, slowly pulsing brighter and dimmer, perfectly centred and complete.` + tail
+**Meteor III (Cataclysm).** `A huge falling meteor seen from above, rough dark rock with cracks glowing orange and white-hot, wrapped in roaring orange-red flame with a very long tail of embers and rock fragments, falling diagonally from the top right toward the lower left, getting much bigger as it falls, heavy and ominous.` + tail
 
-**Cataclysm warning ring.** `Seen from directly above: a large double ring of glowing pale cream and coral red with eight inward tick marks and a faint rune pattern between the rings, pulsing ominously, perfectly centred and complete.` + tail
+**Warning ring.** `Seen from directly above: a thin glowing violet circular target marker with four short tick marks pointing inward, a faint glow inside, slowly pulsing brighter and dimmer, perfectly centred and complete.` + tail
 
-**Impact I.** `Seen from directly above: a circular burst of pale cream light, a bright flash at the centre then a ring of teal and navy sparks flying outward with small star-shaped glints, everything fades out. The burst stays inside the frame and is complete.` + tail
+**Cataclysm warning ring.** `Seen from directly above: a large double ring of glowing orange-red and white with eight inward tick marks and a faint rune pattern between the rings, pulsing ominously, perfectly centred and complete.` + tail
 
-**Impact II (burning).** `Seen from directly above: a coral red and pale cream fireball ring spreading outward from a bright flash with embers and glowing cinders thrown around, fading out. The burst stays inside the frame and is complete.` + tail, adding `a touch of coral red`.
+**Impact I.** `Seen from directly above: a circular burst of white-violet light, a bright flash at the centre then a ring of violet sparks flying outward with small star-shaped glints, everything fades out. The burst stays inside the frame and is complete.` + tail
 
-**Impact III (Cataclysm).** `Seen from directly above: a huge crater explosion, a blinding cream-white flash, an expanding shockwave ring of coral red fire, dark navy rock chunks and dust thrown outward, a smoking cracked crater glowing at the centre, everything slowly fading. The blast stays inside the frame and is complete.` + tail, adding `a touch of coral red`.
+**Impact II (burning).** `Seen from directly above: an orange-red and yellow fireball ring spreading outward from a bright white flash with embers and glowing cinders thrown around, fading out. The burst stays inside the frame and is complete.` + tail
 
-If a video comes back with a grey or glowing background, say "pure black background, nothing else in the frame" at the start
-of the prompt and regenerate from a fresh page. Cut and key them like the rune effects; the file names in the earlier tables still apply.
+**Impact III (Cataclysm).** `Seen from directly above: a huge crater explosion, a blinding white flash, an expanding shockwave ring of orange-red fire, dark rock chunks and dust thrown outward, a smoking cracked crater glowing at the centre, slowly fading. The blast stays inside the frame and is complete.` + tail
+
+If a video comes back with a grey or glowing background, start the prompt with "pure black background, nothing else in the frame" and regenerate from a fresh page. For the cutter, copy `blades_from_video.py` (spin and slash on black) or `flame_from_video.py` (loops); the file names in the earlier tables still apply.
