@@ -154,7 +154,7 @@ public static class Particles
     // Ambient particles on enemies with statuses; call every frame. Each status emits at its own
     // fx.status.<name>Rate per second: rising embers when burning, frost flecks when chilled, drips
     // when wet, ants scurrying over infested foes, and thorn and leaf chips on foes trapped by vines.
-    public static void Status(Vector2 pos, float radius, bool burning, bool chilled, bool wet, bool infested, bool rooted, float dt)
+    public static void Status(Vector2 pos, float radius, bool burning, bool chilled, bool wet, bool infested, bool rooted, float dt, bool withered = false)
     {
         if (!Enabled) return;
         float size = F("status.size", 0.08f), life = F("status.life", 0.6f);
@@ -173,6 +173,8 @@ public static class Particles
             var dir = Random.insideUnitCircle.normalized;
             Emit(pos - dir * radius * 0.6f, dir * radius * 3f, Style(new Color(0.15f, 0.25f, 0.2f)), F("ants.size", 0.05f), 0.35f);
         }
+        if (withered && Random.value < F("status.witherRate", 4f) * dt)
+            Emit(pos + new Vector2(Random.Range(-radius, radius) * 0.6f, radius * 0.4f), new Vector2(Random.Range(-0.15f, 0.15f), -0.9f), Style(Random.value < 0.5f ? new Color(0.5f, 0.45f, 0.4f) : new Color(0.3f, 0.28f, 0.25f)), size, life);
         if (rooted && Random.value < F("status.thornRate", 5f) * dt)
         {
             var at = pos + Random.insideUnitCircle.normalized * radius * 0.8f;

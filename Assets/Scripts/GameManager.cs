@@ -154,6 +154,7 @@ public class GameManager : MonoBehaviour
         Clear<Vortex>();
         Clear<WaterBeam>();
         Clear<WaterPillar>();
+        Clear<TotemMarker>();
     }
 
     // Preloads the zone's enemy sheets and lets go of the last zone's art (ArtStyle.BeginZoneArt).
