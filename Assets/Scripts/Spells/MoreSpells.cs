@@ -26,8 +26,12 @@ public class MirrorWard : Spell, IOrbiter
     public int OrbitRings => 1;
     int Sets => 1 + Echoes;
     float OrbitRadius => Orbits.Radius(this, 0);
-    float ShardLength => T("shardLength", 1f) * Area;        // along the ring
-    float ShardThickness => T("shardThickness", 0.16f) * Area;
+    // Area adds crystals instead of scaling them: each Area rune lengthens every shard by one more crystal.
+    float Crystal => T("shardThickness", 0.16f) * Tune.F("vfx.mirrorSize", 2.5f);
+    int BaseTiles => Mathf.Max(1, Mathf.CeilToInt(T("shardLength", 1f) / (Crystal * 0.75f)));
+    int Tiles => BaseTiles + Mathf.RoundToInt(RuneCount(Rune.Area));
+    float ShardLength => T("shardLength", 1f) * Tiles / BaseTiles;   // along the ring
+    float ShardThickness => T("shardThickness", 0.16f);
     const int Segments = 6;
 
     public override string TierName(int tier) => tier == 2 ? "Prism" : tier == 3 ? "Hall of Mirrors" : Name;
@@ -42,7 +46,7 @@ public class MirrorWard : Spell, IOrbiter
             case Rune.Haste: return $"Shards spin {Pct(HastePerRune)} faster";
             case Rune.Split: return "+1 shard in every set";
             case Rune.Pierce: return "Reflected bolts pass through +1 enemy";
-            case Rune.Area: return $"+{Pct(AreaStep)} shard size";
+            case Rune.Area: return "+1 crystal on every shard (a longer mirror)";
             case Rune.Echo: return "+1 set of shards spinning the other way";
             case Rune.Ward: return "No effect: this spell never casts";
             default: return base.RuneEffect(r);
@@ -74,8 +78,8 @@ public class MirrorWard : Spell, IOrbiter
                 go.transform.SetParent(Owner.transform, false);
                 shards.Add((go.transform, set, i));
                 // painted: enough small crystals side by side to fill the shard's length
-                float crystal = ShardThickness * Tune.F("vfx.mirrorSize", 2.5f);
-                int tiles = Mathf.Max(1, Mathf.CeilToInt(ShardLength / (crystal * 0.75f)));
+                float crystal = Crystal;
+                int tiles = Tiles;
                 for (int k = 0; k < tiles; k++)
                 {
                     var painted = SpellVfx.MirrorCrystal(Owner.transform, crystal);
